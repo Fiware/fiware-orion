@@ -12,12 +12,7 @@ env:
   matrix:
   - STAGE=compliance
   - STAGE=unit
-  - STAGE=functional_1_300
-  - STAGE=functional_301_600
-  - STAGE=functional_601_900
-  - STAGE=functional_901_1200
-  - STAGE=release
-  - STAGE=deps
+  - STAGE=functional
 before_install:
   - if [[ "${PUSH}" && ${TRAVIS_BRANCH} == "develop" && ${TRAVIS_EVENT_TYPE} == "push" ]]; then
       export PUSH_STATUS="True";
