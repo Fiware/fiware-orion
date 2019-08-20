@@ -71,12 +71,8 @@ extern "C"
 bool orionldGetRegistrations(ConnectionInfo *ciP)
 {
   std::vector<ngsiv2::Registration> registrationVec;
-  char*      id = (ciP->uriParam["id"].empty()) ? NULL : (char*) ciP->uriParam["id"].c_str();
   OrionError oe;
   long long  count;
-
-  char*        idVector[32];
-  int          idVecItems = (int) sizeof(idVector) / sizeof(idVector[0]);
 
   LM_T(LmtServiceRoutine, ("In orionldGetCSourceRegistrations"));
 
@@ -89,20 +85,13 @@ bool orionldGetRegistrations(ConnectionInfo *ciP)
   }
 
   orionldState.responseTree = kjArray(orionldState.kjsonP, NULL);
-  if (id != NULL){
-      idVecItems = kStringSplit(id, ',', (char**) idVector, idVecItems);
-      for (int ix = 0; ix < idVecItems; ix++)
-      {
-        LM_E(("Param ID: [%s]", idVector[ix]));
-      }
-  } else {
-    for (unsigned int ix = 0; ix < registrationVec.size(); ix++)
-    {
-      KjNode* registrationNodeP = kjTreeFromRegistration(ciP, &registrationVec[ix]);
-      kjChildAdd(orionldState.responseTree, registrationNodeP);
-      ciP->httpStatusCode = SccOk;
-    }
+  
+  for (unsigned int ix = 0; ix < registrationVec.size(); ix++)
+  {
+    KjNode* registrationNodeP = kjTreeFromRegistration(ciP, &registrationVec[ix]);
+    kjChildAdd(orionldState.responseTree, registrationNodeP);
+    ciP->httpStatusCode = SccOk;
   }
-
+  
   return true;
 }
