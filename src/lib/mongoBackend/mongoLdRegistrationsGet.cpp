@@ -43,61 +43,12 @@
 #include "mongoBackend/mongoLdRegistrationAux.h"               // mongoSetLdRelationshipV, mongoSetLdPropertyV, ...
 #include "mongoBackend/mongoLdRegistrationsGet.h"              // Own interface
 
-
-
 /* ****************************************************************************
 *
-* mongoLdRegistrationsGet - 
+* uriParamIdToFilter - List of entity ids to be retrieved
 */
-bool mongoLdRegistrationsGet
-(
-  ConnectionInfo*                     ciP,
-  std::vector<ngsiv2::Registration>*  regVecP,
-  const char*                         tenant,
-  long long*                          countP,
-  OrionError*                         oeP
-)
+void uriParamIdToFilter(mongo::BSONObjBuilder* queryBuilder, ConnectionInfo* ciP)
 {
-  bool      reqSemTaken = false;
-  int       offset      = 0;
-  int       limit       = DEFAULT_PAGINATION_LIMIT_INT;
-
-  if (ciP->uriParam[URI_PARAM_PAGINATION_LIMIT] != "")
-    limit = atoi(ciP->uriParam[URI_PARAM_PAGINATION_LIMIT].c_str());  // Error handling already done by uriArgumentGet() in rest.cpp
-  else
-    limit = DEFAULT_PAGINATION_LIMIT_INT;
-
-  if (ciP->uriParam[URI_PARAM_PAGINATION_OFFSET] != "")
-    offset = atoi(ciP->uriParam[URI_PARAM_PAGINATION_OFFSET].c_str());
-
-  std::auto_ptr<mongo::DBClientCursor>  cursor;
-  std::string                           err;
-  mongo::BSONObjBuilder                 queryBuilder;
-  mongo::Query                          query;
-
-  //
-  // FIXME: This function will grow too long - need to create a function for each URI param
-  //        and move all of it out to a separate file: mongoLdRegistrationsGet.cpp
-  //
-  //
-  // The function should do something like this:
-  //
-  // const char*     uriParamId   = ciP->uriParam["id"].c_str();
-  // const char*     uriParamType = ciP->uriParam["type"].c_str();
-  //
-  // if (uriParamId != NULL)
-  //   uriParamIdToFilter(&queryBuilder, uriParamId);
-  //
-  // if (uriParamType != NULL)
-  //   uriParamTypeToFilter(&queryBuilder, uriParamType);
-  //
-  // ... More calls to add uri params to filter ...
-  //
-  // query = queryBuilder.obj();
-  //
-  //
-  if (ciP->uriParam["id"] != "")
-  {
     char*                       idList = (char*) ciP->uriParam["id"].c_str();
     std::vector<std::string>    idVec;
     int                         ids;
@@ -112,12 +63,16 @@ bool mongoLdRegistrationsGet
         bsonArray.append(idVec[ix]);
 
       bsonInExpression.append("$in", bsonArray.arr());
-      queryBuilder.append("_id", bsonInExpression.obj());
+      queryBuilder->append("_id", bsonInExpression.obj());
     }
-  }
+}
 
-  if (ciP->uriParam["type"] != "")
-  {
+/* ****************************************************************************
+*
+* uriParamTypeToFilter - List of entity types to be retrieved
+*/
+void uriParamTypeToFilter(mongo::BSONObjBuilder* queryBuilder, ConnectionInfo* ciP)
+{
     char*                       typeList = (char*) ciP->uriParam["type"].c_str();
     std::vector<std::string>    typeVec;
     int                         types;
@@ -150,7 +105,6 @@ bool mongoLdRegistrationsGet
           if (orionldUriExpand(orionldState.contextP, type, typeExpanded, sizeof(typeExpanded), &details) == false)
           {
             orionldErrorResponseCreate(OrionldBadRequestData, "Error during URI expansion of entity type", details, OrionldDetailsString);
-            return false;
           }
 
           bsonArray.append(typeExpanded);
@@ -158,9 +112,48 @@ bool mongoLdRegistrationsGet
       }
 
       bsonInExpression.append("$in", bsonArray.arr());
-      queryBuilder.append("contextRegistration.entities.type", bsonInExpression.obj());
+      queryBuilder->append("contextRegistration.entities.type", bsonInExpression.obj());
     }
-  }
+}
+/* ****************************************************************************
+*
+* mongoLdRegistrationsGet - 
+*/
+bool mongoLdRegistrationsGet
+(
+  ConnectionInfo*                     ciP,
+  std::vector<ngsiv2::Registration>*  regVecP,
+  const char*                         tenant,
+  long long*                          countP,
+  OrionError*                         oeP
+)
+{
+  bool      reqSemTaken = false;
+  int       offset      = 0;
+  int       limit       = DEFAULT_PAGINATION_LIMIT_INT;
+
+  if (ciP->uriParam[URI_PARAM_PAGINATION_LIMIT] != "")
+    limit = atoi(ciP->uriParam[URI_PARAM_PAGINATION_LIMIT].c_str());  // Error handling already done by uriArgumentGet() in rest.cpp
+  else
+    limit = DEFAULT_PAGINATION_LIMIT_INT;
+
+  if (ciP->uriParam[URI_PARAM_PAGINATION_OFFSET] != "")
+    offset = atoi(ciP->uriParam[URI_PARAM_PAGINATION_OFFSET].c_str());
+
+  std::auto_ptr<mongo::DBClientCursor>  cursor;
+  std::string                           err;
+  mongo::BSONObjBuilder                 queryBuilder;
+  mongo::Query                          query;
+
+  // Uri parameters
+  const char*     uriParamId   = ciP->uriParam["id"].c_str();
+  const char*     uriParamType = ciP->uriParam["type"].c_str();
+
+  if (uriParamId != NULL)
+    uriParamIdToFilter(&queryBuilder, ciP);
+
+  if (uriParamType != NULL)
+    uriParamTypeToFilter(&queryBuilder, ciP);
 
   //
   // FIXME: Many more URI params to be treated and added to queryBuilder
