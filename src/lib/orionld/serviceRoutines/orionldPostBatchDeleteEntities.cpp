@@ -1,6 +1,6 @@
 /*
 *
-* Copyright 2018 Telefonica Investigacion y Desarrollo, S.A.U
+* Copyright 2019 Telefonica Investigacion y Desarrollo, S.A.U
 *
 * This file is part of Orion Context Broker.
 *
@@ -51,15 +51,33 @@ extern "C"
 //
 bool orionldPostBatchDeleteEntities(ConnectionInfo* ciP)
 {
-  LM_TMP(("In orionldPostBatchDeleteEntities"));
+  LM_TMP(("LARYSSE: Payload is a JSON %s", kjValueType(orionldState.requestTree->type)));
 
-  // KjNode* entityIds = orionldState.requestTree->value;
+  if (orionldState.requestTree->type != KjArray)
+  {
+    orionldErrorResponseCreate(OrionldBadRequestData, "invalid payload", "must be a JSON array", OrionldDetailsString);
+    ciP->httpStatusCode = SccBadRequest;
+    return false;
+  }
 
+  //
+  // Debugging - see all IDs
+  //
+  int ix = 0;
+  for (KjNode* idNodeP = orionldState.requestTree->value.firstChildP; idNodeP != NULL; idNodeP = idNodeP->next)
+  {
+    if (idNodeP->type != KjString)
+    {
+      orionldErrorResponseCreate(OrionldBadRequestData, "invalid payload", "must be a JSON Array of JSON Strings", OrionldDetailsString);
+      ciP->httpStatusCode	= SccBadRequest;
+      return false;
+    }
 
-  // TESTING THE SERVICE CALL FIRST
-  orionldErrorResponseCreate(OrionldBadRequestData, "Not implemented - POST /ngsi-ld/v1/entityOperations/delete", NULL, OrionldDetailsString);
+    LM_TMP(("LARYSSE: id %02d: %s", ix, idNodeP->value.s));
+    ++ix;
+  }
 
-  ciP->httpStatusCode = SccNotImplemented;
-  
+  ciP->httpStatusCode = SccNoContent;  // 204 - Larysse - check spec to verify what HTTP Status Code should be returned on success
+
   return true;
 }
