@@ -57,7 +57,7 @@ bool mongoCppLegacyEntityBatchDelete(const std::vector<std::string>* entityId)
   // Populate filter - only Entity ID for this operation
   //
 
-  // Testing with only one id first
+  // Testing with only one static id first
   mongo::BSONObjBuilder  filter;
   filter.append("_id.id", "http://a.b.c/entity/idTest");
 
