@@ -26,6 +26,9 @@
 * Author: Ken Zangelin
 */
 
+#include <string>
+#include <vector>
+
 extern "C"
 {
 #include "kjson/KjNode.h"                                        // KjNode
@@ -37,7 +40,7 @@ extern "C"
 //
 // DB_DRIVER_MONGO_CPP_LEGACY - Use the mongo C++ Legacy driver
 //
-// #define DB_DRIVER_MONGO_CPP_LEGACY 1
+#define DB_DRIVER_MONGO_CPP_LEGACY 1
 
 
 
@@ -45,7 +48,7 @@ extern "C"
 //
 // DB_DRIVER_MONGOC - Use the "newest" mongo C driver
 //
-#define DB_DRIVER_MONGOC 1
+// #define DB_DRIVER_MONGOC 1
 
 
 
@@ -55,12 +58,14 @@ extern "C"
 //
 typedef KjNode* (*DbEntityLookupFunction)(const char* entityId);
 typedef bool    (*DbEntityUpdateFunction)(const char* entityId, KjNode* requestTree);
+typedef bool    (*DbEntityBatchDeleteFunction)(const std::vector<std::string>* entityId);
 typedef KjNode* (*DbDataToKjTreeFunction)(const void* dbData, char** titleP, char** detailsP);
 typedef void    (*DbDataFromKjTreeFunction)(KjNode* nodeP, void* dbDataP);
 
-extern DbEntityLookupFunction    dbEntityLookup;
-extern DbEntityUpdateFunction    dbEntityUpdate;
-extern DbDataToKjTreeFunction    dbDataToKjTree;
-extern DbDataFromKjTreeFunction  dbDataFromKjTree;
+extern DbEntityLookupFunction      dbEntityLookup;
+extern DbEntityUpdateFunction      dbEntityUpdate;
+extern DbEntityBatchDeleteFunction dbEntityBatchDelete;
+extern DbDataToKjTreeFunction      dbDataToKjTree;
+extern DbDataFromKjTreeFunction    dbDataFromKjTree;
 
 #endif  // SRC_LIB_ORIONLD_DB_DBCONFIGURATION_H_

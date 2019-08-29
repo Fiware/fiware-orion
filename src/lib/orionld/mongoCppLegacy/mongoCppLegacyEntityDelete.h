@@ -1,3 +1,6 @@
+#ifndef SRC_LIB_ORIONLD_MONGOCPPLEGACY_MONGOCPPLEGACYENTITYDELETE_H_
+#define SRC_LIB_ORIONLD_MONGOCPPLEGACY_MONGOCPPLEGACYENTITYDELETE_H_
+
 /*
 *
 * Copyright 2019 Telefonica Investigacion y Desarrollo, S.A.U
@@ -20,24 +23,17 @@
 * For those usages not covered by this license please contact with
 * iot_support at tid dot es
 *
-* Author: Ken Zangelin
+* Author: Larysse Savanna
 */
-
-extern "C"
-{
-#include "kjson/KjNode.h"                                        // KjNode
-}
-
-#include "orionld/db/dbConfiguration.h"                          // Own interface
+#include <string>
+#include <vector>
 
 
 
 // -----------------------------------------------------------------------------
 //
-// Function pointers for the DB interface
+// mongoCppLegacyEntityBatchDelete -
 //
-DbEntityLookupFunction      dbEntityLookup;
-DbEntityUpdateFunction      dbEntityUpdate;
-DbEntityBatchDeleteFunction dbEntityBatchDelete;
-DbDataToKjTreeFunction      dbDataToKjTree;
-DbDataFromKjTreeFunction    dbDataFromKjTree;
+extern bool mongoCppLegacyEntityBatchDelete(const std::vector<std::string>* entityId);
+
+#endif  // SRC_LIB_ORIONLD_MONGOCPPLEGACY_MONGOCPPLEGACYENTITYDELETE_H_

@@ -24,6 +24,7 @@ SET (SOURCES
     mongoCppLegacyInit.cpp
     mongoCppLegacyEntityLookup.cpp
     mongoCppLegacyEntityUpdate.cpp
+    mongoCppLegacyEntityDelete.cpp
     mongoCppLegacyKjTreeFromBsonObj.cpp
     mongoCppLegacyKjTreeToBsonObj.cpp
 )

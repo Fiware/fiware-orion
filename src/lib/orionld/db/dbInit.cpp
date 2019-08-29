@@ -28,6 +28,7 @@
 #include "orionld/mongoCppLegacy/mongoCppLegacyInit.h"              // mongoCppLegacyInit
 #include "orionld/mongoCppLegacy/mongoCppLegacyEntityUpdate.h"      // mongoCppLegacyEntityUpdate
 #include "orionld/mongoCppLegacy/mongoCppLegacyEntityLookup.h"      // mongoCppLegacyEntityLookup
+#include "orionld/mongoCppLegacy/mongoCppLegacyEntityDelete.h"      // mongoCppLegacyEntityBatchDelete
 #include "orionld/mongoCppLegacy/mongoCppLegacyKjTreeFromBsonObj.h" // mongoCppLegacyKjTreeFromBsonObj
 #include "orionld/mongoCppLegacy/mongoCppLegacyKjTreeToBsonObj.h"   // mongoCppLegacyKjTreeToBsonObj
 #elif DB_DRIVER_MONGOC
@@ -52,10 +53,11 @@ void dbInit(const char* dbHost, const char* dbName)
 {
 #if DB_DRIVER_MONGO_CPP_LEGACY
 
-  dbEntityLookup   = mongoCppLegacyEntityLookup;
-  dbEntityUpdate   = mongoCppLegacyEntityUpdate;
-  dbDataToKjTree   = mongoCppLegacyKjTreeFromBsonObj;
-  dbDataFromKjTree = mongoCppLegacyKjTreeToBsonObj;
+  dbEntityLookup      = mongoCppLegacyEntityLookup;
+  dbEntityUpdate      = mongoCppLegacyEntityUpdate;
+  dbEntityBatchDelete = mongoCppLegacyEntityBatchDelete;
+  dbDataToKjTree      = mongoCppLegacyKjTreeFromBsonObj;
+  dbDataFromKjTree    = mongoCppLegacyKjTreeToBsonObj;
 
   mongoCppLegacyInit(dbHost, dbName);
 
