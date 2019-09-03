@@ -28,7 +28,7 @@
 #include "orionld/mongoCppLegacy/mongoCppLegacyInit.h"              // mongoCppLegacyInit
 #include "orionld/mongoCppLegacy/mongoCppLegacyEntityUpdate.h"      // mongoCppLegacyEntityUpdate
 #include "orionld/mongoCppLegacy/mongoCppLegacyEntityLookup.h"      // mongoCppLegacyEntityLookup
-#include "orionld/mongoCppLegacy/mongoCppLegacyEntityDelete.h"      // mongoCppLegacyEntityBatchDelete
+#include "orionld/mongoCppLegacy/mongoCppLegacyEntityBatchDelete.h"      // mongoCppLegacyEntityBatchDelete
 #include "orionld/mongoCppLegacy/mongoCppLegacyKjTreeFromBsonObj.h" // mongoCppLegacyKjTreeFromBsonObj
 #include "orionld/mongoCppLegacy/mongoCppLegacyKjTreeToBsonObj.h"   // mongoCppLegacyKjTreeToBsonObj
 #elif DB_DRIVER_MONGOC

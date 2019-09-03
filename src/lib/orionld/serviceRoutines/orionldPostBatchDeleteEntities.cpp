@@ -41,6 +41,7 @@ extern "C"
 #include "orionld/common/orionldErrorResponse.h"                      // orionldErrorResponseCreate
 #include "ngsi10/UpdateContextRequest.h"                              // UpdateContextRequest
 #include "ngsi10/UpdateContextResponse.h"                             // UpdateContextResponse
+#include "orionld/mongoCppLegacy/mongoCppLegacyEntityBatchDelete.h"   // mongoCppLegacyEntityBatchDelete
 #include "orionld/serviceRoutines/orionldPostBatchDeleteEntities.h"   // Own interface
 
 
@@ -51,6 +52,7 @@ extern "C"
 //
 bool orionldPostBatchDeleteEntities(ConnectionInfo* ciP)
 {
+  
   LM_TMP(("LARYSSE: Payload is a JSON %s", kjValueType(orionldState.requestTree->type)));
 
   if (orionldState.requestTree->type != KjArray)
@@ -73,9 +75,10 @@ bool orionldPostBatchDeleteEntities(ConnectionInfo* ciP)
       return false;
     }
 
-    LM_TMP(("LARYSSE: id %02d: %s", ix, idNodeP->value.s));
     ++ix;
   }
+
+  mongoCppLegacyEntityBatchDelete(orionldState.requestTree);
 
   ciP->httpStatusCode = SccNoContent;  // 204 - Larysse - check spec to verify what HTTP Status Code should be returned on success
 

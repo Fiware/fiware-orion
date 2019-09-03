@@ -26,9 +26,6 @@
 * Author: Ken Zangelin
 */
 
-#include <string>
-#include <vector>
-
 extern "C"
 {
 #include "kjson/KjNode.h"                                        // KjNode
@@ -58,7 +55,7 @@ extern "C"
 //
 typedef KjNode* (*DbEntityLookupFunction)(const char* entityId);
 typedef bool    (*DbEntityUpdateFunction)(const char* entityId, KjNode* requestTree);
-typedef bool    (*DbEntityBatchDeleteFunction)(const std::vector<std::string>* entityId);
+typedef bool    (*DbEntityBatchDeleteFunction)(KjNode* entityIdsArray);
 typedef KjNode* (*DbDataToKjTreeFunction)(const void* dbData, char** titleP, char** detailsP);
 typedef void    (*DbDataFromKjTreeFunction)(KjNode* nodeP, void* dbDataP);
 

@@ -1,5 +1,5 @@
-#ifndef SRC_LIB_ORIONLD_MONGOCPPLEGACY_MONGOCPPLEGACYENTITYDELETE_H_
-#define SRC_LIB_ORIONLD_MONGOCPPLEGACY_MONGOCPPLEGACYENTITYDELETE_H_
+#ifndef SRC_LIB_ORIONLD_MONGOCPPLEGACY_MONGOCPPLEGACYENTITYBATCHDELETE_H_
+#define SRC_LIB_ORIONLD_MONGOCPPLEGACY_MONGOCPPLEGACYENTITYBATCHDELETE_H_
 
 /*
 *
@@ -28,12 +28,15 @@
 #include <string>
 #include <vector>
 
-
+extern "C"
+{
+#include "kjson/KjNode.h"                                        // KjNode
+}
 
 // -----------------------------------------------------------------------------
 //
 // mongoCppLegacyEntityBatchDelete -
 //
-extern bool mongoCppLegacyEntityBatchDelete(const std::vector<std::string>* entityId);
+extern bool mongoCppLegacyEntityBatchDelete(KjNode* entityIdsArray);
 
-#endif  // SRC_LIB_ORIONLD_MONGOCPPLEGACY_MONGOCPPLEGACYENTITYDELETE_H_
+#endif  // SRC_LIB_ORIONLD_MONGOCPPLEGACY_MONGOCPPLEGACYENTITYBATCHDELETE_H_
