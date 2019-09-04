@@ -22,21 +22,22 @@
 *
 * Author: Ken Zangelin
 */
-#include "orionld/db/dbConfiguration.h"                             // This is where the DB is selected
+#include "orionld/db/dbConfiguration.h"                                    // This is where the DB is selected
 
 #if DB_DRIVER_MONGO_CPP_LEGACY
-#include "orionld/mongoCppLegacy/mongoCppLegacyInit.h"              // mongoCppLegacyInit
-#include "orionld/mongoCppLegacy/mongoCppLegacyEntityUpdate.h"      // mongoCppLegacyEntityUpdate
-#include "orionld/mongoCppLegacy/mongoCppLegacyEntityLookup.h"      // mongoCppLegacyEntityLookup
-#include "orionld/mongoCppLegacy/mongoCppLegacyKjTreeFromBsonObj.h" // mongoCppLegacyKjTreeFromBsonObj
-#include "orionld/mongoCppLegacy/mongoCppLegacyKjTreeToBsonObj.h"   // mongoCppLegacyKjTreeToBsonObj
+#include "orionld/mongoCppLegacy/mongoCppLegacyInit.h"                     // mongoCppLegacyInit
+#include "orionld/mongoCppLegacy/mongoCppLegacyEntityUpdate.h"             // mongoCppLegacyEntityUpdate
+#include "orionld/mongoCppLegacy/mongoCppLegacyEntityLookup.h"             // mongoCppLegacyEntityLookup
+#include "orionld/mongoCppLegacy/mongoCppLegacyKjTreeFromBsonObj.h"        // mongoCppLegacyKjTreeFromBsonObj
+#include "orionld/mongoCppLegacy/mongoCppLegacyKjTreeToBsonObj.h"          // mongoCppLegacyKjTreeToBsonObj
+#include "orionld/mongoCppLegacy/mongoCppLegacyEntityOperationsUpsert.h"   // mongoCppLegacyKjTreeToBsonObj
 #elif DB_DRIVER_MONGOC
-#include "orionld/mongoc/mongocInit.h"                              // mongocInit
-#include "orionld/mongoc/mongocEntityUpdate.h"                      // mongocEntityUpdate
-#include "orionld/mongoc/mongocEntityLookup.h"                      // mongocEntityLookup
-#include "orionld/mongoc/mongocKjTreeFromBson.h"                    // mongocKjTreeFromBson
+#include "orionld/mongoc/mongocInit.h"                                     // mongocInit
+#include "orionld/mongoc/mongocEntityUpdate.h"                             // mongocEntityUpdate
+#include "orionld/mongoc/mongocEntityLookup.h"                             // mongocEntityLookup
+#include "orionld/mongoc/mongocKjTreeFromBson.h"                           // mongocKjTreeFromBson
 #endif
-#include "orionld/db/dbInit.h"                                      // Own interface
+#include "orionld/db/dbInit.h"                                             // Own interface
 
 
 
@@ -52,10 +53,11 @@ void dbInit(const char* dbHost, const char* dbName)
 {
 #if DB_DRIVER_MONGO_CPP_LEGACY
 
-  dbEntityLookup   = mongoCppLegacyEntityLookup;
-  dbEntityUpdate   = mongoCppLegacyEntityUpdate;
-  dbDataToKjTree   = mongoCppLegacyKjTreeFromBsonObj;
-  dbDataFromKjTree = mongoCppLegacyKjTreeToBsonObj;
+  dbEntityLookup           = mongoCppLegacyEntityLookup;
+  dbEntityUpdate           = mongoCppLegacyEntityUpdate;
+  dbDataToKjTree           = mongoCppLegacyKjTreeFromBsonObj;
+  dbDataFromKjTree         = mongoCppLegacyKjTreeToBsonObj;
+  dbEntityOperationsUpsert = mongoCppLegacyEntityOperationsUpsert;
 
   mongoCppLegacyInit(dbHost, dbName);
 

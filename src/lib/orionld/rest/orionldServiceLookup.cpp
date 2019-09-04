@@ -45,7 +45,7 @@
 //
 //  33 - 9 == 24
 //
-#define MAX_CHARS_BEFORE_WILDCARD 24
+#define MAX_CHARS_BEFORE_WILDCARD 26
 static void requestPrepare(char* url, int* cSumV, int* cSumsP, int* sLenP)
 {
   // First of all, skip the first 9 characters in the URL path ("/ngsi-ld/")

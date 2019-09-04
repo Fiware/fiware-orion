@@ -1,3 +1,6 @@
+#ifndef SRC_LIB_ORIONLD_SERVICEROUTINES_ORIONLDPOSTENTITYOPERATIONSUPSERT_H_
+#define SRC_LIB_ORIONLD_SERVICEROUTINES_ORIONLDPOSTENTITYOPERATIONSUPSERT_H_
+
 /*
 *
 * Copyright 2019 Telefonica Investigacion y Desarrollo, S.A.U
@@ -20,24 +23,16 @@
 * For those usages not covered by this license please contact with
 * iot_support at tid dot es
 *
-* Author: Ken Zangelin
+* Author: Gabriel Quaresma
 */
-
-extern "C"
-{
-#include "kjson/KjNode.h"                                        // KjNode
-}
-
-#include "orionld/db/dbConfiguration.h"                          // Own interface
+#include "rest/ConnectionInfo.h"
 
 
 
-// -----------------------------------------------------------------------------
+// ----------------------------------------------------------------------------
 //
-// Function pointers for the DB interface
+// orionldNotImplemented -
 //
-DbEntityLookupFunction           dbEntityLookup;
-DbEntityUpdateFunction           dbEntityUpdate;
-DbEntityOperationsUpsertFunction dbEntityOperationsUpsert;
-DbDataToKjTreeFunction           dbDataToKjTree;
-DbDataFromKjTreeFunction         dbDataFromKjTree;
+extern bool orionldPostEntityOperationsUpsert(ConnectionInfo* ciP);
+
+#endif  // SRC_LIB_ORIONLD_SERVICEROUTINES_ORIONLDPOSTENTITYOPERATIONSUPSERT_H_

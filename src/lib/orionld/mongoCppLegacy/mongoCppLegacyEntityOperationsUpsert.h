@@ -1,3 +1,6 @@
+#ifndef SRC_LIB_ORIONLD_MONGOCPPLEGACY_MONGOCPPLEGACYENTITYOPERATIONSUPSERT_H_
+#define SRC_LIB_ORIONLD_MONGOCPPLEGACY_MONGOCPPLEGACYENTITYOPERATIONSUPSERT_H_
+
 /*
 *
 * Copyright 2019 Telefonica Investigacion y Desarrollo, S.A.U
@@ -20,24 +23,20 @@
 * For those usages not covered by this license please contact with
 * iot_support at tid dot es
 *
-* Author: Ken Zangelin
+* Author: Gabriel Quaresma
 */
+#include <string>
+#include <vector>
 
 extern "C"
 {
-#include "kjson/KjNode.h"                                        // KjNode
+#include "kjson/KjNode.h"                                              // KjNode
 }
-
-#include "orionld/db/dbConfiguration.h"                          // Own interface
-
-
 
 // -----------------------------------------------------------------------------
 //
-// Function pointers for the DB interface
+// mongoCppLegacyEntityOperationsUpsert -
 //
-DbEntityLookupFunction           dbEntityLookup;
-DbEntityUpdateFunction           dbEntityUpdate;
-DbEntityOperationsUpsertFunction dbEntityOperationsUpsert;
-DbDataToKjTreeFunction           dbDataToKjTree;
-DbDataFromKjTreeFunction         dbDataFromKjTree;
+extern bool mongoCppLegacyEntityOperationsUpsert(KjNode* entitiesArray);
+
+#endif  // SRC_LIB_ORIONLD_MONGOCPPLEGACY_MONGOCPPLEGACYENTITYOPERATIONSUPSERT_H_

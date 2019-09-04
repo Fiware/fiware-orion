@@ -43,6 +43,7 @@
 #include "orionld/serviceRoutines/orionldGetContext.h"
 #include "orionld/serviceRoutines/orionldGetVersion.h"
 #include "orionld/serviceRoutines/orionldNotImplemented.h"
+#include "orionld/serviceRoutines/orionldPostEntityOperationsUpsert.h"
 
 #include "orionld/rest/OrionLdRestService.h"       // OrionLdRestServiceSimplified
 #include "orionld/orionldRestServices.h"           // Own Interface
@@ -75,12 +76,13 @@ static OrionLdRestServiceSimplified getServices[] =
 //
 static OrionLdRestServiceSimplified postServices[] =
 {
-  { "/ngsi-ld/v1/entities/*/attrs",        orionldPostEntity         },
-  { "/ngsi-ld/v1/entities",                orionldPostEntities       },
-  { "/ngsi-ld/v1/subscriptions",           orionldPostSubscriptions  },
-  { "/ngsi-ld/v1/csourceRegistrations",    orionldPostRegistrations  },
-  { "/ngsi-ld/v1/temporal/entities",       orionldNotImplemented     },
-  { "/ngsi-ld/v1/temporal/entities/*",     orionldNotImplemented     }
+  { "/ngsi-ld/v1/entities/*/attrs",        orionldPostEntity                     },
+  { "/ngsi-ld/v1/entities",                orionldPostEntities                   },
+  { "/ngsi-ld/v1/subscriptions",           orionldPostSubscriptions              },
+  { "/ngsi-ld/v1/csourceRegistrations",    orionldPostRegistrations              },
+  { "/ngsi-ld/v1/temporal/entities",       orionldNotImplemented                 },
+  { "/ngsi-ld/v1/temporal/entities/*",     orionldNotImplemented                 },
+  { "/ngsi-ld/v1/entityOperations/upsert", orionldPostEntityOperationsUpsert     }
 };
 
 
@@ -121,7 +123,7 @@ OrionLdRestServiceSimplifiedVector restServiceVV[] =
 {
   { getServices,    10 },
   { NULL,           0  },
-  { postServices,   6  },
+  { postServices,   7  },
   { deleteServices, 4  },
   { patchServices,  4  },
   { NULL,           0  },

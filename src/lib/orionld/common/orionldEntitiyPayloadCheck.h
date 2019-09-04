@@ -1,3 +1,6 @@
+#ifndef SRC_LIB_ORIONLD_COMMON_ORIONLDENTITIYPAYLOADCHECK_H_
+#define SRC_LIB_ORIONLD_COMMON_ORIONLDENTITIYPAYLOADCHECK_H_
+
 /*
 *
 * Copyright 2019 Telefonica Investigacion y Desarrollo, S.A.U
@@ -20,24 +23,19 @@
 * For those usages not covered by this license please contact with
 * iot_support at tid dot es
 *
-* Author: Ken Zangelin
+* Author: Gabriel Quaresma
 */
 
-extern "C"
-{
-#include "kjson/KjNode.h"                                        // KjNode
-}
+bool payloadCheck
+(
+  ConnectionInfo*  ciP,
+  KjNode*          kNodeP,
+  KjNode**         locationNodePP,
+  KjNode**         observationSpaceNodePP,
+  KjNode**         operationSpaceNodePP,
+  KjNode**         createdAtPP,
+  KjNode**         modifiedAtPP,
+  bool             isBatchOperation
+);
 
-#include "orionld/db/dbConfiguration.h"                          // Own interface
-
-
-
-// -----------------------------------------------------------------------------
-//
-// Function pointers for the DB interface
-//
-DbEntityLookupFunction           dbEntityLookup;
-DbEntityUpdateFunction           dbEntityUpdate;
-DbEntityOperationsUpsertFunction dbEntityOperationsUpsert;
-DbDataToKjTreeFunction           dbDataToKjTree;
-DbDataFromKjTreeFunction         dbDataFromKjTree;
+#endif // SRC_LIB_ORIONLD_COMMON_ORIONLDENTITIYPAYLOADCHECK_H_
