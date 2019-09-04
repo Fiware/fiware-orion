@@ -81,7 +81,7 @@ Date: REGEX(.*)
 
 {
     "details": "must be a JSON array",
-    "title": "invalid payload",
+    "title": "Invalid payload",
     "type": "http://uri.etsi.org/ngsi-ld/errors/BadRequestData"
 }
 
@@ -95,14 +95,14 @@ Date: REGEX(.*)
 
 {
     "details": "must be a JSON Array of JSON Strings",
-    "title": "invalid payload",
+    "title": "Invalid payload",
     "type": "http://uri.etsi.org/ngsi-ld/errors/BadRequestData"
 }
 
 
 03. POST /ngsi-ld/v1/entityOperations/delete, with a JSON Array of 4 strings - OK
 =================================================================================
-HTTP/1.1 204 No Content
+HTTP/1.1 200 OK
 Content-Length: 0
 Date: REGEX(.*)
 
