@@ -26,7 +26,11 @@
 
 #include <string>
 
+#include "logMsg/logMsg.h"                                  // LM_*
+#include "logMsg/traceLevels.h"                             // Lmt*
+
 #include "apiTypesV2/Registration.h"
+#include "common/globals.h"
 #include "common/JsonHelper.h"
 
 
@@ -52,6 +56,12 @@ ForwardingInformation::ForwardingInformation(): lastFailure(0), lastSuccess(0), 
 #ifdef ORIONLD
   bzero(&observationInterval, sizeof(observationInterval));
   bzero(&managementInterval,  sizeof(managementInterval));
+  bzero(&location, sizeof(location));
+  bzero(&observationSpace, sizeof(observationSpace));
+  bzero(&operationSpace, sizeof(operationSpace));
+  properties = NULL;
+  createdAt  = -1;
+  modifiedAt = -1;
 #endif
 }
 
@@ -82,7 +92,7 @@ std::string Registration::toJson(void)
     jh.addString("description", description);
   }
 
-  if (expires != -1)
+  if ((expires != -1) && (expires != PERMANENT_EXPIRES_DATETIME))
   {
     jh.addDate("expires", expires);
   }

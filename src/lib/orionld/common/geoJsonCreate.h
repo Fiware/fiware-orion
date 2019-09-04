@@ -33,7 +33,7 @@ extern "C"
 }
 
 #include "rest/ConnectionInfo.h"                               // ConnectionInfo
-#include "orionld/common/OrionldGeoJsonType.h"                 // OrionldGeoJsonType
+#include "orionld/types/OrionldGeoJsonType.h"                  // OrionldGeoJsonType
 
 
 

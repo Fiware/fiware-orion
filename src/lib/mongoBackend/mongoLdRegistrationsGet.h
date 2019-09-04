@@ -1,9 +1,9 @@
-#ifndef SRC_LIB_ORIONLD_COMMON_ORIONLDGEOJSONTYPE_H_
-#define SRC_LIB_ORIONLD_COMMON_ORIONLDGEOJSONTYPE_H_
+#ifndef SRC_LIB_MONGOBACKEND_MONGOLDREGISTRATIONSGET_H_
+#define SRC_LIB_MONGOBACKEND_MONGOLDREGISTRATIONSGET_H_
 
 /*
 *
-* Copyright 2018 Telefonica Investigacion y Desarrollo, S.A.U
+* Copyright 2019 Telefonica Investigacion y Desarrollo, S.A.U
 *
 * This file is part of Orion Context Broker.
 *
@@ -23,24 +23,27 @@
 * For those usages not covered by this license please contact with
 * iot_support at tid dot es
 *
-* Author: Ken Zangelin
+* Author: Ken Zangelin, Larysse Savanna and Gabriel Quaresma
 */
-#include "orionld/common/OrionldGeoJsonType.h"                 // OrionldGeoJsonType
+#include <vector>
+
+#include "rest/ConnectionInfo.h"
+#include "rest/OrionError.h"
+#include "apiTypesV2/Registration.h"
 
 
 
-// -----------------------------------------------------------------------------
-//
-// OrionldGeoJsonType -
-//
-typedef enum OrionldGeoJsonType
-{
-  GeoJsonPoint,
-  GeoJsonMultiPoint,
-  GeoJsonLineString,
-  GeoJsonMultiLineString,
-  GeoJsonPolygon,
-  GeoJsonMultiPolygon
-} GeoJsonType;
+/* ****************************************************************************
+*
+* mongoLdRegistrationsGet - 
+*/
+extern bool mongoLdRegistrationsGet
+(
+  ConnectionInfo*                     ciP,
+  std::vector<ngsiv2::Registration>*  regVecP,
+  const char*                         tenant,
+  long long*                          countP,
+  OrionError*                         oeP
+);
 
-#endif  // SRC_LIB_ORIONLD_COMMON_ORIONLDGEOJSONTYPE_H_
+#endif  // SRC_LIB_MONGOBACKEND_MONGOLDREGISTRATIONSGET_H_

@@ -49,9 +49,10 @@ extern "C"
 #include "kjson/kjson.h"                                         // Kjson
 #include "kjson/KjNode.h"                                        // KjNode
 }
-#include "common/globals.h"                                      // ApiVersion
-#include "orionld/common/QNode.h"                                // QNode
-#include "orionld/context/OrionldContext.h"                      // OrionldContext
+#include "common/globals.h"                                    // ApiVersion
+#include "orionld/common/QNode.h"                              // QNode
+#include "orionld/types/OrionldGeoJsonType.h"                  // OrionldGeoJsonType
+#include "orionld/context/OrionldContext.h"                    // OrionldContext
 
 
 
@@ -78,6 +79,24 @@ typedef struct OrionldUriParamOptions
 {
   bool noOverwrite;
 } OrionldUriParamOptions;
+
+
+
+// -----------------------------------------------------------------------------
+//
+// OrionldUriParams -
+//
+typedef struct OrionldUriParams
+{
+  char* id;
+  char* type;
+  char* idPattern;
+  char* attrs;
+  char* options;   // Not Implemented - use ciP->uriParams for now
+  int   offset;    // Not Implemented - use ciP->uriParams for now
+  int   limit;     // Not Implemented - use ciP->uriParams for now
+  // To Be Continued ...
+} OrionldUriParams;
 
 
 
@@ -113,8 +132,8 @@ typedef struct OrionldConnectionState
   bool                    contextToBeFreed;
   ApiVersion              apiVersion;
   int                     requestNo;
-  KjNode*                 locationAttributeP;
-  KjNode*                 geoTypeP;
+  KjNode*                 locationAttributeP;  // This assumes we have only ONE Geo-Location attribute ...
+  char*                   geoType;
   KjNode*                 geoCoordsP;
   int64_t                 overriddenCreationDate;
   int64_t                 overriddenModificationDate;
@@ -122,6 +141,7 @@ typedef struct OrionldConnectionState
   char*                   entityId;
   char*                   httpReqBuffer;
   OrionldUriParamOptions  uriParamOptions;
+  OrionldUriParams        uriParams;
   char*                   errorAttributeArrayP;
   char                    errorAttributeArray[512];
   int                     errorAttributeArrayUsed;

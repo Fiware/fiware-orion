@@ -40,6 +40,7 @@ extern "C"
 #include "orionld/context/orionldContextCreateFromTree.h"      // orionldContextCreateFromTree
 #include "orionld/context/orionldContextAdd.h"                 // orionldContextAdd
 #include "orionld/context/orionldContextInlineCheck.h"         // orionldContextInlineCheck
+#include "orionld/context/orionldContextPrefixExpand.h"        // orionldContextPrefixExpand
 #include "orionld/context/orionldContextTreat.h"               // Own interface
 
 
@@ -161,6 +162,7 @@ bool orionldContextTreat
         {
           LM_E(("contextItemNodeTreat failed"));
           // Error payload set by contextItemNodeTreat
+          free(orionldState.contextP);
           orionldState.contextP = NULL;  // Leak?
           return false;
         }
@@ -170,6 +172,7 @@ bool orionldContextTreat
         if (orionldContextTreat(ciP, contextArrayItemP) == false)
         {
           LM_E(("Error treating context object inside array"));
+          free(orionldState.contextP);
           orionldState.contextP = NULL;  // Leak?
           orionldErrorResponseCreate(OrionldBadRequestData, "Error treating context object inside array", NULL, OrionldDetailsString);
           ciP->httpStatusCode = SccBadRequest;
@@ -179,6 +182,7 @@ bool orionldContextTreat
       else
       {
         LM_E(("Context Array Item is not a String nor an Object, but of type '%s'", kjValueType(contextArrayItemP->type)));
+        free(orionldState.contextP);
         orionldState.contextP = NULL;  // Leak?
         orionldErrorResponseCreate(OrionldBadRequestData, "Context Array Item is of an unsupported type", NULL, OrionldDetailsString);
         ciP->httpStatusCode = SccBadRequest;
@@ -203,6 +207,8 @@ bool orionldContextTreat
     orionldState.inlineContext.temporary = true;
     orionldState.inlineContext.next      = NULL;
     orionldState.contextP                = &orionldState.inlineContext;
+
+    orionldContextPrefixExpand(orionldState.contextP, true);
 
     return true;
   }
