@@ -57,7 +57,7 @@ bool orionldPostBatchDeleteEntities(ConnectionInfo* ciP)
 
   if (orionldState.requestTree->type != KjArray)
   {
-    orionldErrorResponseCreate(OrionldBadRequestData, "invalid payload", "must be a JSON array", OrionldDetailsString);
+    orionldErrorResponseCreate(OrionldBadRequestData, "Invalid payload", "must be a JSON array", OrionldDetailsString);
     ciP->httpStatusCode = SccBadRequest;
     return false;
   }
@@ -70,7 +70,7 @@ bool orionldPostBatchDeleteEntities(ConnectionInfo* ciP)
   {
     if (idNodeP->type != KjString)
     {
-      orionldErrorResponseCreate(OrionldBadRequestData, "invalid payload", "must be a JSON Array of JSON Strings", OrionldDetailsString);
+      orionldErrorResponseCreate(OrionldBadRequestData, "Invalid payload", "must be a JSON Array of JSON Strings", OrionldDetailsString);
       ciP->httpStatusCode	= SccBadRequest;
       return false;
     }
@@ -79,8 +79,8 @@ bool orionldPostBatchDeleteEntities(ConnectionInfo* ciP)
   }
 
   mongoCppLegacyEntityBatchDelete(orionldState.requestTree);
-
-  ciP->httpStatusCode = SccNoContent;  // 204 - Larysse - check spec to verify what HTTP Status Code should be returned on success
+  
+  ciP->httpStatusCode = SccOk;  // 200 ok
 
   return true;
 }

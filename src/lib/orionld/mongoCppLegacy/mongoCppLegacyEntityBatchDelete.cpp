@@ -56,7 +56,7 @@ bool mongoCppLegacyEntityBatchDelete(KjNode* entityIdsArray)
 
   mongo::DBClientBase*  connectionP = getMongoConnection();
   mongo::BulkOperationBuilder bulk  = connectionP->initializeUnorderedBulkOp(collectionPath);
-  const mongo::WriteConcern wc;
+  const mongo::WriteConcern writeConcern;
   mongo::WriteResult writeResults;
 
   int ix = 0;
@@ -68,8 +68,8 @@ bool mongoCppLegacyEntityBatchDelete(KjNode* entityIdsArray)
     ix++;
   }
 
-  bulk.execute(&wc, &writeResults);
+  bulk.execute(&writeConcern, &writeResults);
   releaseMongoConnection(connectionP);
-
+  
   return true;
 }
