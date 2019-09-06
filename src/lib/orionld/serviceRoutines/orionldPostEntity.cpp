@@ -186,9 +186,9 @@ bool kjNodeAttributeMerge(KjNode* sourceP, KjNode* updateP)
   // Go over the entire updateP tree and replace all those nodes in sourceP
   // Also, update the modDate node to the current date/time
   //
-  KjNode*  modDateP  = kjLookup(sourceP, (char *) "modDate");
-  KjNode*  mdP       = kjLookup(sourceP, (char *) "md");
-  KjNode*  mdNamesP  = kjLookup(sourceP, (char *) "mdNames");
+  KjNode*  modDateP  = kjLookup(sourceP, "modDate");
+  KjNode*  mdP       = kjLookup(sourceP, "md");
+  KjNode*  mdNamesP  = kjLookup(sourceP, "mdNames");
   int      ix        = 0;
   KjNode*  nodeP     = updateP->value.firstChildP;
 
@@ -344,12 +344,12 @@ static void kjTreeLog(const char* comment, KjNode* nodeP)
 //
 static void objectToValue(KjNode* attrP)
 {
-  KjNode* typeNodeP = kjLookup(attrP, (char *) "type");
+  KjNode* typeNodeP = kjLookup(attrP, "type");
 
   // If the attribute is a Relationship, then the "object" field should change name to "value"
   if ((typeNodeP != NULL) && (strcmp(typeNodeP->value.s, "Relationship") == 0))
   {
-    KjNode* objectNodeP = kjLookup(attrP, (char *) "object");
+    KjNode* objectNodeP = kjLookup(attrP, "object");
 
     if (objectNodeP != NULL)
     {
@@ -523,13 +523,6 @@ bool kjTreeMergeAddNewAttrsOverwriteExisting(KjNode* sourceTree, KjNode* modTree
     //     - add modAttrP to sourceTree
     //     - add slot in "attrNames"
     //
-    if(modAttrP->type != KjObject) 
-    {
-      *titleP   = (char*) "Wrong field type";
-      *detailsP = (char*) "One of the attributes informed must be Object";
-      return false;
-    }
-      
     KjNode* sourceTreeAttrP = NULL;
     LM_TMP(("MERGE: Looking for '%s'", modAttrP->name));
     if ((sourceTreeAttrP = kjLookup(attrsP, modAttrP->name)) != NULL)
