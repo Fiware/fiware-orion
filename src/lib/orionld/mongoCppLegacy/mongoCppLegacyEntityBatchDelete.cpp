@@ -59,13 +59,11 @@ bool mongoCppLegacyEntityBatchDelete(KjNode* entityIdsArray)
   const mongo::WriteConcern writeConcern;
   mongo::WriteResult writeResults;
 
-  int ix = 0;
   for (KjNode* idNodeP = entityIdsArray->value.firstChildP; idNodeP != NULL; idNodeP = idNodeP->next)
   {
     mongo::BSONObjBuilder filterObj;
     filterObj.append("_id.id", idNodeP->value.s);
     bulk.find(filterObj.obj()).remove();
-    ix++;
   }
 
   bulk.execute(&writeConcern, &writeResults);

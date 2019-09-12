@@ -65,7 +65,6 @@ bool orionldPostBatchDeleteEntities(ConnectionInfo* ciP)
   //
   // Debugging - see all IDs
   //
-  int ix = 0;
   for (KjNode* idNodeP = orionldState.requestTree->value.firstChildP; idNodeP != NULL; idNodeP = idNodeP->next)
   {
     if (idNodeP->type != KjString)
@@ -74,13 +73,11 @@ bool orionldPostBatchDeleteEntities(ConnectionInfo* ciP)
       ciP->httpStatusCode	= SccBadRequest;
       return false;
     }
-
-    ++ix;
   }
 
   mongoCppLegacyEntityBatchDelete(orionldState.requestTree);
   
-  ciP->httpStatusCode = SccOk;  // 200 ok
+  ciP->httpStatusCode = SccOk;
 
   return true;
 }
