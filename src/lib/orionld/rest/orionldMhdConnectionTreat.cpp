@@ -36,6 +36,8 @@ extern "C"
 #include "kjson/kjClone.h"                                     // kjClone
 #include "kjson/kjFree.h"                                      // kjFree
 #include "kjson/kjBuilder.h"                                   // kjString, ...
+#include "kalloc/kaStrdup.h"                                   // kaStrdup
+#include "kalloc/kaAlloc.h"                                    // kaAlloc
 }
 
 #include "common/string.h"                                     // FT
@@ -123,8 +125,8 @@ static bool contentTypeCheck(ConnectionInfo* ciP)
 
     if (orionldState.payloadContextNode != NULL)
     {
-      errorTitle   = (char*) "Invalid MIME-type for @context in payload";
-      errorDetails = (char*) "For @context in payload, the MIME type must be application/ld+json";
+      errorTitle   = (char*) "Mismatch between /Content-Type/ and contents of the request payload body";
+      errorDetails = (char*) "Content-Type is application/json, yet a '@context' item was present in the payload body";
     }
   }
 
@@ -627,9 +629,9 @@ static bool contextToCache(ConnectionInfo* ciP)
     return false;
   }
 
-  OrionldContext* contextP = (OrionldContext*) malloc(sizeof(OrionldContext));
+  OrionldContext* contextP = (OrionldContext*) kaAlloc(&kalloc, sizeof(OrionldContext));
 
-  contextP->url       = strdup(orionldState.contextP->url);
+  contextP->url       = kaStrdup(&kalloc, orionldState.contextP->url);
   contextP->tree      = clonedTree;
   contextP->type      = orionldState.contextP->type;
   contextP->ignore    = orionldState.contextP->ignore;
@@ -693,7 +695,11 @@ static void contextToPayload(void)
           contextNode = kjString(orionldState.kjsonP, "@context", orionldState.link);
       }
       else
+      {
         contextNode = kjClone(orionldState.payloadContextNode);
+
+        orionldStateDelayedKjFree(contextNode);
+      }
 
       if (contextNode == NULL)
       {
@@ -849,7 +855,7 @@ int orionldMhdConnectionTreat(ConnectionInfo* ciP)
     goto respond;  // Yes, I know, the label 'respond' comes right after ...
 
 
-
+  LM_TMP(("PATCH: After service routine - we still have to send the response"));
  respond:
   //
   // For error responses, there is ALWAYS payload, describing the error
@@ -880,25 +886,19 @@ int orionldMhdConnectionTreat(ConnectionInfo* ciP)
   //    NO  - if the service routine explicitly has asked to not include the Link HTTP header in the response
   //
 
+#if 0
   LM_TMP(("LINK: Add Link to HTTP Header?"));
   LM_TMP(("LINK: contextToBeCashed:          %s", FT(contextToBeCashed)));
   LM_TMP(("LINK: serviceRoutineResult:       %s", FT(serviceRoutineResult)));
   LM_TMP(("LINK: orionldState.acceptJsonld:  %s", FT(orionldState.acceptJsonld)));
   LM_TMP(("LINK: orionldState.responseTree:  %p", orionldState.responseTree));
   LM_TMP(("LINK: orionldState.useLinkHeader: %s", FT(orionldState.useLinkHeader)));
+#endif
 
   if ((contextToBeCashed == true) && (serviceRoutineResult == true))
-  {
-    LM_TMP(("LINK: Adding Link HTTP Header: '%s'", orionldState.link));
     httpHeaderLinkAdd(ciP, orionldState.link);
-  }
   else if ((orionldState.acceptJsonld == false) && (orionldState.responseTree != NULL) && (orionldState.useLinkHeader == true))
-  {
-    LM_TMP(("LINK: Adding Link HTTP Header: '%s'", orionldState.link));
     httpHeaderLinkAdd(ciP, orionldState.link);
-  }
-  else
-    LM_TMP(("LINK: No Link HTTP Header"));
 
   //
   // Is there a KJSON response tree to render?

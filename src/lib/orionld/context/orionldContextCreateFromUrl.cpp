@@ -83,8 +83,6 @@ OrionldContext* orionldContextCreateFromUrl(ConnectionInfo* ciP, const char* url
   if (contextP->tree == NULL)
   {
     LM_E(("orionldContextDownloadAndParse: %s", *detailsPP));
-    free(contextP->url);
-    free(contextP);
     orionldState.contextToBeFreed = false;
     ciP->httpStatusCode = SccBadRequest;
     return NULL;

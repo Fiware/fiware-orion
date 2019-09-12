@@ -73,6 +73,7 @@
 extern "C"
 {
 #include "kalloc/kaBufferReset.h"                           // kaBufferReset
+#include "kjson/kjFree.h"                                   // kjFree
 }
 
 #include "parseArgs/parseArgs.h"
@@ -108,12 +109,14 @@ extern "C"
 #include "logSummary/logSummary.h"
 
 #include "orionld/common/OrionldConnection.h"               // kjFree - FIXME: call instead orionldGlobalFree();
+#include "orionld/context/orionldCoreContext.h"             // orionldCoreContext, orionldDefaultUrlContext, orionldDefaultContext
 #include "orionld/rest/orionldServiceInit.h"                // orionldServiceInit
 #include "orionld/db/dbInit.h"                              // dbInit
 
 #include "orionld/version.h"
 #include "orionld/orionRestServices.h"
 #include "orionld/orionldRestServices.h"
+#include "orionld/context/orionldContextList.h"             // orionldContextHead
 
 using namespace orion;
 
@@ -544,6 +547,31 @@ void exitFunc(void)
   curl_context_cleanup();
   curl_global_cleanup();
 
+  //
+  // Free the context cache
+  //
+  OrionldContext* contextP = orionldContextHead;
+  OrionldContext* next;
+  while (contextP != NULL)
+  {
+    if ((contextP == &orionldCoreContext) || (contextP == &orionldDefaultUrlContext) || (contextP == &orionldDefaultContext))
+    {
+      contextP = contextP->next;
+      continue;
+    }
+
+    next = contextP->next;
+
+    kjFree(contextP->tree);   // Always cloned using kjClone ???
+    // free(contextP);  - the context is allocated using kaAlloc(&kalloc) - to free this, kaBufferReset is used (a few lines down)
+
+    contextP = next;
+  }
+
+
+  //
+  // Free the kalloc buffer
+  //
   kaBufferReset(&kalloc, false);
 
   if (unlink(pidPath) != 0)
@@ -553,8 +581,8 @@ void exitFunc(void)
 
   if ((orionldState.contextP != NULL) && (orionldState.contextP->temporary == true))
   {
-    free(orionldState.contextP->url);
-    free(orionldState.contextP);
+    free(orionldState.contextP->url);  // Always allocated using 'malloc' ???
+    free(orionldState.contextP);       // Always cloned using kjClone ???
     orionldState.contextP = NULL;
   }
 }

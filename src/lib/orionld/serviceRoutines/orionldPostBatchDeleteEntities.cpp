@@ -22,9 +22,6 @@
 *
 * Author: Larysse Savanna
 */
-#include "logMsg/logMsg.h"                                            // LM_*
-#include "logMsg/traceLevels.h"                                       // Lmt*
-
 extern "C"
 {
 #include "kjson/KjNode.h"                                             // KjNode
@@ -52,7 +49,6 @@ extern "C"
 //
 bool orionldPostBatchDeleteEntities(ConnectionInfo* ciP)
 {
-  
   LM_TMP(("LARYSSE: Payload is a JSON %s", kjValueType(orionldState.requestTree->type)));
 
   if (orionldState.requestTree->type != KjArray)
@@ -70,13 +66,13 @@ bool orionldPostBatchDeleteEntities(ConnectionInfo* ciP)
     if (idNodeP->type != KjString)
     {
       orionldErrorResponseCreate(OrionldBadRequestData, "Invalid payload", "must be a JSON Array of JSON Strings", OrionldDetailsString);
-      ciP->httpStatusCode	= SccBadRequest;
+      ciP->httpStatusCode = SccBadRequest;
       return false;
     }
   }
 
   mongoCppLegacyEntityBatchDelete(orionldState.requestTree);
-  
+
   ciP->httpStatusCode = SccOk;
 
   return true;

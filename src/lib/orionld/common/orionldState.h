@@ -66,9 +66,11 @@ extern "C"
 
 // -----------------------------------------------------------------------------
 //
-// OrionLdRestService -
+// Forward declarations -
 //
 struct OrionLdRestService;
+struct ConnectionInfo;
+
 
 
 // -----------------------------------------------------------------------------
@@ -113,6 +115,7 @@ typedef struct OrionldUriParams
 //
 typedef struct OrionldConnectionState
 {
+  ConnectionInfo*         ciP;
   Kjson                   kjson;
   Kjson*                  kjsonP;
   KAlloc                  kalloc;
@@ -164,13 +167,18 @@ typedef struct OrionldConnectionState
   char                    qDebugBuffer[24 * 1024];
   mongo::BSONObj*         qMongoFilterP;
   char*                   jsonBuf;    // Used by kjTreeFromBsonObj
+  KjNode*                 delayedKjFreeVec[50];
+  int                     delayedKjFreeVecIndex;
+  int                     delayedKjFreeVecSize;
 
+#ifdef DB_DRIVER_MONGOC
   //
   // MongoDB stuff
   //
   mongoc_uri_t*           mongoUri;
   mongoc_client_t*        mongoClient;
   mongoc_database_t*      mongoDatabase;
+#endif
 } OrionldConnectionState;
 
 
@@ -232,5 +240,13 @@ extern void orionldStateRelease(void);
 // orionldStateErrorAttributeAdd -
 //
 extern void orionldStateErrorAttributeAdd(const char* attributeName);
+
+
+
+// -----------------------------------------------------------------------------
+//
+// orionldStateDelayedKjFree -
+//
+extern void orionldStateDelayedKjFree(KjNode* tree);
 
 #endif  // SRC_LIB_ORIONLD_COMMON_ORIONLDSTATE_H_
