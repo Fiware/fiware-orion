@@ -28,21 +28,18 @@
 
 //
 // FIXME: Regardless of what DB is selected in dbConfiguration.h, I need to include "mongo/client/dbclient.h"
-//        This is so because mongoBackend/MongoGlobal.cpp (entitiesQuery) uses orionldState.qMongoFilterP for the new NGSI-LD Q-filters.
-//        mongoBackend will ALWAYS use the old C++ Legacy driver so not sure this will ever be fixed.
+//        This is this way because mongoBackend/MongoGlobal.cpp (entitiesQuery) uses orionldState.qMongoFilterP for the new NGSI-LD Q-filters.
+//        mongoBackend will ALWAYS use the old C++ Legacy driver so not sure this will ever be "fixed".
 //        At least not while we still use mongoBackend - the idea is to one day stop using mongoBackend
 //
 #include "mongo/client/dbclient.h"                               // MongoDB C++ Client Legacy Driver
 
-//
-// To be able to compile the orionld/mongoc library even though the mongoc driver is not selected in dbConfiguration,
-// we include the mongoc header file here (and add the mongoc fields to orionldState)
-// Perhaps the mongoc fields should move to another thread variable inside the orionld/mongoc library ...
-//
-#include "mongoc/mongoc.h"                                       // MongoDB C Client Driver
-
+#include "orionld/db/dbConfiguration.h"                          // DB_DRIVER_MONGOC, or not ...
 #include "orionld/db/dbDriver.h"                                 // database driver header
-#include "orionld/db/dbConfiguration.h"                          // DB_DRIVER_MONGOC
+
+#ifdef DB_DRIVER_MONGOC
+#include "mongoc/mongoc.h"                                       // MongoDB C Client Driver - if needed
+#endif
 
 extern "C"
 {
@@ -214,8 +211,10 @@ extern char*     tenant;              // From orionld.cpp
 //
 // Variables for Mongo C Driver
 //
+#ifdef DB_DRIVER_MONGOC
 extern mongoc_collection_t*  mongoEntitiesCollectionP;
 extern mongoc_collection_t*  mongoRegistrationsCollectionP;
+#endif
 
 
 
