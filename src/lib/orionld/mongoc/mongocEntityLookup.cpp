@@ -22,9 +22,6 @@
 *
 * Author: Ken Zangelin
 */
-#include "orionld/db/dbConfiguration.h"                          // DB_DRIVER_MONGOC
-
-#ifdef DB_DRIVER_MONGOC
 #include <mongoc/mongoc.h>                                       // MongoDB C Client Driver
 
 extern "C"
@@ -102,4 +99,3 @@ KjNode* mongocEntityLookup(const char* entityId)
  
   return entityNodeP;
 }
-#endif

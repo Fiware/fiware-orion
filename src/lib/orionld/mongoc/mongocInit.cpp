@@ -22,10 +22,6 @@
 *
 * Author: Ken Zangelin
 */
-#include "orionld/db/dbConfiguration.h"
-
-#ifdef DB_DRIVER_MONGOC
-
 #include <mongoc/mongoc.h>                                       // MongoDB C Client Driver
 
 #include "logMsg/logMsg.h"                                       // LM_*
@@ -94,5 +90,3 @@ void mongocInit(const char* dbHost, const char* dbName)
     LM_X(1, ("mongoc_client_get_collection(%s, 'regiatrations') failed", dbName));
   LM_TMP(("DB: registrations collection handle OK"));
 }
-
-#endif
