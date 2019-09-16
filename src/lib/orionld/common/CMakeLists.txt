@@ -41,6 +41,7 @@ SET (SOURCES
     qParse.cpp
     qTreePresent.cpp
     qTreeToBsonObj.cpp
+    orionldEntitiyPayloadCheck.cpp
     # qTreeToBson.cpp
 )
 

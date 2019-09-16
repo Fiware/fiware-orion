@@ -57,10 +57,12 @@ typedef KjNode* (*DbEntityLookupFunction)(const char* entityId);
 typedef bool    (*DbEntityUpdateFunction)(char* entityId, KjNode* requestTree);
 typedef KjNode* (*DbDataToKjTreeFunction)(void* dbData, char** titleP, char** detailsP);
 typedef void    (*DbDataFromKjTreeFunction)(KjNode* nodeP, void* dbDataP);
+typedef bool    (*DbEntityOperationsUpsertFunction)(KjNode* requestTree);
 
-extern DbEntityLookupFunction   dbEntityLookup;
-extern DbEntityUpdateFunction   dbEntityUpdate;
-extern DbDataToKjTreeFunction   dbDataToKjTree;
-extern DbDataFromKjTreeFunction dbDataFromKjTree;
+extern DbEntityLookupFunction           dbEntityLookup;
+extern DbEntityUpdateFunction           dbEntityUpdate;
+extern DbDataToKjTreeFunction           dbDataToKjTree;
+extern DbDataFromKjTreeFunction         dbDataFromKjTree;
+extern DbEntityOperationsUpsertFunction dbEntityOperationsUpsert;
 
 #endif  // SRC_LIB_ORIONLD_DB_DBCONFIGURATION_H_

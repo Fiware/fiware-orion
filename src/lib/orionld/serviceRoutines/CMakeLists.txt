@@ -43,6 +43,7 @@ SET (SOURCES
     orionldGetContext.cpp
     orionldGetVersion.cpp
     orionldNotImplemented.cpp
+    orionldPostEntityOperationsUpsert.cpp
 )
 
 # Include directories

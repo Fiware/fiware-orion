@@ -3319,6 +3319,7 @@ static void updateEntity
   /* If the vector of Context Attributes is empty and the operation was DELETE, then delete the entity */
   if ((action == ActionTypeDelete) && (ceP->contextAttributeVector.size() == 0))
   {
+    LM_TMP(("ERROR: 7"));
     LM_T(LmtServicePath, ("Removing entity"));
     removeEntity(entityId, entityType, cerP, tenant, entitySPath, &(responseP->oe));
     responseP->contextElementResponseVector.push_back(cerP);
@@ -3379,6 +3380,7 @@ static void updateEntity
     {
       if (howManyAttrs(attrs, ceP->contextAttributeVector[ix]->name) != 0)
       {
+        LM_TMP(("ERROR: 8"));
         alarmMgr.badInput(clientIp, "attribute already exists");
         *attributeAlreadyExistsError = true;
 
@@ -3594,6 +3596,7 @@ static void updateEntity
   std::string err;
   if (!collectionUpdate(getEntitiesCollectionName(tenant), query.obj(), updatedEntityObj, false, &err))
   {
+    LM_TMP(("ERROR: 9"));
     cerP->statusCode.fill(SccReceiverInternalError, err);
     responseP->oe.fill(SccReceiverInternalError, err, "InternalServerError");
 
@@ -3760,6 +3763,7 @@ void processContextElement
   /* Check preconditions */
   if (!contextElementPreconditionsCheck(ceP, responseP, action, apiVersion))
   {
+    LM_TMP(("ERROR: 1"));
     return;  // Error already in responseP
   }
 
@@ -3804,6 +3808,7 @@ void processContextElement
 
     if (!collectionCount(getEntitiesCollectionName(tenant), query, &entitiesNumber, &err))
     {
+      LM_TMP(("ERROR: 2"));
       buildGeneralErrorResponse(ceP, NULL, responseP, SccReceiverInternalError, err);
       responseP->oe.fill(SccReceiverInternalError, err, "InternalServerError");
       return;
@@ -3830,6 +3835,7 @@ void processContextElement
     // thinking too much about it, but NGSIv1 behaviour has to be preserved to keep backward compatibility)
     if (entitiesNumber > 1)
     {
+      LM_TMP(("ERROR: 3"));
       buildGeneralErrorResponse(ceP, NULL, responseP, SccConflict, ERROR_DESC_TOO_MANY_ENTITIES);
       responseP->oe.fill(SccConflict, ERROR_DESC_TOO_MANY_ENTITIES, ERROR_TOO_MANY);
       return;
@@ -3843,6 +3849,7 @@ void processContextElement
 
   if (!collectionQuery(connection, getEntitiesCollectionName(tenant), query, &cursor, &err))
   {
+    LM_TMP(("ERROR: 4"));
     releaseMongoConnection(connection);
     TIME_STAT_MONGO_READ_WAIT_STOP();
     buildGeneralErrorResponse(ceP, NULL, responseP, SccReceiverInternalError, err);
@@ -3869,6 +3876,7 @@ void processContextElement
 
     if (!nextSafeOrErrorF(cursor, &r, &err))
     {
+      LM_TMP(("ERROR: 5"));
       LM_E(("Runtime Error (exception in nextSafe(): %s - query: %s)", err.c_str(), query.toString().c_str()));
       continue;
     }
@@ -3886,6 +3894,7 @@ void processContextElement
     //
     if (idField.eoo() == true)
     {
+      LM_TMP(("ERROR: 6"));
       std::string details = std::string("error retrieving _id field in doc: '") + r.toString() + "'";
       alarmMgr.dbError(details);
       continue;
