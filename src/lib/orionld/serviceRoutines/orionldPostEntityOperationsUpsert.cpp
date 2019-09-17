@@ -118,14 +118,14 @@ void orionldPartialUpdateResponseCreateBatch(ConnectionInfo* ciP)
 bool kjTreeToContextElementAttributes
 (
   ConnectionInfo* ciP,
-  KjNode* treeP, 
+  KjNode* treeP,
   KjNode* createdAtPP,
   KjNode* modifiedAtPP,
   ContextElement* ceP
 )
 {
   // Iterate over the object, to get all attributes
-  while(treeP != NULL)
+  while (treeP != NULL)
   {
     KjNode*           attrTypeNodeP = NULL;
     ContextAttribute* caP           = new ContextAttribute();
@@ -147,7 +147,6 @@ bool kjTreeToContextElementAttributes
           return false;
         }
       }
-    
       //
       // URI Expansion for the attribute name, except if "location", "observationSpace", or "operationSpace"
       //
@@ -226,7 +225,7 @@ bool orionldPostEntityOperationsUpsert(ConnectionInfo* ciP)
     LM_TMP(("orionldState.payloadIdNode: %s",  orionldState.payloadIdNode->value.s));
 
     char*   entityId           = orionldState.payloadIdNode->value.s;
-    char*   entityType         = orionldState.payloadTypeNode->value.s; 
+    char*   entityType         = orionldState.payloadTypeNode->value.s;
     orionldState.entityId      = entityId;
 
     mongoRequest.contextElementVector.push_back(ceP);
@@ -235,8 +234,8 @@ bool orionldPostEntityOperationsUpsert(ConnectionInfo* ciP)
 
     char  typeExpanded[256];
     char* details;
-    
-    entityIdP->id  = entityId;
+
+    entityIdP->id = entityId;
     if (orionldUriExpand(orionldState.contextP, entityType, typeExpanded, sizeof(typeExpanded), &details) == false)
     {
       orionldErrorResponseCreate(OrionldBadRequestData, "Error during URI expansion of entity type", details, OrionldDetailString);
@@ -300,20 +299,20 @@ bool orionldPostEntityOperationsUpsert(ConnectionInfo* ciP)
     }
     kjChildAdd(orionldState.responseTree, arrayP);
     ciP->httpStatusCode = SccOk;
-  } 
+  }
   else
   {
     orionldErrorResponseCreate(OrionldBadRequestData, "Bad Request", "ERROR", OrionldDetailString);
     ciP->httpStatusCode = SccBadRequest;
     return false;
   }
-  
+
   mongoRequest.release();
   mongoResponse.release();
-  
+
   return true;
 
-  // TODO: Operation with new way
+  // TODO (Operation with new way)
   // if (mongoCppLegacyEntityOperationsUpsert(orionldState.requestTree) == false)
   // {
   //   LM_E(("mongoCppLegacyEntityOperationsUpsert"));

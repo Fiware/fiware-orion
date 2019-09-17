@@ -428,7 +428,6 @@ static bool atValueCheck(KjNode* atTypeNodeP, KjNode* atValueNodeP, char** title
 //
 bool orionldAttributeTreat(ConnectionInfo* ciP, KjNode* kNodeP, ContextAttribute* caP, KjNode** typeNodePP)
 {
-  //Revert
   // LM_TMP(("Treating attribute '%s' (KjNode at %p)", kNodeP->name, kNodeP));
   char* caName = kNodeP->name;
 
