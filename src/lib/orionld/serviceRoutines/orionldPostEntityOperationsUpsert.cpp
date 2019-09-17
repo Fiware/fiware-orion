@@ -280,24 +280,30 @@ bool orionldPostEntityOperationsUpsert(ConnectionInfo* ciP)
   // bool retValue      = true;
 
   LM_E(("mongoUpdateContext: HTTP Status Code: %d", ciP->httpStatusCode));
+
   if (ciP->httpStatusCode == SccOk)
   {
-    LM_TMP(("mongoResponse: %d", mongoResponse.contextElementResponseVector.size()));
+    LM_TMP(("Items in mongoResponse.contextElementResponseVector: %d", mongoResponse.contextElementResponseVector.size()));
     orionldState.responseTree = kjObject(orionldState.kjsonP, NULL);
-    KjNode* objectP;
-    KjNode* nodeP;
-    KjNode* arrayP = kjArray(orionldState.kjsonP, "success");
+
+    KjNode* successArrayP = kjArray(orionldState.kjsonP, "success");
+
     for (unsigned int ix = 0; ix < mongoResponse.contextElementResponseVector.vec.size(); ix++)
     {
-      objectP = kjObject(orionldState.kjsonP, NULL);
-      // Entity ID
-      nodeP = kjString(orionldState.kjsonP, "id", mongoResponse.contextElementResponseVector.vec[ix]->contextElement.entityId.id.c_str());
-      // kjChildAdd(objectP, nodeP);
+      KjNode* nodeP = kjString(orionldState.kjsonP, "id", mongoResponse.contextElementResponseVector.vec[ix]->contextElement.entityId.id.c_str());
 
-      LM_TMP(("objectP2: %s", objectP->value.s));
-      kjChildAdd(arrayP, nodeP);
+      //
+      // FIXME: Here we assume all items in mongoResponse.contextElementResponseVector are SUCCESSFUL
+      //        But, ContextElementResponse has a field called "statusCode" that we could look at ...
+      //        The difficult part is ... how to test this?
+      //        How provoke a failure?
+      //        This service Updates if entity exists and creates if not.
+      //        Very difficult to provoke an error ... :(
+      //
+      kjChildAdd(successArrayP, nodeP);
     }
-    kjChildAdd(orionldState.responseTree, arrayP);
+
+    kjChildAdd(orionldState.responseTree, successArrayP);
     ciP->httpStatusCode = SccOk;
   }
   else
@@ -312,6 +318,7 @@ bool orionldPostEntityOperationsUpsert(ConnectionInfo* ciP)
 
   return true;
 
+  //
   // TODO (Operation with new way)
   // if (mongoCppLegacyEntityOperationsUpsert(orionldState.requestTree) == false)
   // {
@@ -320,4 +327,5 @@ bool orionldPostEntityOperationsUpsert(ConnectionInfo* ciP)
   //   orionldErrorResponseCreate(OrionldBadRequestData, "Internal Error", "Error from Mongo-DB backend", OrionldDetailsString);
   //   return false;
   // }
+  //
 }

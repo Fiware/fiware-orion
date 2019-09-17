@@ -58,6 +58,7 @@ bool mongoCppLegacyEntityOperationsUpsert(KjNode* entitiesArray)
   const mongo::WriteConcern wc;
   mongo::WriteResult writeResults;
 
+#if 0
   int ix = 0;
   for (KjNode* entityNodeP = entitiesArray->value.firstChildP; entityNodeP != NULL; entityNodeP = entityNodeP->next)
   {
@@ -71,6 +72,7 @@ bool mongoCppLegacyEntityOperationsUpsert(KjNode* entitiesArray)
     // }
     ix++;
   }
+#endif
 
   bulk.execute(&wc, &writeResults);
   releaseMongoConnection(connectionP);
