@@ -114,9 +114,10 @@ bool kjTreeToContextElement(ConnectionInfo* ciP, KjNode* treeP, ContextElement* 
     if (strcmp(kNodeP->name, "modifiedAt") == 0)
       continue;
 
-    if (orionldAttributeTreat(ciP, kNodeP, caP, &attrTypeNodeP) == false)
+    char* detail;
+    if (orionldAttributeTreat(ciP, kNodeP, caP, &attrTypeNodeP, &detail) == false)
     {
-      LM_E(("orionldAttributeTreat failed"));
+      LM_E(("orionldAttributeTreat failed: %s", detail));
       delete caP;
       return false;
     }

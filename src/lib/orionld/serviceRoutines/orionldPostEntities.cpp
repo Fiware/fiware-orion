@@ -157,12 +157,12 @@ bool orionldPostEntities(ConnectionInfo* ciP)
 
     ContextAttribute* caP            = new ContextAttribute();
     KjNode*           attrTypeNodeP  = NULL;
+    char*             detail;
 
     LM_TMP(("EXPAND: Treating attribute '%s'", kNodeP->name));
-    if (orionldAttributeTreat(ciP, kNodeP, caP, &attrTypeNodeP) == false)
+    if (orionldAttributeTreat(ciP, kNodeP, caP, &attrTypeNodeP, &detail) == false)
     {
-      LM_TMP(("EXPAND: orionldAttributeTreat failed"));
-      LM_E(("orionldAttributeTreat failed"));
+      LM_E(("orionldAttributeTreat failed: %s", detail));
       delete caP;
       mongoRequest.release();
       return false;

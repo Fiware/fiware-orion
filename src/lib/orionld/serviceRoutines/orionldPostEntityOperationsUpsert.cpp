@@ -20,7 +20,7 @@
 * For those usages not covered by this license please contact with
 * iot_support at tid dot es
 *
-* Author: Gabriel Quaresma
+* Author: Gabriel Quaresma ans Ken Zangelin
 */
 #include "logMsg/logMsg.h"                                                 // LM_*
 #include "logMsg/traceLevels.h"                                            // Lmt*
@@ -67,6 +67,7 @@ extern "C"
 #include "orionld/common/orionldEntitiyPayloadCheck.h"                     // payloadCheck
 
 
+
 // ----------------------------------------------------------------------------
 //
 // orionldPartialUpdateResponseCreateBatch -
@@ -91,8 +92,8 @@ void orionldPartialUpdateResponseCreateBatch(ConnectionInfo* ciP)
   while (attrNodeP != NULL)
   {
     char*   match;
-    KjNode* next = attrNodeP->next;
-    bool    moved = false;
+    KjNode* next   = attrNodeP->next;
+    bool    moved  = false;
 
     if ((match = strstr(orionldState.errorAttributeArrayP, attrNodeP->name)) != NULL)
     {
@@ -115,71 +116,112 @@ void orionldPartialUpdateResponseCreateBatch(ConnectionInfo* ciP)
 //
 // kjTreeToContextElementBatch -
 //
+// NOTE: "id" and "type" of the entity must be removed from the tree before this function is called
+//
 bool kjTreeToContextElementAttributes
 (
-  ConnectionInfo* ciP,
-  KjNode* treeP,
-  KjNode* createdAtPP,
-  KjNode* modifiedAtPP,
-  ContextElement* ceP
+  ConnectionInfo*  ciP,
+  KjNode*          entityNodeP,
+  KjNode*          createdAtP,
+  KjNode*          modifiedAtP,
+  ContextElement*  ceP,
+  char**           detailP
 )
 {
-  // Iterate over the object, to get all attributes
-  while (treeP != NULL)
+  // Iterate over the items of the entity
+  for (KjNode* itemP = entityNodeP->value.firstChildP; itemP != NULL; itemP = itemP->next)
   {
-    KjNode*           attrTypeNodeP = NULL;
-    ContextAttribute* caP           = new ContextAttribute();
+    if (itemP == createdAtP)
+      continue;
+    if (itemP == modifiedAtP)
+      continue;
 
-    if
-    (
-      treeP != createdAtPP              &&
-      treeP != modifiedAtPP             &&
-      strcmp(treeP->name, "id") != 0    &&
-      strcmp(treeP->name, "type") != 0
-    )
+    // No key-values in batch ops
+    if (itemP->type != KjObject)
     {
-      if (treeP->type == KjObject)
-      {
-        if (orionldAttributeTreat(ciP, treeP, caP, &attrTypeNodeP) == false)
-        {
-          LM_E(("orionldAttributeTreat failed"));
-          delete caP;
-          return false;
-        }
-      }
-      //
-      // URI Expansion for the attribute name, except if "location", "observationSpace", or "operationSpace"
-      //
-      if (SCOMPARE9(treeP->name, 'l', 'o', 'c', 'a', 't', 'i', 'o', 'n', 0))
-        caP->name = treeP->name;
-      else if (SCOMPARE17(treeP->name, 'o', 'b', 's', 'e', 'r', 'v', 'a', 't', 'i', 'o', 'n', 'S', 'p', 'a', 'c', 'e', 0))
-        caP->name = treeP->name;
-      else if (SCOMPARE15(treeP->name, 'o', 'p', 'e', 'r', 'a', 't', 'i', 'o', 'n', 'S', 'p', 'a', 'c', 'e', 0))
-        caP->name = treeP->name;
-      else
-      {
-        char  longName[256];
-        char* details;
-
-        if (orionldUriExpand(orionldState.contextP, treeP->name, longName, sizeof(longName), &details) == false)
-        {
-          delete caP;
-          orionldErrorResponseCreate(OrionldBadRequestData, details, treeP->name, OrionldDetailAttribute);
-          return false;
-        }
-
-        caP->name = longName;
-      }
-      // NO URI Expansion for Attribute TYPE
-      caP->type = attrTypeNodeP->value.s;
-      // Add the attribute to the attr vector
-      ceP->contextAttributeVector.push_back(caP);
+      *detailP = (char*) "attribute must be a JSON object";
+      return false;
     }
-    treeP = treeP->next;
+
+    KjNode*            attrTypeNodeP  = NULL;
+    ContextAttribute*  caP            = new ContextAttribute();
+
+    if (orionldAttributeTreat(ciP, itemP, caP, &attrTypeNodeP, detailP) == false)
+    {
+      LM_E(("orionldAttributeTreat failed"));
+      delete caP;
+      return false;
+    }
+
+    //
+    // URI Expansion for the attribute name, except if "location", "observationSpace", or "operationSpace"
+    //
+    if (SCOMPARE9(itemP->name, 'l', 'o', 'c', 'a', 't', 'i', 'o', 'n', 0))
+      caP->name = itemP->name;
+    else if (SCOMPARE17(itemP->name, 'o', 'b', 's', 'e', 'r', 'v', 'a', 't', 'i', 'o', 'n', 'S', 'p', 'a', 'c', 'e', 0))
+      caP->name = itemP->name;
+    else if (SCOMPARE15(itemP->name, 'o', 'p', 'e', 'r', 'a', 't', 'i', 'o', 'n', 'S', 'p', 'a', 'c', 'e', 0))
+      caP->name = itemP->name;
+    else
+    {
+      char  longName[256];
+      char* details;
+
+      if (orionldUriExpand(orionldState.contextP, itemP->name, longName, sizeof(longName), &details) == false)
+      {
+        delete caP;
+        orionldErrorResponseCreate(OrionldBadRequestData, details, itemP->name, OrionldDetailAttribute);
+        return false;
+      }
+
+      caP->name = longName;
+    }
+
+    caP->type = attrTypeNodeP->value.s;
+    ceP->contextAttributeVector.push_back(caP);
   }
 
   return true;
 }
+
+
+
+// ----------------------------------------------------------------------------
+//
+// entitySuccessPush -
+//
+static void entitySuccessPush(KjNode** successsArrayPP, const char* entityId)
+{
+  KjNode* eIdP = kjString(orionldState.kjsonP, "id", entityId);
+
+  if (*successsArrayPP == NULL)
+    *successsArrayPP = kjArray(orionldState.kjsonP, "success");
+
+  kjChildAdd(*successsArrayPP, eIdP);
+}
+
+
+
+// ----------------------------------------------------------------------------
+//
+// entityErrorPush -
+//
+static void entityErrorPush(KjNode** errorsArrayPP, const char* entityId, const char* reason)
+{
+  KjNode* objP    = kjObject(orionldState.kjsonP, NULL);
+  KjNode* eIdP    = kjString(orionldState.kjsonP, "id",     entityId);
+  KjNode* reasonP = kjString(orionldState.kjsonP, "reason", reason);
+
+  kjChildAdd(objP, eIdP);
+  kjChildAdd(objP, reasonP);
+
+  if (*errorsArrayPP == NULL)
+    *errorsArrayPP = kjArray(orionldState.kjsonP, "errors");
+
+  kjChildAdd(*errorsArrayPP, objP);
+}
+
+
 
 // ----------------------------------------------------------------------------
 //
@@ -191,21 +233,19 @@ bool orionldPostEntityOperationsUpsert(ConnectionInfo* ciP)
   ARRAY_CHECK(orionldState.requestTree,       "toplevel");
   EMPTY_ARRAY_CHECK(orionldState.requestTree, "toplevel");
 
-  KjNode*  locationP          = NULL;
-  KjNode*  observationSpaceP  = NULL;
-  KjNode*  operationSpaceP    = NULL;
   KjNode*  createdAtP         = NULL;
   KjNode*  modifiedAtP        = NULL;
 
   UpdateContextRequest   mongoRequest;
   UpdateContextResponse  mongoResponse;
 
+  KjNode* successArrayP = NULL;
+  KjNode* errorsArrayP  = NULL;
+
   mongoRequest.updateActionType = ActionTypeAppendStrict;
 
   // char* uriParamOption          = orionldState.uriParams.options;
   // LM_TMP(("UpdateParam -> %s", uriParamOption));
-  //
-  // Debugging - see all IDs
   //
   // if (uriParamOption != NULL && strcmp("update", uriParamOption) == 0)
   // {
@@ -213,20 +253,117 @@ bool orionldPostEntityOperationsUpsert(ConnectionInfo* ciP)
   for (KjNode* entityNodeP = orionldState.requestTree->value.firstChildP; entityNodeP != NULL; entityNodeP = entityNodeP->next)
   {
     OBJECT_CHECK(entityNodeP, kjValueType(entityNodeP->type));
-    ContextElement*        ceP       = new ContextElement();  // FIXME: Any way I can avoid to allocate ?
-    EntityId*              entityIdP;
 
-    if (payloadCheck(ciP, entityNodeP->value.firstChildP, &locationP, &observationSpaceP, &operationSpaceP, &createdAtP, &modifiedAtP, true) == false)
+    //
+    // First, extract Entity::id and Entity::type
+    //
+    // As we will remove items from the tree, we need to save the 'next-pointer' a priori
+    // If not, after removing an item, its next pointer point to NULL and the for-loop (if used) is ended
+    //
+    KjNode*   next;
+    KjNode*   itemP           = entityNodeP->value.firstChildP;
+    KjNode*   entityIdNodeP   = NULL;
+    KjNode*   entityTypeNodeP = NULL;
+    while (itemP != NULL)
     {
-      LM_TMP(("Error at index -> %d", ix));
-      return false;
+      LM_TMP(("Batch: got item '%s'", itemP->name));
+      if (SCOMPARE3(itemP->name, 'i', 'd', 0))
+      {
+        LM_TMP(("Batch: got Entity::ID"));
+        // Make sure Entity ID is a string and a valid URL
+        entityIdNodeP = itemP;
+        next = itemP->next;
+        kjChildRemove(entityNodeP, entityIdNodeP);
+
+        if (entityTypeNodeP != NULL)  // Both ID and type have been found - we are done
+          break;
+      }
+      else if (SCOMPARE5(itemP->name, 't', 'y', 'p', 'e', 0))
+      {
+        LM_TMP(("Batch: got Entity::TYPE"));
+        // Make sure  Entity TYPE is a string
+        entityTypeNodeP = itemP;
+        next = itemP->next;
+        kjChildRemove(entityNodeP, entityTypeNodeP);
+        if (entityIdNodeP != NULL)  // Both ID and type have been found - we are done
+          break;
+      }
+      else
+        next = itemP->next;
+
+      itemP = next;
     }
 
-    LM_TMP(("orionldState.payloadIdNode: %s",  orionldState.payloadIdNode->value.s));
+    //
+    // Entity ID is mandatory
+    //
+    char* detail;
 
-    char*   entityId           = orionldState.payloadIdNode->value.s;
-    char*   entityType         = orionldState.payloadTypeNode->value.s;
-    orionldState.entityId      = entityId;
+    if (entityIdNodeP == NULL)
+    {
+      entityErrorPush(&errorsArrayP, "NO Entity-ID", "Entity ID is mandatory");
+      continue;
+    }
+
+    if (entityIdNodeP->type != KjString)
+    {
+      entityErrorPush(&errorsArrayP, "Invalid Entity-ID", "Entity ID must be a JSON string");
+      continue;
+    }
+
+    if ((urlCheck(entityIdNodeP->value.s, &detail) == false) && (urnCheck(entityIdNodeP->value.s, &detail) == false))
+    {
+      entityErrorPush(&errorsArrayP, entityIdNodeP->value.s, "Entity ID must be a valid URI");
+      continue;
+    }
+
+
+    //
+    // Entity TYPE is mandatory
+    //
+    if (entityTypeNodeP == NULL)
+    {
+      entityErrorPush(&errorsArrayP, entityIdNodeP->value.s, "Entity TYPE missing - mandatory");
+      continue;
+    }
+
+    if (entityTypeNodeP->type != KjString)
+    {
+      entityErrorPush(&errorsArrayP, entityIdNodeP->value.s, "Entity TYPE must be a JSON string");
+      continue;
+    }
+
+
+    //
+    // Both Entity::id and Entity::type are OK
+    //
+    char*   entityId           = entityIdNodeP->value.s;
+    char*   entityType         = entityTypeNodeP->value.s;
+
+#if 0
+    //
+    // @Gabriel (remove this comment and its #if/#endif block when done)
+    //   I have removed the call to payloadCheck as it doesn't do what it should.
+    //   Instead, kjTreeToContextElementAttributes returns error detail if it fails, and then an error item is pushed
+    //   I am not sure kjTreeToContextElementAttributes checks everything that needs to be checked.
+    //   Test this empirically with functests.
+    //
+    //   Test EVERYTHING that could go wrong
+    //
+    KjNode*  locationP          = NULL;
+    KjNode*  observationSpaceP  = NULL;
+    KjNode*  operationSpaceP    = NULL;
+    LM_TMP(("Calling payloadCheck"));
+    if (payloadCheck(ciP, entityNodeP->value.firstChildP, &locationP, &observationSpaceP, &operationSpaceP, &createdAtP, &modifiedAtP, true) == false)
+    {
+      LM_TMP(("payloadCheck: error at index -> %d", ix));
+      return false;
+    }
+    LM_TMP(("After payloadCheck"));
+#endif
+
+    ContextElement*  ceP = new ContextElement();  // FIXME: Any way I can avoid to allocate ?
+    EntityId*        entityIdP;
 
     mongoRequest.contextElementVector.push_back(ceP);
     entityIdP                     = &mongoRequest.contextElementVector[ix]->entityId;
@@ -236,24 +373,29 @@ bool orionldPostEntityOperationsUpsert(ConnectionInfo* ciP)
     char* details;
 
     entityIdP->id = entityId;
+
     if (orionldUriExpand(orionldState.contextP, entityType, typeExpanded, sizeof(typeExpanded), &details) == false)
     {
       orionldErrorResponseCreate(OrionldBadRequestData, "Error during URI expansion of entity type", details, OrionldDetailString);
       return false;
     }
+
     entityIdP->type      = typeExpanded;
     entityIdP->isPattern = "false";
-    entityIdP->creDate   = getCurrentTime();
-    entityIdP->modDate   = getCurrentTime();
 
-    if (kjTreeToContextElementAttributes(ciP, entityNodeP->value.firstChildP, createdAtP, modifiedAtP, ceP) == false)
+#if 0
+    entityIdP->creDate   = getCurrentTime();  // FIXME: Only if newly created. I think mongoBackend takes care of this - so, outdeffed
+    entityIdP->modDate   = getCurrentTime();
+#endif
+
+    if (kjTreeToContextElementAttributes(ciP, entityNodeP, createdAtP, modifiedAtP, ceP, &detail) == false)
     {
-      // kjTreeToContextElement fills in error using 'orionldErrorResponseCreate()'
-      mongoRequest.release();
-      LM_E(("kjTreeToContextElement failed"));
-      return false;
+      LM_W(("kjTreeToContextElementAttributes flags error '%s' for entity '%s'", detail, entityId));
+      entityErrorPush(&errorsArrayP, entityId, detail);
+      continue;
     }
-    orionldState.payloadIdNode = NULL;
+
+    orionldState.payloadIdNode   = NULL;
     orionldState.payloadTypeNode = NULL;
     ++ix;
   }
@@ -286,24 +428,34 @@ bool orionldPostEntityOperationsUpsert(ConnectionInfo* ciP)
     LM_TMP(("Items in mongoResponse.contextElementResponseVector: %d", mongoResponse.contextElementResponseVector.size()));
     orionldState.responseTree = kjObject(orionldState.kjsonP, NULL);
 
-    KjNode* successArrayP = kjArray(orionldState.kjsonP, "success");
-
     for (unsigned int ix = 0; ix < mongoResponse.contextElementResponseVector.vec.size(); ix++)
     {
-      KjNode* nodeP = kjString(orionldState.kjsonP, "id", mongoResponse.contextElementResponseVector.vec[ix]->contextElement.entityId.id.c_str());
+      const char* entityId = mongoResponse.contextElementResponseVector.vec[ix]->contextElement.entityId.id.c_str();
 
       //
       // FIXME: Here we assume all items in mongoResponse.contextElementResponseVector are SUCCESSFUL
       //        But, ContextElementResponse has a field called "statusCode" that we could look at ...
+      //
+      //        Something like this:
+      //
+      //          if (mongoResponse.contextElementResponseVector.vec[ix]->statusCode.code == SccOk) { SUCCESS} else { ERROR }
+      //
       //        The difficult part is ... how to test this?
       //        How provoke a failure?
       //        This service Updates if entity exists and creates if not.
       //        Very difficult to provoke an error ... :(
       //
-      kjChildAdd(successArrayP, nodeP);
+      //        It can be tested with gmock, but I'm not an expert ...
+      //
+      entitySuccessPush(&successArrayP, entityId);
     }
 
-    kjChildAdd(orionldState.responseTree, successArrayP);
+    if (successArrayP != NULL)
+      kjChildAdd(orionldState.responseTree, successArrayP);
+
+    if (errorsArrayP != NULL)
+      kjChildAdd(orionldState.responseTree, errorsArrayP);
+
     ciP->httpStatusCode = SccOk;
   }
   else
@@ -319,7 +471,7 @@ bool orionldPostEntityOperationsUpsert(ConnectionInfo* ciP)
   return true;
 
   //
-  // TODO (Operation with new way)
+  // TO-DO (Operation with new way)
   // if (mongoCppLegacyEntityOperationsUpsert(orionldState.requestTree) == false)
   // {
   //   LM_E(("mongoCppLegacyEntityOperationsUpsert"));

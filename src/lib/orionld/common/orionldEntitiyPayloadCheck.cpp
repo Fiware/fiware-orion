@@ -174,6 +174,13 @@ bool payloadCheck
       if (strcmp(kNodeP->name, "id") == 0)
       {
         orionldState.payloadIdNode = kNodeP;
+
+        if (orionldState.payloadIdNode->type != KjString)
+        {
+          orionldErrorResponseCreate(OrionldBadRequestData, "Invalid Entity Id", "Must be a JSON String", OrionldDetailString);
+          return false;
+        }
+
         if ((urlCheck(orionldState.payloadIdNode->value.s, &detailsP) == false) && (urnCheck(orionldState.payloadIdNode->value.s, &detailsP) == false))
         {
           orionldErrorResponseCreate(OrionldBadRequestData, "Invalid Entity id", "The id specified cannot be resolved to a URL or URN", OrionldDetailString);
@@ -190,11 +197,15 @@ bool payloadCheck
         // }
         LM_TMP(("ID: %s", orionldState.payloadIdNode->value.s));
       }
-
-      if (strcmp(kNodeP->name, "type") == 0)
+      else if (strcmp(kNodeP->name, "type") == 0)
       {
         orionldState.payloadTypeNode = kNodeP;
-        LM_TMP(("Type: %s", orionldState.payloadTypeNode->value.s));
+
+        if (orionldState.payloadTypeNode->type != KjString)
+        {
+          orionldErrorResponseCreate(OrionldBadRequestData, "Invalid Entity Type", "Must be a JSON String", OrionldDetailString);
+          return false;
+        }
       }
     }
 

@@ -39,6 +39,6 @@ extern "C"
 //
 // orionldAttributeTreat -
 //
-extern bool orionldAttributeTreat(ConnectionInfo* ciP, KjNode* kNodeP, ContextAttribute* caP, KjNode** typeNodePP);
+extern bool orionldAttributeTreat(ConnectionInfo* ciP, KjNode* kNodeP, ContextAttribute* caP, KjNode** typeNodePP, char** detailP);
 
 #endif  // SRC_LIB_ORIONLD_COMMON_ORIONLDATTRIBUTETREAT_H_

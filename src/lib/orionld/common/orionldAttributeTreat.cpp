@@ -444,10 +444,9 @@ static bool atValueCheck(KjNode* atTypeNodeP, KjNode* atValueNodeP, char** title
 //        name of the attribute is either "createdAt" or "modifiedAt" - that's why I could out-deff the initial part
 //        that checks for those two names - must faster solution
 //
-bool orionldAttributeTreat(ConnectionInfo* ciP, KjNode* kNodeP, ContextAttribute* caP, KjNode** typeNodePP)
+bool orionldAttributeTreat(ConnectionInfo* ciP, KjNode* kNodeP, ContextAttribute* caP, KjNode** typeNodePP, char** detailP)
 {
   char* caName = kNodeP->name;
-
 
   LM_T(LmtPayloadCheck, ("Treating attribute '%s' (KjNode at %p)", caName, kNodeP));
 
@@ -467,7 +466,14 @@ bool orionldAttributeTreat(ConnectionInfo* ciP, KjNode* kNodeP, ContextAttribute
   }
 #endif
 
-  ATTRIBUTE_IS_OBJECT_CHECK(kNodeP);
+  if (kNodeP->type != KjObject)
+  {
+    *detailP = (char*) "Attribute must be a JSON object";
+    orionldErrorResponseCreate(OrionldBadRequestData, "Attribute must be a JSON object", kNodeP->name, OrionldDetailString);
+    ciP->httpStatusCode = SccBadRequest;
+    return false;
+  }
+
 
   //
   // For performance issues, all predefined names should have their char-sum precalculated
@@ -504,8 +510,30 @@ bool orionldAttributeTreat(ConnectionInfo* ciP, KjNode* kNodeP, ContextAttribute
 
     if (SCOMPARE5(nodeP->name, 't', 'y', 'p', 'e', 0))
     {
-      DUPLICATE_CHECK(typeP, "attribute type", nodeP);
-      STRING_CHECK(nodeP, "attribute type");
+      //
+      // Duplicate check
+      //
+      if (typeP != NULL)
+      {
+        *detailP = (char*) "Duplicated field";
+        LM_E(("Duplicated field: 'Attribute Type'"));
+        orionldErrorResponseCreate(OrionldBadRequestData, "Duplicated field", "Attribute Type", OrionldDetailString);
+        ciP->httpStatusCode = SccBadRequest;
+        return false;
+      }
+      typeP = nodeP;
+
+      //
+      // Must be a JSON String
+      //
+      if (typeP->type != KjString)
+      {
+        *detailP = (char*) "Attribute type m,ust be a JSON String";
+        orionldErrorResponseCreate(OrionldBadRequestData, "Not a JSON String", "attribute type", OrionldDetailString);
+        ciP->httpStatusCode = SccBadRequest;
+        return false;
+      }
+
 
       if (SCOMPARE9(nodeP->value.s, 'P', 'r', 'o', 'p', 'e', 'r', 't', 'y', 0))
       {
@@ -522,6 +550,7 @@ bool orionldAttributeTreat(ConnectionInfo* ciP, KjNode* kNodeP, ContextAttribute
 
         if (orionldState.locationAttributeP != NULL)
         {
+          *detailP = (char*) "Multiple attributes cannot be defined using the GeoProperty type";
           orionldErrorResponseCreate(OrionldBadRequestData, "Multiple attributes cannot be defined using the GeoProperty type", nodeP->name, OrionldDetailString);
           return false;
         }
@@ -535,6 +564,7 @@ bool orionldAttributeTreat(ConnectionInfo* ciP, KjNode* kNodeP, ContextAttribute
       }
       else
       {
+        *detailP = (char*) "Invalid type for attribute";
         LM_E(("Invalid type for attribute '%s': '%s'", nodeP->name, nodeP->value.s));
         orionldErrorResponseCreate(OrionldBadRequestData, "Invalid type for attribute", nodeP->value.s, OrionldDetailString);
         return false;
