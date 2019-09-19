@@ -33,7 +33,6 @@ brokerStart CB 212-249
 #
 # 01. POST /ngsi-ld/v1/entityOperations/upsert 4 Entities
 # 02. POST /ngsi-ld/v1/entityOperations/upsert Change 2 Entities
-# 03. Attempt to upsert with an entity having a type that is not a string - see error
 #
 
 
@@ -204,40 +203,6 @@ echo
 echo
 
 
-echo "03. Attempt to upsert with an entity having a type that is not a string - see error"
-echo "==================================================================================="
-payload='[
-  {
-    "id": "urn:ngsi-ld:Vehicle:301",
-    "type": "Vehicle",
-    "brandName": {
-      "type": "Property",
-      "value": "Mercedes"
-    },
-    "isParked": {
-      "type": "Relationship",
-      "object": "urn:ngsi-ld:OffStreetParking:Downtown1",
-      "observedAt": "2017-07-29T12:00:04Z",
-      "providedBy": {
-        "type": "Relationship",
-        "object": "urn:ngsi-ld:Person:Bob"
-      }
-    }
-  },
-  {
-    "id": "urn:ngsi-ld:Vehicle:302",
-    "type": 14,
-    "brandName": {
-      "type": "Property",
-      "value": "Mercedes"
-    }
-  }
-]'
-orionCurl --url /ngsi-ld/v1/entityOperations/upsert -X POST --payload "$payload" -H "Content-Type: application/ld+json"
-echo
-echo
-
-
 --REGEXPECT--
 01. POST /ngsi-ld/v1/entityOperations/upsert 4 Entities
 =======================================================
@@ -269,27 +234,6 @@ Date: REGEX(.*)
     "success": [
         "urn:ngsi-ld:Vehicle:00002",
         "urn:ngsi-ld:Vehicle:00003"
-    ]
-}
-
-
-03. Attempt to upsert with an entity having a type that is not a string - see error
-===================================================================================
-HTTP/1.1 200 OK
-Content-Length: 128
-Content-Type: application/json
-Link: <https://uri.etsi.org/ngsi-ld/v1/ngsi-ld-core-context.jsonld>; rel="http://www.w3.org/ns/json-ld#context"; type="application/ld+json"
-Date: REGEX(.*)
-
-{
-    "errors": [
-        {
-            "id": "urn:ngsi-ld:Vehicle:302",
-            "reason": "Entity TYPE must be a JSON string"
-        }
-    ],
-    "success": [
-        "urn:ngsi-ld:Vehicle:301"
     ]
 }
 
