@@ -642,7 +642,7 @@ static bool expandAttrNames(KjNode* treeP, char** detailsP)
     // FIXME: If I write my own function strcpyAndChangeDorForEq, I should gain some performance
     //
     strcpy(attrP->name, expanded);
-    dotForEq(attrP->name);
+    // dotForEq(attrP->name);  TEMPorarily commented out for subscription test !!!
     LM_TMP(("sub-attr: expanded name of attribute '%s'", attrP->name));
 
     // Expand also sub-attr names
@@ -686,6 +686,99 @@ static bool expandAttrNames(KjNode* treeP, char** detailsP)
 }
 
 
+// -----------------------------------------------------------------------------
+//
+// orionldNotifyForAttrList -
+//
+// NOTE
+//   The mongo cpp legacy part of this function must be moved.
+//   The inclusion of mongo stuff also.
+//
+#include "mongo/client/dbclient.h"                               // MongoDB C++ Client Legacy Driver
+
+#include "mongoBackend/MongoGlobal.h"                            // getMongoConnection, releaseMongoConnection, ...
+#include "orionld/db/dbCollectionPathGet.h"                      // dbCollectionPathGet
+#include "orionld/db/dbConfiguration.h"                          // dbDataToKjTree
+
+
+bool orionldNotifyForAttrList(const char* entityId, KjNode* treeP)
+{
+  LM_TMP(("NFY: Handling notification"));
+  //
+  // To begin with, I will implement the mongo C++ legacy driver right here.
+  // Once working, all mongo code needs to be moved to orionld/mongoCppLegacy/mongoCppLegacyNotifyForAttrList.cpp
+  //
+
+  char    collectionPath[256];
+
+  dbCollectionPathGet(collectionPath, sizeof(collectionPath), "csubs");
+  LM_TMP(("NFY: Subscription Collection Path: %s", collectionPath));
+
+  //
+  // 1. Entity ID, which is this case is FIXED
+  //
+  mongo::BSONObjBuilder  filter;
+
+  filter.append("entities.id", entityId);
+  LM_TMP(("NFY: Adding entity ID '%s' to the query filter", entityId));
+
+#if 1
+  //
+  // 2. Attributes
+  //
+  mongo::BSONArrayBuilder  attrArray;
+  mongo::BSONObjBuilder    inForAttrNames;
+
+  for (KjNode* attrNodeP = treeP->value.firstChildP; attrNodeP != NULL; attrNodeP = attrNodeP->next)
+  {
+    LM_TMP(("NFY: ", attrNodeP->name));
+    attrArray.append(attrNodeP->name);
+  }
+  inForAttrNames.append("$in", attrArray.arr());
+  
+  filter.append("conditions", inForAttrNames.obj());
+#endif
+
+  //
+  // status - must be "active"
+  //
+  filter.append("status", "active");
+  
+  // "expiration" - later
+  // "q" - later
+  // "geometry" - later
+
+
+  //
+  // Perform query
+  //
+  mongo::DBClientBase*                  connectionP = getMongoConnection();
+  std::auto_ptr<mongo::DBClientCursor>  cursorP;
+  mongo::Query                          query(filter.obj());
+
+  // Debugging - see the query
+  LM_TMP(("NFY: filter: %s", query.toString().c_str()));
+
+  cursorP = connectionP->query(collectionPath, query);
+
+  int matches = 0;
+  while (cursorP->more())
+  {
+    mongo::BSONObj  bsonObj;
+
+    bsonObj = cursorP->nextSafe();
+
+    LM_TMP(("NFY: query result: '%s'", bsonObj.toString().c_str()));
+
+    ++matches;
+  }
+
+  LM_TMP(("NFY: %d matches", matches));
+
+  return false;
+}
+
+
 
 // -----------------------------------------------------------------------------
 //
@@ -705,24 +798,45 @@ bool orionldPostEntityOverwrite(ConnectionInfo* ciP)
   // 3. Write to mongo
   //
   char*   entityId           = orionldState.wildcard[0];
-  LM_TMP(("sub-attr: Calling dbEntityLookup(%s)", entityId));
   KjNode* currentEntityTreeP = dbEntityLookup(entityId);
-  LM_TMP(("sub-attr: After dbEntityLookup(%s): %p", entityId, currentEntityTreeP));
   char*   title;
   char*   details;
-
-  if (currentEntityTreeP == NULL)
-  {
-    ciP->httpStatusCode = SccNotFound;
-    orionldErrorResponseCreate(OrionldBadRequestData, "Entity does not exist", orionldState.wildcard[0], OrionldDetailString);
-    return false;
-  }
 
   // Expand attribute names
   if (expandAttrNames(orionldState.requestTree, &details) == false)
   {
     ciP->httpStatusCode = SccReceiverInternalError;
     orionldErrorResponseCreate(OrionldBadRequestData, "Can't expand attribute names", details, OrionldDetailString);
+    return false;
+  }
+
+  //
+  // Forwarding
+  //
+  // 1. Decide the type of tree. In this case it is a vector of attributes and the entity id and type are not in the tree
+  // 2. Query the "registrations" for this entity id/type and any of the attributes of the tree
+  // 3. For each match in "registrations", schedule a REST request to be sent to the IP:PORT of the registration
+  //    - it will be the very same request, i.e. POST /entities/EID/attrs and with, I think, the exact same URI params
+  // 4. Each response must be recorded for the response, in case some attribute has bnot been updated - 207 Multi Status
+  //
+
+  //
+  // Subscriptions
+  //
+  // 1. Decide the type of tree. In this case it is a vector of attributes and the entity id and type are not in the tree
+  // 2. Query the "subscriptions" for this entity id/type and any of the attributes of the tree
+  // 3. For each match in "subscriptions", schedule a Notification to be sent to the IP:PORT of the subscription
+  //
+  //
+  bool notificationsOk = orionldNotifyForAttrList(entityId, orionldState.requestTree);
+
+  if (notificationsOk == false)
+    LM_W(("NFY: some notifications failed"));
+
+  if (currentEntityTreeP == NULL)
+  {
+    ciP->httpStatusCode = SccNotFound;
+    orionldErrorResponseCreate(OrionldBadRequestData, "Entity does not exist", orionldState.wildcard[0], OrionldDetailString);
     return false;
   }
 
