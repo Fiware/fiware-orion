@@ -260,6 +260,9 @@ bool orionldPostEntityOperationsUpsert(ConnectionInfo* ciP)
     // As we will remove items from the tree, we need to save the 'next-pointer' a priori
     // If not, after removing an item, its next pointer point to NULL and the for-loop (if used) is ended
     //
+    int       countIDFields   = 0;
+    int       countTypeFields = 0;
+
     KjNode*   next;
     KjNode*   itemP           = entityNodeP->value.firstChildP;
     KjNode*   entityIdNodeP   = NULL;
@@ -274,9 +277,7 @@ bool orionldPostEntityOperationsUpsert(ConnectionInfo* ciP)
         entityIdNodeP = itemP;
         next = itemP->next;
         kjChildRemove(entityNodeP, entityIdNodeP);
-
-        if (entityTypeNodeP != NULL)  // Both ID and type have been found - we are done
-          break;
+        countIDFields++;
       }
       else if (SCOMPARE5(itemP->name, 't', 'y', 'p', 'e', 0))
       {
@@ -285,8 +286,7 @@ bool orionldPostEntityOperationsUpsert(ConnectionInfo* ciP)
         entityTypeNodeP = itemP;
         next = itemP->next;
         kjChildRemove(entityNodeP, entityTypeNodeP);
-        if (entityIdNodeP != NULL)  // Both ID and type have been found - we are done
-          break;
+        countTypeFields++;
       }
       else
         next = itemP->next;
@@ -302,6 +302,12 @@ bool orionldPostEntityOperationsUpsert(ConnectionInfo* ciP)
     if (entityIdNodeP == NULL)
     {
       entityErrorPush(&errorsArrayP, "NO Entity-ID", "Entity ID is mandatory");
+      continue;
+    }
+
+    if (countIDFields >= 2 && entityIdNodeP != NULL)
+    {
+      entityErrorPush(&errorsArrayP, "2 Entity-ID Fields", "Entity ID must be a unique field");
       continue;
     }
 
@@ -324,6 +330,12 @@ bool orionldPostEntityOperationsUpsert(ConnectionInfo* ciP)
     if (entityTypeNodeP == NULL)
     {
       entityErrorPush(&errorsArrayP, entityIdNodeP->value.s, "Entity TYPE missing - mandatory");
+      continue;
+    }
+
+    if (countTypeFields >= 2 && entityTypeNodeP != NULL)
+    {
+      entityErrorPush(&errorsArrayP, "2 Entity TYPE Fields", "Entity TYPE must be a unique field");
       continue;
     }
 

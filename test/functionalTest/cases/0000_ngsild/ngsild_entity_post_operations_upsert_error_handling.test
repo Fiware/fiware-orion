@@ -34,8 +34,12 @@ brokerStart CB 212-249
 # 01. Attempt to upsert with an entity having a ID that is not a string - see error
 # 02. Attempt to upsert with an entity without ID field - see error
 # 03. Attempt to upsert with an entity having a ID with URI invalid - see error
-# 04. Attempt to upsert with an entity having a type that is not a string - see error
-# 05. Attempt to upsert with an entity without type field - see error
+# 04. Attempt to upsert with an entity having a TYPE that is not a string - see error
+# 05. Attempt to upsert with an entity without TYPE field - see error
+# 06. Attempt to upsert with an entity with 2 ID fields - see error
+# 07. Attempt to upsert with an entity with 2 TYPE fields - see error
+# 08. Attempt to upsert with an entity with ID typed wrong - see error
+# 09. Attempt to upsert with an entity with TYPE typed wrong - see error
 #
 
 
@@ -140,7 +144,7 @@ echo
 echo
 
 
-echo "04. Attempt to upsert with an entity having a type that is not a string - see error"
+echo "04. Attempt to upsert with an entity having a TYPE that is not a string - see error"
 echo "==================================================================================="
 payload='[
   {
@@ -174,7 +178,7 @@ echo
 echo
 
 
-echo "05. Attempt to upsert with an entity without type field - see error"
+echo "05. Attempt to upsert with an entity without TYPE field - see error"
 echo "==================================================================="
 payload='[
   {
@@ -196,6 +200,144 @@ payload='[
   {
     "id": "urn:ngsi-ld:Vehicle:302",
     "type": 14,
+    "brandName": {
+      "type": "Property",
+      "value": "Mercedes"
+    }
+  }
+]'
+orionCurl --url /ngsi-ld/v1/entityOperations/upsert -X POST --payload "$payload" -H "Content-Type: application/ld+json"
+echo
+echo
+
+
+echo "06. Attempt to upsert with an entity with 2 ID fields - see error"
+echo "================================================================="
+payload='[
+  {
+    "id": "urn:ngsi-ld:Vehicle:301",
+    "id": "urn:ngsi-ld:Vehicle:301",
+    "type": "Vehicle",
+    "brandName": {
+      "type": "Property",
+      "value": "Mercedes"
+    },
+    "isParked": {
+      "type": "Relationship",
+      "object": "urn:ngsi-ld:OffStreetParking:Downtown1",
+      "observedAt": "2017-07-29T12:00:04Z",
+      "providedBy": {
+        "type": "Relationship",
+        "object": "urn:ngsi-ld:Person:Bob"
+      }
+    }
+  },
+  {
+    "id": "urn:ngsi-ld:Vehicle:302",
+    "type": "Vehicle",
+    "brandName": {
+      "type": "Property",
+      "value": "Mercedes"
+    }
+  }
+]'
+orionCurl --url /ngsi-ld/v1/entityOperations/upsert -X POST --payload "$payload" -H "Content-Type: application/ld+json"
+echo
+echo
+
+
+echo "07. Attempt to upsert with an entity with 2 TYPE fields - see error"
+echo "==================================================================="
+payload='[
+  {
+    "id": "urn:ngsi-ld:Vehicle:301",
+    "type": "Vehicle",
+    "type": "Vehicle",
+    "brandName": {
+      "type": "Property",
+      "value": "Mercedes"
+    },
+    "isParked": {
+      "type": "Relationship",
+      "object": "urn:ngsi-ld:OffStreetParking:Downtown1",
+      "observedAt": "2017-07-29T12:00:04Z",
+      "providedBy": {
+        "type": "Relationship",
+        "object": "urn:ngsi-ld:Person:Bob"
+      }
+    }
+  },
+  {
+    "id": "urn:ngsi-ld:Vehicle:302",
+    "type": "Vehicle",
+    "brandName": {
+      "type": "Property",
+      "value": "Mercedes"
+    }
+  }
+]'
+orionCurl --url /ngsi-ld/v1/entityOperations/upsert -X POST --payload "$payload" -H "Content-Type: application/ld+json"
+echo
+echo
+
+
+echo "08. Attempt to upsert with an entity with ID typed wrong - see error"
+echo "===================================================================="
+payload='[
+  {
+    "idwrong": "urn:ngsi-ld:Vehicle:301",
+    "type": "Vehicle",
+    "brandName": {
+      "type": "Property",
+      "value": "Mercedes"
+    },
+    "isParked": {
+      "type": "Relationship",
+      "object": "urn:ngsi-ld:OffStreetParking:Downtown1",
+      "observedAt": "2017-07-29T12:00:04Z",
+      "providedBy": {
+        "type": "Relationship",
+        "object": "urn:ngsi-ld:Person:Bob"
+      }
+    }
+  },
+  {
+    "id": "urn:ngsi-ld:Vehicle:302",
+    "type": "Vehicle",
+    "brandName": {
+      "type": "Property",
+      "value": "Mercedes"
+    }
+  }
+]'
+orionCurl --url /ngsi-ld/v1/entityOperations/upsert -X POST --payload "$payload" -H "Content-Type: application/ld+json"
+echo
+echo
+
+
+echo "09. Attempt to upsert with an entity with TYPE typed wrong - see error"
+echo "======================================================================"
+payload='[
+  {
+    "id": "urn:ngsi-ld:Vehicle:301",
+    "typewrong": "Vehicle",
+    "brandName": {
+      "type": "Property",
+      "value": "Mercedes"
+    },
+    "isParked": {
+      "type": "Relationship",
+      "object": "urn:ngsi-ld:OffStreetParking:Downtown1",
+      "observedAt": "2017-07-29T12:00:04Z",
+      "providedBy": {
+        "type": "Relationship",
+        "object": "urn:ngsi-ld:Person:Bob"
+      }
+    }
+  },
+  {
+    "id": "urn:ngsi-ld:Vehicle:302",
+    "type": "Vehicle",
     "brandName": {
       "type": "Property",
       "value": "Mercedes"
@@ -265,7 +407,7 @@ Date: REGEX(.*)
 }
 
 
-04. Attempt to upsert with an entity having a type that is not a string - see error
+04. Attempt to upsert with an entity having a TYPE that is not a string - see error
 ===================================================================================
 HTTP/1.1 200 OK
 Content-Length: 128
@@ -286,7 +428,7 @@ Date: REGEX(.*)
 }
 
 
-05. Attempt to upsert with an entity without type field - see error
+05. Attempt to upsert with an entity without TYPE field - see error
 ===================================================================
 HTTP/1.1 200 OK
 Content-Length: 166
@@ -303,6 +445,78 @@ Date: REGEX(.*)
         {
             "id": "urn:ngsi-ld:Vehicle:302",
             "reason": "Entity TYPE must be a JSON string"
+        }
+    ]
+}
+
+
+06. Attempt to upsert with an entity with 2 ID fields - see error
+=================================================================
+HTTP/1.1 200 OK
+Content-Length: 84
+Content-Type: application/json
+Link: <https://uri.etsi.org/ngsi-ld/v1/ngsi-ld-core-context.jsonld>; rel="http://www.w3.org/ns/json-ld#context"; type="application/ld+json"
+Date: REGEX(.*)
+
+{
+    "errors": [
+        {
+            "id": "2 Entity-ID Fields",
+            "reason": "Entity ID must be a unique field"
+        }
+    ]
+}
+
+
+07. Attempt to upsert with an entity with 2 TYPE fields - see error
+===================================================================
+HTTP/1.1 200 OK
+Content-Length: 88
+Content-Type: application/json
+Link: <https://uri.etsi.org/ngsi-ld/v1/ngsi-ld-core-context.jsonld>; rel="http://www.w3.org/ns/json-ld#context"; type="application/ld+json"
+Date: REGEX(.*)
+
+{
+    "errors": [
+        {
+            "id": "2 Entity TYPE Fields",
+            "reason": "Entity TYPE must be a unique field"
+        }
+    ]
+}
+
+
+08. Attempt to upsert with an entity with ID typed wrong - see error
+====================================================================
+HTTP/1.1 200 OK
+Content-Length: 68
+Content-Type: application/json
+Link: <https://uri.etsi.org/ngsi-ld/v1/ngsi-ld-core-context.jsonld>; rel="http://www.w3.org/ns/json-ld#context"; type="application/ld+json"
+Date: REGEX(.*)
+
+{
+    "errors": [
+        {
+            "id": "NO Entity-ID",
+            "reason": "Entity ID is mandatory"
+        }
+    ]
+}
+
+
+09. Attempt to upsert with an entity with TYPE typed wrong - see error
+======================================================================
+HTTP/1.1 200 OK
+Content-Length: 88
+Content-Type: application/json
+Link: <https://uri.etsi.org/ngsi-ld/v1/ngsi-ld-core-context.jsonld>; rel="http://www.w3.org/ns/json-ld#context"; type="application/ld+json"
+Date: REGEX(.*)
+
+{
+    "errors": [
+        {
+            "id": "urn:ngsi-ld:Vehicle:301",
+            "reason": "Entity TYPE missing - mandatory"
         }
     ]
 }
