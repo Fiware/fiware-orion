@@ -29,6 +29,7 @@ extern "C"
 #include "kjson/kjBuilder.h"                                     // kjChildRemove
 #include "kjson/kjRender.h"                                      // kjRender
 #include "kjson/kjLookup.h"                                      // kjLookup
+#include "kjson/kjClone.h"                                       // kjClone
 #include "kalloc/kaAlloc.h"                                      // kaAlloc
 #include "kalloc/kaStrdup.h"                                     // kaStrdup
 }
@@ -133,7 +134,7 @@ void orionldPartialUpdateResponseCreate(ConnectionInfo* ciP)
 //
 // kjTreeToContextElement -
 //
-bool kjTreeToContextElement(ConnectionInfo* ciP, KjNode* treeP, ContextElement* ceP)
+bool kjTreeToContextElement(ConnectionInfo* ciP, KjNode* requestTreeP, ContextElement* ceP)
 {
   // Iterate over the object, to get all attributes
   for (KjNode* kNodeP = orionldState.requestTree->value.firstChildP; kNodeP != NULL; kNodeP = kNodeP->next)
@@ -694,14 +695,15 @@ static bool expandAttrNames(KjNode* treeP, char** detailsP)
 //   The mongo cpp legacy part of this function must be moved.
 //   The inclusion of mongo stuff also.
 //
-#include "mongo/client/dbclient.h"                               // MongoDB C++ Client Legacy Driver
+#include "mongo/client/dbclient.h"                                   // MongoDB C++ Client Legacy Driver
 
-#include "mongoBackend/MongoGlobal.h"                            // getMongoConnection, releaseMongoConnection, ...
-#include "orionld/db/dbCollectionPathGet.h"                      // dbCollectionPathGet
-#include "orionld/db/dbConfiguration.h"                          // dbDataToKjTree
+#include "mongoBackend/MongoGlobal.h"                                // getMongoConnection, releaseMongoConnection, ...
+#include "orionld/mongoCppLegacy/mongoCppLegacyKjTreeFromBsonObj.h"  // mongoCppLegacyKjTreeFromBsonObj
+#include "orionld/db/dbCollectionPathGet.h"                          // dbCollectionPathGet
+#include "orionld/db/dbConfiguration.h"                              // dbDataToKjTree
 
 
-bool orionldNotifyForAttrList(const char* entityId, KjNode* treeP)
+bool orionldNotifyForAttrList(const char* entityId, KjNode* requestTree)
 {
   LM_TMP(("NFY: Handling notification"));
   //
@@ -722,14 +724,14 @@ bool orionldNotifyForAttrList(const char* entityId, KjNode* treeP)
   filter.append("entities.id", entityId);
   LM_TMP(("NFY: Adding entity ID '%s' to the query filter", entityId));
 
-#if 1
+
   //
   // 2. Attributes
   //
   mongo::BSONArrayBuilder  attrArray;
   mongo::BSONObjBuilder    inForAttrNames;
 
-  for (KjNode* attrNodeP = treeP->value.firstChildP; attrNodeP != NULL; attrNodeP = attrNodeP->next)
+  for (KjNode* attrNodeP = requestTree->value.firstChildP; attrNodeP != NULL; attrNodeP = attrNodeP->next)
   {
     LM_TMP(("NFY: ", attrNodeP->name));
     attrArray.append(attrNodeP->name);
@@ -737,7 +739,7 @@ bool orionldNotifyForAttrList(const char* entityId, KjNode* treeP)
   inForAttrNames.append("$in", attrArray.arr());
   
   filter.append("conditions", inForAttrNames.obj());
-#endif
+
 
   //
   // status - must be "active"
@@ -765,14 +767,145 @@ bool orionldNotifyForAttrList(const char* entityId, KjNode* treeP)
   while (cursorP->more())
   {
     mongo::BSONObj  bsonObj;
+    KjNode*         kTreeP;
+    char*           title;
+    char*           detail;
 
     bsonObj = cursorP->nextSafe();
 
-    LM_TMP(("NFY: query result: '%s'", bsonObj.toString().c_str()));
+    // LM_TMP(("NFY: query result: '%s'", bsonObj.toString().c_str()));
+
+    kTreeP = mongoCppLegacyKjTreeFromBsonObj(&bsonObj, &title, &detail);
+    if (kTreeP == NULL)
+    {
+      LM_E(("Unable to create KjNode tree from mongo::BSONObj '%s'", bsonObj.toString().c_str()));
+      continue;
+    }
+
+    //
+    // Lookup 'reference' in toplevel, and more fields
+    //
+    // FIXME: One single loop makes these lookups faster
+    //
+    KjNode*  idP         = kjLookup(kTreeP, "_id");
+    KjNode*  referenceP  = kjLookup(kTreeP, "reference");
+    KjNode*  attrsP      = kjLookup(kTreeP, "attrs");
+    KjNode*  expirationP = kjLookup(kTreeP, "expiration");
+    KjNode*  throttlingP = kjLookup(kTreeP, "throttling");
+    char*    subId;
+
+    if (idP == NULL)
+    {
+      LM_E(("Unable to find '_id' member of the Subscription"));
+      continue;
+    }
+    subId = idP->value.s;
+
+    if (referenceP == NULL)
+    {
+      LM_E(("Unable to find 'reference' member of the Subscription '%s'", subId));
+      continue;
+    }
+
+    if (throttlingP != NULL)
+      LM_TMP(("NFY: Check throttling (lookup lastFailure and lastSuccess and keep the newest one. Then compare with NOW ..."));
+    else
+      LM_TMP(("NFY: Throttling: %d", throttlingP->value.i));
+
+    if (expirationP != NULL)
+      LM_TMP(("NFY: Subscription expires at: %llu", expirationP->value.i));
+
+    bool allAttributesInNotification = false;
+    if (attrsP == NULL)
+    {
+      LM_TMP(("NFY: Sending a Notification to endpoint '%s', for Subscription '%s' - with ALL attributes of the Update - notification::attributes not present", referenceP->value.s, subId));
+      allAttributesInNotification = true;
+    }
+    else if (attrsP->value.firstChildP == NULL)
+    {
+      LM_TMP(("NFY: Sending a Notification to endpoint '%s', for Subscription '%s' - with ALL attributes of the Update - notification::attributes is an empty vector", referenceP->value.s, subId));
+      allAttributesInNotification = true;
+    }
+
+#if 0
+    {
+      int attrs = 0;
+      LM_TMP(("NFY: Sending a Notification to endpoint '%s', for Subscription '%s' - with SOME attributes of the Update", referenceP->value.s, subId));
+      for (KjNode* attrNameP = attrsP->value.firstChildP; attrNameP != NULL; attrNameP = attrNameP->next)
+      {
+        LM_TMP(("NFY: Attribute to be included in Notification: '%s'", attrNameP->value.s));
+        ++attrs;
+      }
+
+      if (attrs == 0)  // Empty vector => ALL attributes are included in the Notification
+      {
+        LM_TMP(("NFY: ALL Attributes to be included in Notification"));
+        allAttributesInNotification = true;
+      }
+    }
+#endif
+
+    //
+    // Creating the attribute list that the Notification will be based on
+    //
+    KjNode*  notificationTree = NULL;
+    KjNode*  toQueryArray     = kjArray(orionldState.kjsonP, NULL);  // Invent other Kjson-pointer - this one dies when request ends
+
+    if (allAttributesInNotification == true)
+    {
+      // ALL attributes ... simply clone the incoming request - LEAK !!!
+      notificationTree = kjClone(requestTree);  // FIXME: Actually NO, the notification has its own data structure ...
+    }
+    else
+    {
+      notificationTree = kjObject(orionldState.kjsonP, NULL);  // Invent other Kjson-pointer - this one dies when request ends
+
+      //
+      // Instead of looping over the modified attributes (requestTree) we loop over the attributes that the
+      // subscription wants to be included in the Notification.
+      //
+      // Those attributes that were not updated must be queried in the database
+      //
+      // [ What if some attributes don't exist in local but are registered? :-D :-D  INSANE !!! ]
+      //
+      for (KjNode* attrP = attrsP->value.firstChildP; attrP != NULL; attrP = attrP->next)
+      {
+        KjNode* reqAttrP;
+        
+        if ((reqAttrP = kjLookup(requestTree, attrP->value.s)) == NULL)
+        {
+          LM_TMP(("NFY: The attribute '%s' must be queried in mongo", attrP->value.s));
+
+          KjNode* aP = kjString(orionldState.kjsonP, NULL, attrP->value.s);
+          kjChildAdd(toQueryArray, aP);
+          continue;
+        }
+        
+        KjNode* aP = kjClone(reqAttrP);
+        kjChildAdd(notificationTree, aP);
+        LM_TMP(("NFY: Added the attribute '%s' to the attribute list on which the notification will be based", aP->name));
+      }
+    }
+
+    // -----------------------------------------------------------------------------
+    //
+    // <DEBUG>
+    //
+    char buffer[512];
+    char buffer2[512];
+
+    kjRender(orionldState.kjsonP, notificationTree, buffer, 512);
+    kjRender(orionldState.kjsonP, toQueryArray, buffer2, 512);
+
+    LM_TMP(("NFY: Sending notification to '%s' based on '%s', these attrs must be looked up: %s", referenceP->value.s, buffer, buffer2));
+    //
+    // </DEBUG>
+    //
+    // -----------------------------------------------------------------------------
 
     ++matches;
   }
-
+  
   LM_TMP(("NFY: %d matches", matches));
 
   return false;

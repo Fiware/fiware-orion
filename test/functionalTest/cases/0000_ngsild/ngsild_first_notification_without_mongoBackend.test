@@ -74,7 +74,7 @@ payload='{
   ],
   "watchedAttributes": ["A1", "A3"],
   "notification": {
-    "attributes": [],
+    "attributes": [ "A1", "A3" ],
     "format": "normalized",
     "endpoint": {
       "uri": "http://127.0.0.1:'${LISTENER_PORT}'/notify",
