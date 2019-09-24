@@ -88,6 +88,19 @@ typedef struct OrionldUriParams
 
 // -----------------------------------------------------------------------------
 //
+// OrionldNotificationInfo -
+//
+typedef struct OrionldNotificationInfo
+{
+  char*    subscriptionId;
+  KjNode*  attrsForNotification;
+  char*    reference;
+} OrionldNotificationInfo;
+
+
+
+// -----------------------------------------------------------------------------
+//
 // OrionldConnectionState - the state of the connection
 //
 // This struct contains all the state of a connection, like the Kjson pointer, the pointer to
@@ -155,6 +168,8 @@ typedef struct OrionldConnectionState
   KjNode*                 delayedKjFreeVec[50];
   int                     delayedKjFreeVecIndex;
   int                     delayedKjFreeVecSize;
+  int                     notificationRecords;
+  OrionldNotificationInfo notificationInfo[100];
 
 #ifdef DB_DRIVER_MONGOC
   //
