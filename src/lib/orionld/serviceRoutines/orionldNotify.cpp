@@ -24,10 +24,6 @@
 */
 #include <string.h>                                              // strlen
 #include <sys/uio.h>                                             // writev
-#include <sys/types.h>                                           // types
-#include <sys/socket.h>                                          // socket
-#include <netinet/in.h>                                          // sockaddr_in
-#include <netdb.h>                                               // struct hostent
 #include <sys/select.h>                                          // select
 
 extern "C"
@@ -43,6 +39,7 @@ extern "C"
 #include "orionld/common/orionldState.h"                         // orionldState
 #include "orionld/common/numberToDate.h"                         // numberToDate
 #include "orionld/common/uuidGenerate.h"                         // uuidGenerate
+#include "orionld/common/orionldServerConnect.h"                 // orionldServerConnect
 #include "orionld/context/orionldCoreContext.h"                  // ORIONLD_CORE_CONTEXT_URL
 #include "orionld/serviceRoutines/orionldNotify.h"               // Own interface
 
@@ -50,9 +47,13 @@ extern "C"
 
 // -----------------------------------------------------------------------------
 //
-// ipPort -
+// ipPortAndRest - extract ip, port and URL-PATH from a 'reference' string
 //
-static void ipPort(char* ipport, char** ipP, unsigned short* portP, char** restP)
+// FIXME
+//   This function is generic and should be moved to its own module in orionld/common
+//   However, I think I have a function doing exactly this already ...
+//
+static void ipPortAndRest(char* ipport, char** ipP, unsigned short* portP, char** restP)
 {
   char*            colon;
   char*            ip;
@@ -92,54 +93,9 @@ static void ipPort(char* ipport, char** ipP, unsigned short* portP, char** restP
 
 // -----------------------------------------------------------------------------
 //
-// connectToServer -
-//
-static int connectToServer(char* ip, unsigned short portNo)
-{
-  //
-  // Connecting
-  //
-  int                 fd;
-  struct hostent*     heP;
-  struct sockaddr_in  server;
-
-  heP = gethostbyname(ip);
-  if (heP == NULL)
-  {
-    LM_E(("unable to find host '%s'", ip));
-    return -1;
-  }
-
-  fd = socket(AF_INET, SOCK_STREAM, 0);
-  if (fd == -1)
-  {
-    LM_E(("Can't even create a socket: %s", strerror(errno)));
-    return -1;
-  }
-
-  server.sin_family = AF_INET;
-  server.sin_port   = htons(portNo);
-  server.sin_addr   = *((struct in_addr*) heP->h_addr);
-  bzero(&server.sin_zero, 8);
-
-  if (connect(fd, (struct sockaddr*) &server, sizeof(struct sockaddr)) == -1)
-  {
-    close(fd);
-    LM_E(("Unable to connect to host/port: %s:%d", ip, portNo));
-  }
-
-  LM_TMP(("NFY: Connected to server %s:%d", ip, portNo));
-
-  return fd;
-}
-
-
-
-// -----------------------------------------------------------------------------
-//
 // responseTreat -
 //
-void responseTreat(OrionldNotificationInfo* niP, char* buf, int bufLen)
+static void responseTreat(OrionldNotificationInfo* niP, char* buf, int bufLen)
 {
   LM_TMP(("NFY: Reading from endpoint of subscription '%s'", niP->subscriptionId));
 
@@ -179,6 +135,12 @@ void responseTreat(OrionldNotificationInfo* niP, char* buf, int bufLen)
 // -----------------------------------------------------------------------------
 //
 // orionldNotify -
+//
+// This function assumes that the vector orionldState.notificationInfo is
+// correctly filled in.
+//
+// orionldState.notificationInfo[x].attrsForNotification is a KjNode tree
+// with all attributes for the notification, and also, the entity ID.
 //
 void orionldNotify(void)
 {
@@ -223,8 +185,17 @@ void orionldNotify(void)
   // };
   //
   int           contentLength;
-  struct iovec  ioVec[6]      = { { requestHeader, 0 }, { contentLenHeader, 0 }, { contentTypeHeaderJson, 32 }, { userAgentHeader, 23 }, { payload, 0 } };
-  int           ioVecLen      = 5;
+  struct iovec  ioVec[6]        = { { requestHeader, 0 }, { contentLenHeader, 0 }, { contentTypeHeaderJson, 32 }, { userAgentHeader, 23 }, { payload, 0 } };
+  int           ioVecLen        = 5;
+  int           now             = time(NULL);
+  char          nowString[64];
+  char*         detail;
+
+  if (numberToDate(now, nowString, sizeof(nowString), &detail) == false)
+  {
+    LM_E(("Internal Error (converting timestamp to DateTime string: %s)", detail));
+    snprintf(nowString, sizeof(nowString), "1970-01-01T00:00:00Z");
+  }
 
   LM_TMP(("NFY: Sending %d notifications", orionldState.notificationRecords));
 
@@ -236,26 +207,22 @@ void orionldNotify(void)
     char*                     rest;
     KjNode*                   notificationTree;
     char                      notificationId[64];
-    char                      nowString[64];
-    int                       now = time(NULL);
-    char*                     detail;
-
-    if (numberToDate(now, nowString, sizeof(nowString), &detail) == false)
-    {
-      LM_E(("Internal Error (converting timestamp to DateTime string: %s)", detail));
-      continue;
-    }
 
     notificationTree = kjObject(orionldState.kjsonP, NULL);
 
     strncpy(notificationId, "urn:ngsi-ld:Notification:", sizeof(notificationId));
     uuidGenerate(&notificationId[25]);
 
-    ipPort(niP->reference, &ip, &port, &rest);
+    ipPortAndRest(niP->reference, &ip, &port, &rest);
     snprintf(requestHeader, sizeof(requestHeader), "POST %s HTTP/1.1\r\n", rest);
 
     if (niP->mimeType == JSONLD)
     {
+      //
+      // For better tput, I could maintain not one ioVec but TWO.
+      // One for "application/json" and another one for "application/ld+json"
+      //
+
       //
       // Overwrite contentTypeHeaderJson in ioVec[2]
       //
@@ -336,7 +303,7 @@ void orionldNotify(void)
     //
     // Data ready to send
     //
-    niP->fd = connectToServer(ip, port);
+    niP->fd = orionldServerConnect(ip, port);
 
     if (niP->fd == -1)
     {
@@ -405,8 +372,9 @@ void orionldNotify(void)
     //
     // Timeout after 10 seconds
     //
-    int now = time(NULL);
-    if (now > startTime + 10)
+    // FIXME: calling time() might be avoided by inspecting 'tv'
+    //
+    if (time(NULL) > startTime + 10)
       break;
   }
 
