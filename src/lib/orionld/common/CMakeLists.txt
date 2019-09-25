@@ -41,6 +41,7 @@ SET (SOURCES
     qParse.cpp
     qTreePresent.cpp
     qTreeToBsonObj.cpp
+    uuidGenerate.cpp
     # qTreeToBson.cpp
 )
 

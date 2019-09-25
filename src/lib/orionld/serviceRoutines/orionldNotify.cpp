@@ -22,16 +22,157 @@
 *
 * Author: Ken Zangelin
 */
+#include <string.h>                                              // strlen
+#include <sys/uio.h>                                             // writev
+#include <sys/types.h>                                           // types
+#include <sys/socket.h>                                          // socket
+#include <netinet/in.h>                                          // sockaddr_in
+#include <netdb.h>                                               // struct hostent
+#include <sys/select.h>                                          // select
+
 extern "C"
 {
 #include "kjson/kjRender.h"                                      // kjRender
+#include "kjson/kjBuilder.h"                                     // kjObject, kjArray, kjString, kjChildAdd, ...
+#include "kalloc/kaAlloc.h"                                      // kaAlloc
 }
 
 #include "logMsg/logMsg.h"
 #include "logMsg/traceLevels.h"
 
 #include "orionld/common/orionldState.h"                         // orionldState
+#include "orionld/common/numberToDate.h"                         // numberToDate
+#include "orionld/common/uuidGenerate.h"                         // uuidGenerate
+#include "orionld/context/orionldCoreContext.h"                  // ORIONLD_CORE_CONTEXT_URL
 #include "orionld/serviceRoutines/orionldNotify.h"               // Own interface
+
+
+
+// -----------------------------------------------------------------------------
+//
+// ipPort -
+//
+static void ipPort(char* ipport, char** ipP, unsigned short* portP, char** restP)
+{
+  char*            colon;
+  char*            ip;
+  unsigned short   portNo  = 80;  // What should be the default port?
+  char*            rest;
+
+  LM_TMP(("NFY: ipport == '%s'", ipport));
+  //
+  // Starts with http:// ...
+  //
+  ip = strchr(ipport, '/');
+  ip += 2;
+  rest = ip;
+  LM_TMP(("NFY: Host: %s", ip));
+
+  colon = strchr(ip, ':');
+  if (colon != NULL)
+  {
+    *colon = 0;
+    portNo = atoi(&colon[1]);
+    rest = &colon[1];
+  }
+
+  LM_TMP(("NFY: Host: %s", ip));
+  LM_TMP(("NFY: Port: %d", portNo));
+  LM_TMP(("NFY: Rest: %s (not ready)", rest));
+
+  *ipP   = ip;
+  *portP = portNo;
+
+  rest = strchr(rest, '/');
+  *restP = rest;
+  LM_TMP(("NFY: Rest: %s (ready)", rest));
+}
+
+
+
+// -----------------------------------------------------------------------------
+//
+// connectToServer -
+//
+static int connectToServer(char* ip, unsigned short portNo)
+{
+  //
+  // Connecting
+  //
+  int                 fd;
+  struct hostent*     heP;
+  struct sockaddr_in  server;
+
+  heP = gethostbyname(ip);
+  if (heP == NULL)
+  {
+    LM_E(("unable to find host '%s'", ip));
+    return -1;
+  }
+
+  fd = socket(AF_INET, SOCK_STREAM, 0);
+  if (fd == -1)
+  {
+    LM_E(("Can't even create a socket: %s", strerror(errno)));
+    return -1;
+  }
+
+  server.sin_family = AF_INET;
+  server.sin_port   = htons(portNo);
+  server.sin_addr   = *((struct in_addr*) heP->h_addr);
+  bzero(&server.sin_zero, 8);
+
+  if (connect(fd, (struct sockaddr*) &server, sizeof(struct sockaddr)) == -1)
+  {
+    close(fd);
+    LM_E(("Unable to connect to host/port: %s:%d", ip, portNo));
+  }
+
+  LM_TMP(("NFY: Connected to server %s:%d", ip, portNo));
+
+  return fd;
+}
+
+
+
+// -----------------------------------------------------------------------------
+//
+// responseTreat -
+//
+void responseTreat(OrionldNotificationInfo* niP, char* buf, int bufLen)
+{
+  LM_TMP(("NFY: Reading from endpoint of subscription '%s'", niP->subscriptionId));
+
+  int    nb             = read(niP->fd, buf, bufLen);
+  char*  firstLine      = NULL;
+  char*  endOfFirstLine = NULL;
+
+  if (nb == -1)
+  {
+    LM_E(("Internal Error (error reading from notification endpoint: %s)", strerror(errno)));
+    return;
+  }
+
+  //
+  //
+  //
+  firstLine      = buf;
+  endOfFirstLine = strchr(firstLine, '\n');
+
+  if (endOfFirstLine == NULL)
+  {
+    LM_E(("Internal Error (unable to find end of first line from notification endpoint: %s)", strerror(errno)));
+    return;
+  }
+
+  *endOfFirstLine = 0;
+
+  //
+  // FIXME: Read the rest of the message, using select
+  //
+  LM_TMP(("NFY: First line of notification response: %s", firstLine));
+  niP->allOK = true;
+}
 
 
 
@@ -49,10 +190,243 @@ void orionldNotify(void)
   for (int ix = 0; ix < orionldState.notificationRecords; ix++)
   {
     OrionldNotificationInfo*  niP = &orionldState.notificationInfo[ix];
-    
+
     kjRender(orionldState.kjsonP, niP->attrsForNotification, buffer, 1024);
     LM_TMP(("NFY: Sending notification for subscription '%s', to '%s' based on '%s'", niP->subscriptionId, niP->reference, buffer));
   }
   // </DEBUG>
   // -----------------------------------------------------------------------------
+
+  //
+  // Preparing the HTTP headers which will be pretty much the same for all notifications
+  // What differs is Content-Length and perhaps Content-Type.
+  //
+  char  requestHeader[128];
+  char  contentLenHeader[32];
+  char* lenP                    = &contentLenHeader[16];
+  char* contentTypeHeaderJson   = (char*) "Content-Type: application/json\r\n";
+  char* contentTypeHeaderJsonLd = (char*) "Content-Type: application/ld+json\r\n";
+  char* userAgentHeader         = (char*) "User-Agent: orionld\r\n\r\n";  // Double newline - must be the last HTTP header
+  int   payloadLen              = 10000;
+  char* payload                 = (char*) malloc(payloadLen + 1);
+
+  if (payload == NULL)
+    LM_X(1, ("Unable to allocate room for notification!"));
+
+  strcpy(contentLenHeader, "Content-Length: 0");  // Can't modify inside static strings, so need a char-vec on the stack for contentLenHeader
+
+  //
+  // struct iovec
+  // {
+  //   void  *iov_base;    /* Starting address */
+  //   size_t iov_len;     /* Number of bytes to transfer */
+  // };
+  //
+  int           contentLength;
+  struct iovec  ioVec[6]      = { { requestHeader, 0 }, { contentLenHeader, 0 }, { contentTypeHeaderJson, 32 }, { userAgentHeader, 23 }, { payload, 0 } };
+  int           ioVecLen      = 5;
+
+  LM_TMP(("NFY: Sending %d notifications", orionldState.notificationRecords));
+
+  for (int ix = 0; ix < orionldState.notificationRecords; ix++)
+  {
+    OrionldNotificationInfo*  niP = &orionldState.notificationInfo[ix];
+    char*                     ip;
+    unsigned short            port;
+    char*                     rest;
+    KjNode*                   notificationTree;
+    char                      notificationId[64];
+    char                      nowString[64];
+    int                       now = time(NULL);
+    char*                     detail;
+
+    if (numberToDate(now, nowString, sizeof(nowString), &detail) == false)
+    {
+      LM_E(("Internal Error (converting timestamp to DateTime string: %s)", detail));
+      continue;
+    }
+
+    notificationTree = kjObject(orionldState.kjsonP, NULL);
+
+    strncpy(notificationId, "urn:ngsi-ld:Notification:", sizeof(notificationId));
+    uuidGenerate(&notificationId[25]);
+
+    ipPort(niP->reference, &ip, &port, &rest);
+    snprintf(requestHeader, sizeof(requestHeader), "POST %s HTTP/1.1\r\n", rest);
+
+    if (niP->mimeType == JSONLD)
+    {
+      //
+      // Overwrite contentTypeHeaderJson in ioVec[2]
+      //
+      ioVec[2].iov_base = contentTypeHeaderJsonLd;
+      ioVec[2].iov_len  = 35;
+
+      // Add @context to payload
+      if (orionldState.contextP == NULL)
+      {
+        // Core Context
+        KjNode* contextNodeP = kjString(orionldState.kjsonP, "@context", ORIONLD_CORE_CONTEXT_URL);
+        kjChildAdd(notificationTree, contextNodeP);
+      }
+      else
+        kjChildAdd(notificationTree, orionldState.contextP->tree);
+    }
+    else
+    {
+      //
+      // Add Link HTTP header
+      //
+      ioVecLen = 6;
+
+      // Move down PAYLOAD
+      ioVec[5].iov_base = ioVec[4].iov_base;
+      ioVec[5].iov_len  = ioVec[4].iov_len;
+
+      // Move down userAgentHeader - must be the last as it contains the double \r\n
+      ioVec[4].iov_base = ioVec[3].iov_base;
+      ioVec[4].iov_len  = ioVec[3].iov_len;
+
+      // Now ioVec[3] is free for the Link header
+      ioVec[3].iov_base = orionldState.contextP->url;
+      ioVec[3].iov_len  = strlen(orionldState.contextP->url);
+    }
+
+    //
+    // Fix payload
+    //
+    // The entity id/type + attribute list go into an object inside a vector called data.
+    // In the case of POST /entities/*/attrs, as there is only ONE entity, there will be only ONE item in the data vector
+    //
+    // Apart from that we have the following fields:
+    // * @context         (if JSONLD - already added)
+    // * id               (of the Notification)
+    // * type             (== "Notification")
+    // * subscriptionId   (id of the subscription that provoked the Notification)
+    // * notifiedAt       (DateTime of RIGHT NOW)
+    //
+    KjNode* idNodeP              = kjString(orionldState.kjsonP, "id", notificationId);
+    KjNode* typeNodeP            = kjString(orionldState.kjsonP, "type", "Notification");
+    KjNode* subscriptionIdNodeP  = kjString(orionldState.kjsonP, "subscriptionId", niP->subscriptionId);
+    KjNode* notifiedAtNodeP      = kjString(orionldState.kjsonP, "notifiedAt", nowString);
+    KjNode* dataNodeP            = kjArray(orionldState.kjsonP,  "data");
+
+    kjChildAdd(notificationTree, idNodeP);
+    kjChildAdd(notificationTree, typeNodeP);
+    kjChildAdd(notificationTree, subscriptionIdNodeP);
+    kjChildAdd(notificationTree, notifiedAtNodeP);
+    kjChildAdd(notificationTree, dataNodeP);
+
+    kjChildAdd(dataNodeP, niP->attrsForNotification);
+
+    // LM_TMP(("NFY: Notification %d - calling kjRender to render payload body", ix));
+    kjRender(orionldState.kjsonP, notificationTree, payload, payloadLen);
+    // payload = (char*) "No Payload!";
+    // LM_TMP(("NFY: Notification %d - after rendering payload body", ix));
+    // LM_TMP(("NFY: payload: %s", payload));
+
+    int sizeLeftForLen = 16;  // sizeof(contentLenHeader) - 16
+    contentLength = strlen(payload);
+    snprintf(lenP, sizeLeftForLen, "%d\r\n", contentLength);  // Writing Content-Length inside contentLenHeader
+
+    ioVec[0].iov_len = strlen(requestHeader);
+    ioVec[1].iov_len = strlen(contentLenHeader);
+    ioVec[4].iov_len = contentLength;
+
+    //
+    // Data ready to send
+    //
+    niP->fd = connectToServer(ip, port);
+
+    if (niP->fd == -1)
+    {
+      niP->connected = false;
+      LM_E(("Internal Error (unable to connent to server for notification for subscription '%s': %s)", niP->subscriptionId, strerror(errno)));
+      continue;
+    }
+
+    niP->connected = true;
+
+    LM_TMP(("NFY: Sending notification for subscription '%s'", niP->subscriptionId));
+    if (writev(niP->fd, ioVec, ioVecLen) == -1)
+    {
+      close(niP->fd);
+
+      niP->fd        = -1;
+      niP->connected = false;
+
+      LM_E(("Internal Error (unable to send to server for notification for subscription '%s'): %s", niP->subscriptionId, strerror(errno)));
+      continue;
+    }
+  }
+
+  //
+  // Receive responses
+  //
+  int             fds;
+  fd_set          rFds;
+  int             fdMax      = 0;
+  int             startTime  = time(NULL);
+  struct timeval  tv         = { 1, 0 };
+
+  while (1)
+  {
+    //
+    // Set File Descriptors for the select
+    //
+    FD_ZERO(&rFds);
+    for (int ix = 0; ix < orionldState.notificationRecords; ix++)
+    {
+      OrionldNotificationInfo*  niP = &orionldState.notificationInfo[ix];
+
+      if ((niP->fd != -1) && (niP->connected == true))
+      {
+        FD_SET(niP->fd, &rFds);
+        fdMax = MAX(fdMax, niP->fd);
+      }
+
+      niP->allOK = false;  // Set to 'true' once the response of the notification is received
+    }
+
+    fds = select(1, &rFds, NULL, NULL, &tv);
+    if ((fds == -1) && (errno != EINTR))
+      LM_X(1, ("select error: %s\n", strerror(errno)));
+    else if (fds > 0)
+    {
+      for (int ix = 0; ix < orionldState.notificationRecords; ix++)
+      {
+        OrionldNotificationInfo*  niP = &orionldState.notificationInfo[ix];
+
+        if (FD_ISSET(niP->fd, &rFds))
+          responseTreat(niP, payload, payloadLen);  // We reuse the allocated buffer 'payload'
+      }
+    }
+
+    //
+    // Timeout after 10 seconds
+    //
+    int now = time(NULL);
+    if (now > startTime + 10)
+      break;
+  }
+
+  free(payload);
+
+  //
+  // Close file descriptors and set lastFailure/lastSuccess
+  //
+  for (int ix = 0; ix < orionldState.notificationRecords; ix++)
+  {
+    OrionldNotificationInfo*  niP = &orionldState.notificationInfo[ix];
+
+    if (niP->fd != -1)
+      close(niP->fd);
+
+#if 0
+    if (niP->allOK == true)
+      dbSubscriptionLastSuccessSet(niP->subscriptionId);
+    else
+      dbSubscriptionLastFailureSet(niP->subscriptionId);
+#endif
+  }
 }

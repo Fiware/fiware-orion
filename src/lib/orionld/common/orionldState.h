@@ -25,18 +25,19 @@
 *
 * Author: Ken Zangelin
 */
-#include "orionld/db/dbDriver.h"                               // database driver header
-#include "orionld/db/dbConfiguration.h"                        // DB_DRIVER_MONGOC
+#include "orionld/db/dbDriver.h"                                 // database driver header
+#include "orionld/db/dbConfiguration.h"                          // DB_DRIVER_MONGOC
 
 extern "C"
 {
-#include "kjson/kjson.h"                                       // Kjson
-#include "kjson/KjNode.h"                                      // KjNode
+#include "kjson/kjson.h"                                         // Kjson
+#include "kjson/KjNode.h"                                        // KjNode
 }
-#include "common/globals.h"                                    // ApiVersion
-#include "orionld/common/QNode.h"                              // QNode
-#include "orionld/types/OrionldGeoJsonType.h"                  // OrionldGeoJsonType
-#include "orionld/context/OrionldContext.h"                    // OrionldContext
+#include "common/globals.h"                                      // ApiVersion
+#include "common/MimeType.h"                                     // MimeType
+#include "orionld/common/QNode.h"                                // QNode
+#include "orionld/types/OrionldGeoJsonType.h"                    // OrionldGeoJsonType
+#include "orionld/context/OrionldContext.h"                      // OrionldContext
 
 
 
@@ -92,9 +93,13 @@ typedef struct OrionldUriParams
 //
 typedef struct OrionldNotificationInfo
 {
-  char*    subscriptionId;
-  KjNode*  attrsForNotification;
-  char*    reference;
+  char*     subscriptionId;
+  MimeType  mimeType;
+  KjNode*   attrsForNotification;
+  char*     reference;
+  int       fd;
+  bool      connected;
+  bool      allOK;
 } OrionldNotificationInfo;
 
 
