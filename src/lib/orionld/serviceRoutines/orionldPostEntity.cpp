@@ -48,43 +48,13 @@ extern "C"
 #include "orionld/common/orionldErrorResponse.h"                 // orionldErrorResponseCreate
 #include "orionld/common/orionldState.h"                         // orionldState
 #include "orionld/common/orionldAttributeTreat.h"                // orionldAttributeTreat
+#include "orionld/common/dotForEq.h"                             // dotForEq
+#include "orionld/common/eqForDot.h"                             // eqForDot
 #include "orionld/db/dbEntityLookup.h"                           // dbEntityLookup
 #include "orionld/db/dbEntityUpdate.h"                           // dbEntityUpdate
 #include "orionld/context/orionldUriExpand.h"                    // orionldUriExpand
 #include "orionld/context/orionldAliasLookup.h"                  // orionldAliasLookup
 #include "orionld/serviceRoutines/orionldPostEntity.h"           // Own Interface
-
-
-
-// ----------------------------------------------------------------------------
-//
-// dotForEq -
-//
-static void dotForEq(char* nameP)
-{
-  while (*nameP != 0)
-  {
-    if (*nameP == '.')
-      *nameP = '=';
-    ++nameP;
-  }
-}
-
-
-
-// ----------------------------------------------------------------------------
-//
-// eqForDot -
-//
-static void eqForDot(char* nameP)
-{
-  while (*nameP != 0)
-  {
-    if (*nameP == '=')
-      *nameP = '.';
-    ++nameP;
-  }
-}
 
 
 
@@ -695,329 +665,237 @@ static bool expandAttrNames(KjNode* treeP, char** detailsP)
 
 // -----------------------------------------------------------------------------
 //
-// orionldNotifyForAttrList - fill 'orionldState.notificationInfo' with attributes to be used in notifications
+// subscriptionMatchCallback -
 //
-// NOTE
-//   The mongo cpp legacy part of this function must be moved.
-//   The inclusion of mongo stuff also.
-//
-#include "mongo/client/dbclient.h"                                   // MongoDB C++ Client Legacy Driver
-
-#include "mongoBackend/MongoGlobal.h"                                // getMongoConnection, releaseMongoConnection, ...
-#include "orionld/mongoCppLegacy/mongoCppLegacyKjTreeFromBsonObj.h"  // mongoCppLegacyKjTreeFromBsonObj
-#include "orionld/db/dbCollectionPathGet.h"                          // dbCollectionPathGet
-#include "orionld/db/dbConfiguration.h"                              // dbDataToKjTree
-
-
-bool orionldNotifyForAttrList(const char* entityId, KjNode* currentEntityTreeP, KjNode* requestTree)
+static bool subscriptionMatchCallback
+(
+  const char*  entityId,
+  KjNode*      subscriptionTree,
+  KjNode*      currentEntityTree,
+  KjNode*      incomingRequestTree
+)
 {
-  //
-  // To begin with, I will implement the mongo C++ legacy driver right here.
-  // Once working, all mongo code needs to be moved to orionld/mongoCppLegacy/mongoCppLegacyNotifyForAttrList.cpp
-  //
+  KjNode*  idP               = NULL;
+  KjNode*  referenceP        = NULL;
+  KjNode*  mimeTypeP         = NULL;
+  KjNode*  attrsP            = NULL;
+  KjNode*  expirationP       = NULL;
+  KjNode*  throttlingP       = NULL;
+  int      now               = 0;
 
-  char    collectionPath[256];
-
-  dbCollectionPathGet(collectionPath, sizeof(collectionPath), "csubs");
-  LM_TMP(("NFY: Subscription Collection Path: %s", collectionPath));
-
-  //
-  // 1. Entity ID, which is this case is FIXED
-  //
-  mongo::BSONObjBuilder  filter;
-
-  filter.append("entities.id", entityId);
-  LM_TMP(("NFY: Adding entity ID '%s' to the query filter", entityId));
-
-
-  //
-  // 2. Attributes
-  //
-  mongo::BSONArrayBuilder  attrArray;
-  mongo::BSONObjBuilder    inForAttrNames;
-
-  for (KjNode* attrNodeP = requestTree->value.firstChildP; attrNodeP != NULL; attrNodeP = attrNodeP->next)
+  for (KjNode* nodeP = subscriptionTree->value.firstChildP; nodeP != NULL; nodeP = nodeP->next)
   {
-    char* attrNameWithDots = kaStrdup(&orionldState.kalloc, attrNodeP->name);
-
-    attrArray.append(attrNameWithDots);
-
-    //
-    // Now that the attribute name has been used in "attrNames", we can safely change the dots for EQ-signs
-    //
-    dotForEq(attrNodeP->name);
+    if ((idP == NULL) && (strcmp(nodeP->name, "_id") == 0))
+      idP = nodeP;
+    else if ((referenceP == NULL) && (strcmp(nodeP->name, "reference") == 0))
+      referenceP = nodeP;
+    else if ((mimeTypeP == NULL) && (strcmp(nodeP->name, "mimeType") == 0))
+      mimeTypeP = nodeP;
+    else if ((attrsP == NULL) && (strcmp(nodeP->name, "attrs") == 0))
+      attrsP = nodeP;
+    else if ((expirationP == NULL) && (strcmp(nodeP->name, "expiration") == 0))
+      expirationP = nodeP;
+    else if ((throttlingP == NULL) && (strcmp(nodeP->name, "throttling") == 0))
+      throttlingP = nodeP;
   }
-  inForAttrNames.append("$in", attrArray.arr());
 
-  filter.append("conditions", inForAttrNames.obj());
-
-
-  //
-  // status - must be "active"
-  //
-  filter.append("status", "active");
-
-  // "expiration" - later
-  // "q" - later
-  // "geometry" - later
-
-
-  //
-  // Perform query
-  //
-  mongo::DBClientBase*                  connectionP = getMongoConnection();
-  std::auto_ptr<mongo::DBClientCursor>  cursorP;
-  mongo::Query                          query(filter.obj());
-
-  // Debugging - see the query
-  LM_TMP(("NFY: filter: %s", query.toString().c_str()));
-
-  cursorP = connectionP->query(collectionPath, query);
-
-  int matches = 0;
-  int niIx    = 0;
-  while (cursorP->more())
+  if (idP == NULL)
   {
-    mongo::BSONObj            bsonObj;
-    KjNode*                   kTreeP;
-    char*                     title;
-    char*                     detail;
+    LM_E(("Unable to find '_id' member of the Subscription"));
+    return false;
+  }
 
-    ++matches;
-    bsonObj = cursorP->nextSafe();
-
-    // LM_TMP(("NFY: query result: '%s'", bsonObj.toString().c_str()));
-
-    kTreeP = mongoCppLegacyKjTreeFromBsonObj(&bsonObj, &title, &detail);
-    if (kTreeP == NULL)
-    {
-      LM_E(("Unable to create KjNode tree from mongo::BSONObj '%s'", bsonObj.toString().c_str()));
-      continue;
-    }
-
-    //
-    // Lookup 'reference' in toplevel, and more fields
-    //
-    KjNode*  idP               = NULL;
-    KjNode*  referenceP        = NULL;
-    KjNode*  mimeTypeP         = NULL;
-    KjNode*  attrsP            = NULL;
-    KjNode*  expirationP       = NULL;
-    KjNode*  throttlingP       = NULL;
-    int      now               = 0;
-
-    for (KjNode* nodeP = kTreeP->value.firstChildP; nodeP != NULL; nodeP = nodeP->next)
-    {
-      if ((idP == NULL) && (strcmp(nodeP->name, "_id") == 0))
-        idP = nodeP;
-      else if ((referenceP == NULL) && (strcmp(nodeP->name, "reference") == 0))
-        referenceP = nodeP;
-      else if ((mimeTypeP == NULL) && (strcmp(nodeP->name, "mimeType") == 0))
-        mimeTypeP = nodeP;
-      else if ((attrsP == NULL) && (strcmp(nodeP->name, "attrs") == 0))
-        attrsP = nodeP;
-      else if ((expirationP == NULL) && (strcmp(nodeP->name, "expiration") == 0))
-        expirationP = nodeP;
-      else if ((throttlingP == NULL) && (strcmp(nodeP->name, "throttling") == 0))
-        throttlingP = nodeP;
-    }
-
-    if (idP == NULL)
-    {
-      LM_E(("Unable to find '_id' member of the Subscription"));
-      continue;
-    }
-
-    if (referenceP == NULL)
-    {
-      LM_E(("Unable to find 'reference' member of the Subscription '%s'", idP->value.s));
-      continue;
-    }
+  if (referenceP == NULL)
+  {
+    LM_E(("Unable to find 'reference' member of the Subscription '%s'", idP->value.s));
+    return false;
+  }
 
 #if 0
-    if (throttlingP != NULL)
+  if (throttlingP != NULL)
+  {
+    int      lastNotification  = 0;
+    KjNode*  lastFailureP      = kjLookup(subscriptionTree, "lastFailure");
+    KjNode*  lastSuccessP      = kjLookup(subscriptionTree, "lastSuccess");
+
+    LM_TMP(("NFY: Throttling: %llu", throttlingP->value.i));
+
+    if (lastFailureP != NULL)
+      lastNotification = lastFailureP->value.i;
+    if (lastSuccessP != NULL)
     {
-      int      lastNotification  = 0;
-      KjNode*  lastFailureP      = kjLookup(kTreeP, "lastFailure");
-      KjNode*  lastSuccessP      = kjLookup(kTreeP, "lastSuccess");
-
-      LM_TMP(("NFY: Throttling: %llu", throttlingP->value.i));
-
-      if (lastFailureP != NULL)
-        lastNotification = lastFailureP->value.i;
-      if (lastSuccessP != NULL)
-      {
-        if (lastSuccessP->value.i > lastNotification)
-          lastNotification = lastSuccessP->value.i;
-      }
-
-      now = time(NULL);
-      if (now < lastNotification + throttlingP->value.i)
-      {
-        LM_TMP(("NFY: No notification to be sent due to throttling (%d). Now: %d, lastNotification: %d", throttlingP->value.i, now, lastNotification));
-        continue;
-      }
+      if (lastSuccessP->value.i > lastNotification)
+        lastNotification = lastSuccessP->value.i;
     }
+
+    now = time(NULL);
+    if (now < lastNotification + throttlingP->value.i)
+    {
+      LM_TMP(("NFY: No notification to be sent due to throttling (%d). Now: %d, lastNotification: %d", throttlingP->value.i, now, lastNotification));
+      return false;
+    }
+  }
 #endif
 
-    if (expirationP != NULL)
+  if (expirationP != NULL)
+  {
+    if (now == 0)
+      now = time(NULL);
+
+    LM_TMP(("NFY: Subscription expires at: %llu. Right now is: %d", expirationP->value.i, now));
+
+    if (now > expirationP->value.i)
     {
-      if (now == 0)
-        now = time(NULL);
-
-      LM_TMP(("NFY: Subscription expires at: %llu. Right now is: %d", expirationP->value.i, now));
-
-      if (now > expirationP->value.i)
-      {
-        LM_TMP(("NFY: No notification to be sent due to expired subscription (expires: %llu, now: %llu)", expirationP->value.i, now));
-        continue;
-      }
-    }
-
-    bool allAttributesInNotification = false;
-    if ((attrsP == NULL) || (attrsP->value.firstChildP == NULL))
-    {
-      allAttributesInNotification = true;
-      LM_TMP(("NFY: 'attrs' is not present or EMPTY - notification to be done with the entire UPDATE"));
-    }
-    else
-      LM_TMP(("NFY: 'attrs' is present - its value will decide what to include in the notification"));
-
-    //
-    // Creating the attribute list that the Notification will be based on
-    //
-    OrionldNotificationInfo*  niP = &orionldState.notificationInfo[niIx];
-
-    niP->subscriptionId       = idP->value.s;
-    niP->reference            = referenceP->value.s;
-    niP->attrsForNotification = NULL;  // The notification is based on this list of attributes
-
-    if ((mimeTypeP != NULL) && (strcmp(mimeTypeP->value.s, "application/ld+json") == 0))
-        niP->mimeType = JSONLD;
-    else
-      niP->mimeType = JSON;
-
-    if (allAttributesInNotification == true)
-    {
-      //
-      // ALL attributes ... simply clone the incoming request - LEAK
-      // FIXME: kjClone(&orionldState.kalloc, requestTree)
-      //
-      LM_TMP(("NFY2: ALL attributes - Cloning the entire incoming request for later notification (sub: %s)", niP->subscriptionId));
-      niP->attrsForNotification = kjClone(requestTree);
-    }
-    else
-    {
-      LM_TMP(("NFY2: Some attributes - picking attributes for later notification (sub: %s)", niP->subscriptionId));
-      niP->attrsForNotification = kjObject(orionldState.kjsonP, NULL);  // Invent other Kjson-pointer - this one dies when request ends
-
-      //
-      // Instead of looping over the modified attributes (requestTree) we loop over the attributes that the
-      // subscription wants to be included in the Notification.
-      //
-      // Those attributes that were not updated must be taken from the entity we have already looked up (currentEntityTreeP)
-      //
-      // [ What if some attributes don't exist in local but are registered? :-D :-D  INSANE !!! ]
-      //
-      for (KjNode* attrP = attrsP->value.firstChildP; attrP != NULL; attrP = attrP->next)
-      {
-        dotForEq(attrP->value.s);  // Must compare with '=' instead of '.' in attribute name
-
-        KjNode* reqAttrP        = kjLookup(requestTree, attrP->value.s);  // Look up the attribute in the incoming request, and ...
-        KjNode* currentAttrVecP = NULL;
-
-        //
-        // ... if the attribute is not found in the incoming request, then it may be found in the original entity
-        //
-        if (reqAttrP == NULL)
-        {
-          if (currentAttrVecP == NULL)
-          {
-            currentAttrVecP = kjLookup(currentEntityTreeP, "attrs");
-            if (currentAttrVecP == NULL)
-              LM_X(1, ("What? the entity '%s' has no attrs vector in mongo ...", entityId));
-          }
-
-          char* attrNameWithEq = kaStrdup(&orionldState.kalloc, attrP->value.s);
-
-          LM_TMP(("DOT: replacing dots for EQs in '%s'", attrNameWithEq));
-          dotForEq(attrNameWithEq);
-          LM_TMP(("DOT: replaced dots for EQs in '%s'", attrNameWithEq));
-          reqAttrP = kjLookup(currentAttrVecP, attrNameWithEq);
-
-          if (reqAttrP == NULL)
-          {
-            LM_W(("NFY: The attribute '%s' (%s) is nowhere to be found", attrNameWithEq, attrP->value.s));
-            //
-            // If also not found in the original entity, then it can't be included in the Notification
-            //
-            continue;
-          }
-          LM_TMP(("NFY: Found attribute '%s' in Original Entity", attrP->value.s));
-        }
-        else
-          LM_TMP(("NFY: Found attribute '%s' in Incoming Request", attrP->value.s));
-
-        KjNode* aP = kjClone(reqAttrP);
-
-        kjChildAdd(niP->attrsForNotification, aP);
-        LM_TMP(("NFY: Added the attribute '%s' to the attribute list on which the notification will be based", aP->name));
-      }
-    }
-
-    //
-    // Lookup aliases for the attributes
-    //
-    LM_TMP(("NFY2: Lookup aliases for the attributes of sub %s", niP->subscriptionId));
-    for (KjNode* aP = niP->attrsForNotification->value.firstChildP; aP != NULL; aP = aP->next)
-    {
-      //
-      // Put back '.' instead of '=' for the attribute name
-      //
-      LM_TMP(("NFY2: Putting back '.' instead of '=': %s", aP->name));
-      eqForDot(aP->name);
-      LM_TMP(("NFY2: Put back '.' instead of '=': %s", aP->name));
-
-      //
-      // Lookup alias for attribute name in the context
-      //
-      char* alias = orionldAliasLookup(orionldState.contextP, aP->name);
-
-      if (alias != NULL)
-      {
-        LM_TMP(("NFY2: Changing longname '%s' for shortname '%s'", aP->name, alias));
-        aP->name = alias;
-      }
-      else
-        LM_TMP(("NFY2: No alias found for longname'%s'", aP->name));
-    }
-
-    //
-    // Lastly, we must add Entity ID to the tree.
-    // This tree will end up being an item in the Notification::data array,
-    // which is done in orionldNotify()
-    //
-    KjNode* entityIdNodeP        = kjString(orionldState.kjsonP, "id",   entityId);
-
-    kjChildAdd(niP->attrsForNotification, entityIdNodeP);
-
-
-    //
-    // A maximum of 100 notifications has been agreed (by KZ in solitary :D)
-    //
-    ++niIx;
-    if (niIx >= 100)
-    {
-      LM_W(("Too many notifications - breaking loop at 100"));
-      break;
+      LM_TMP(("NFY: No notification to be sent due to expired subscription (expires: %llu, now: %llu)", expirationP->value.i, now));
+      return false;
     }
   }
 
-  orionldState.notificationRecords = niIx;
+  bool allAttributesInNotification = false;
+  if ((attrsP == NULL) || (attrsP->value.firstChildP == NULL))
+  {
+    allAttributesInNotification = true;
+    LM_TMP(("NFY: 'attrs' is not present or EMPTY - notification to be done with the entire UPDATE"));
+  }
+  else
+    LM_TMP(("NFY: 'attrs' is present - its value will decide what to include in the notification"));
 
-  LM_TMP(("NFY: %d matches, %d notification records created", matches, orionldState.notificationRecords));
+  //
+  // Creating the attribute list that the Notification will be based on
+  //
+  OrionldNotificationInfo*  niP = &orionldState.notificationInfo[orionldState.notificationRecords];
 
-  return false;
+  orionldState.notificationRecords += 1;  // For next callback
+
+  niP->subscriptionId       = idP->value.s;
+  niP->reference            = referenceP->value.s;
+  niP->attrsForNotification = NULL;  // The notification is based on this list of attributes
+
+  if ((mimeTypeP != NULL) && (strcmp(mimeTypeP->value.s, "application/ld+json") == 0))
+    niP->mimeType = JSONLD;
+  else
+    niP->mimeType = JSON;
+
+  if (allAttributesInNotification == true)
+  {
+    //
+    // ALL attributes ... simply clone the incoming request - LEAK
+    // FIXME: kjClone(&orionldState.kalloc, incomingRequestTree)
+    //
+    LM_TMP(("NFY2: ALL attributes - Cloning the entire incoming request for later notification (sub: %s)", niP->subscriptionId));
+    niP->attrsForNotification = kjClone(incomingRequestTree);
+  }
+  else
+  {
+    LM_TMP(("NFY2: Some attributes - picking attributes for later notification (sub: %s)", niP->subscriptionId));
+    niP->attrsForNotification = kjObject(orionldState.kjsonP, NULL);  // Invent other Kjson-pointer - this one dies when request ends
+
+    //
+    // Instead of looping over the modified attributes (incomingRequestTree) we loop over the attributes that the
+    // subscription wants to be included in the Notification.
+    //
+    // Those attributes that were not updated must be taken from the entity we have already looked up (currentEntityTree)
+    //
+    // [ What if some attributes don't exist in local but are registered? :-D :-D  INSANE !!! ]
+    //
+    for (KjNode* attrP = attrsP->value.firstChildP; attrP != NULL; attrP = attrP->next)
+    {
+      dotForEq(attrP->value.s);  // Must compare with '=' instead of '.' in attribute name
+
+      KjNode* reqAttrP        = kjLookup(incomingRequestTree, attrP->value.s);  // Look up the attribute in the incoming request, and ...
+      KjNode* currentAttrVecP = NULL;
+
+      //
+      // ... if the attribute is not found in the incoming request, then it may be found in the original entity
+      //
+      if (reqAttrP == NULL)
+      {
+        if (currentAttrVecP == NULL)
+        {
+          currentAttrVecP = kjLookup(currentEntityTree, "attrs");
+          if (currentAttrVecP == NULL)
+            LM_X(1, ("What? the entity '%s' has no attrs vector in DB ...", entityId));
+        }
+
+        char* attrNameWithEq = kaStrdup(&orionldState.kalloc, attrP->value.s);
+
+        LM_TMP(("DOT: replacing dots for EQs in '%s'", attrNameWithEq));
+        dotForEq(attrNameWithEq);
+        LM_TMP(("DOT: replaced dots for EQs in '%s'", attrNameWithEq));
+        reqAttrP = kjLookup(currentAttrVecP, attrNameWithEq);
+
+        if (reqAttrP == NULL)
+        {
+          LM_W(("NFY: The attribute '%s' (%s) is nowhere to be found", attrNameWithEq, attrP->value.s));
+
+          //
+          // If also not found in the original entity, then it can't be included in the Notification
+          //
+          return false;
+        }
+        LM_TMP(("NFY: Found attribute '%s' in Original Entity", attrP->value.s));
+      }
+      else
+        LM_TMP(("NFY: Found attribute '%s' in Incoming Request", attrP->value.s));
+
+      KjNode* aP = kjClone(reqAttrP);
+
+      kjChildAdd(niP->attrsForNotification, aP);
+      LM_TMP(("NFY: Added the attribute '%s' to the attribute list on which the notification will be based", aP->name));
+    }
+  }
+
+  //
+  // Lookup aliases for the attributes
+  //
+  LM_TMP(("NFY2: Lookup aliases for the attributes of sub %s", niP->subscriptionId));
+  for (KjNode* aP = niP->attrsForNotification->value.firstChildP; aP != NULL; aP = aP->next)
+  {
+    //
+    // Put back '.' instead of '=' for the attribute name
+    //
+    LM_TMP(("NFY2: Putting back '.' instead of '=': %s", aP->name));
+    eqForDot(aP->name);
+    LM_TMP(("NFY2: Put back '.' instead of '=': %s", aP->name));
+
+    //
+    // Lookup alias for attribute name in the context
+    //
+    char* alias = orionldAliasLookup(orionldState.contextP, aP->name);
+
+    if (alias != NULL)
+    {
+      LM_TMP(("NFY2: Changing longname '%s' for shortname '%s'", aP->name, alias));
+      aP->name = alias;
+    }
+    else
+      LM_TMP(("NFY2: No alias found for longname'%s'", aP->name));
+  }
+
+  //
+  // Lastly, we must add Entity ID to the tree.
+  // This tree will end up being an item in the Notification::data array,
+  // which is done in orionldNotify()
+  //
+  KjNode* entityIdNodeP = kjString(orionldState.kjsonP, "id",   entityId);
+
+  kjChildAdd(niP->attrsForNotification, entityIdNodeP);
+
+  LM_TMP(("NFY: %d notification records created", orionldState.notificationRecords));
+
+  return true;
+}
+
+
+
+// -----------------------------------------------------------------------------
+//
+// orionldNotifyForAttrList -
+//
+bool orionldNotifyForAttrList(const char* entityId, KjNode* currentEntityTree, KjNode* incomingRequestTree)
+{
+  dbSubscriptionMatchEntityIdAndAttributes(entityId, currentEntityTree, incomingRequestTree, subscriptionMatchCallback);
+  return true;
 }
 
 
@@ -1035,12 +913,12 @@ bool orionldPostEntityOverwrite(ConnectionInfo* ciP)
   //
   // 1. Get entity, as a KjNode tree
   // 2. For each attribute in orionldState.requestTree:
-  //    - If found in currentEntityTreeP, merge both
-  //    - If not found - add attribute from orionldState.requestTree to currentEntityTreeP (also add to "attrNames[]")
+  //    - If found in currentEntityTree, merge both
+  //    - If not found - add attribute from orionldState.requestTree to currentEntityTree (also add to "attrNames[]")
   // 3. Write to mongo
   //
   char*   entityId           = orionldState.wildcard[0];
-  KjNode* currentEntityTreeP = dbEntityLookup(entityId);
+  KjNode* currentEntityTree = dbEntityLookup(entityId);
   char*   title;
   char*   details;
 
@@ -1071,17 +949,17 @@ bool orionldPostEntityOverwrite(ConnectionInfo* ciP)
   //
 
   LM_TMP(("DOT: Calling orionldNotifyForAttrList where EQs are needed"));
-  orionldNotifyForAttrList(entityId, currentEntityTreeP, orionldState.requestTree);
+  orionldNotifyForAttrList(entityId, currentEntityTree, orionldState.requestTree);
 
-  if (currentEntityTreeP == NULL)
+  if (currentEntityTree == NULL)
   {
     ciP->httpStatusCode = SccNotFound;
     orionldErrorResponseCreate(OrionldBadRequestData, "Entity does not exist", orionldState.wildcard[0], OrionldDetailString);
     return false;
   }
 
-  // Merge orionldState.requestTree with currentEntityTreeP
-  if (kjTreeMergeAddNewAttrsOverwriteExisting(currentEntityTreeP, orionldState.requestTree, &title, &details) == false)
+  // Merge orionldState.requestTree with currentEntityTree
+  if (kjTreeMergeAddNewAttrsOverwriteExisting(currentEntityTree, orionldState.requestTree, &title, &details) == false)
   {
     ciP->httpStatusCode = SccReceiverInternalError;
     orionldErrorResponseCreate(OrionldInternalError, title, details, OrionldDetailString);
@@ -1092,10 +970,10 @@ bool orionldPostEntityOverwrite(ConnectionInfo* ciP)
   //
   // Set the modification date of the entity
   //
-  kjModDateSet(currentEntityTreeP);
+  kjModDateSet(currentEntityTree);
 
   // Write to database
-  dbEntityUpdate(entityId, currentEntityTreeP);
+  dbEntityUpdate(entityId, currentEntityTree);
 
   //
   // All OK - set HTTP STatus Code

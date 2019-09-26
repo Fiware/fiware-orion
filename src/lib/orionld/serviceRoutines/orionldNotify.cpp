@@ -142,26 +142,13 @@ static void responseTreat(OrionldNotificationInfo* niP, char* buf, int bufLen)
 // orionldState.notificationInfo[x].attrsForNotification is a KjNode tree
 // with all attributes for the notification, and also, the entity ID.
 //
+// All attribute names and the entity type are assumed to be already aliased according to the context
+//
 void orionldNotify(void)
 {
-  // -----------------------------------------------------------------------------
-  // <DEBUG>
-  char buffer[1024];
-
-  LM_TMP(("NFY: In orionldNotify"));
-  for (int ix = 0; ix < orionldState.notificationRecords; ix++)
-  {
-    OrionldNotificationInfo*  niP = &orionldState.notificationInfo[ix];
-
-    kjRender(orionldState.kjsonP, niP->attrsForNotification, buffer, 1024);
-    LM_TMP(("NFY: Sending notification for subscription '%s', to '%s' based on '%s'", niP->subscriptionId, niP->reference, buffer));
-  }
-  // </DEBUG>
-  // -----------------------------------------------------------------------------
-
   //
   // Preparing the HTTP headers which will be pretty much the same for all notifications
-  // What differs is Content-Length and perhaps Content-Type.
+  // What differs is Content-Length, Content-Type, and the Request header
   //
   char  requestHeader[128];
   char  contentLenHeader[32];
