@@ -273,7 +273,6 @@ bool orionldPostEntityOperationsUpsert(ConnectionInfo* ciP)
         LM_TMP(("Batch: got Entity::ID"));
         if (entityIdNodeP != NULL)
           entityErrorPush(&errorsArrayP, entityIdNodeP->value.s, "Entity ID must be a unique field");
-
         // Make sure Entity ID is a string and a valid URL
         entityIdNodeP = itemP;
         next = itemP->next;
