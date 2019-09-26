@@ -41,9 +41,6 @@
 //
 int orionldServerConnect(char* ip, unsigned short portNo)
 {
-  //
-  // Connecting
-  //
   int                 fd;
   struct hostent*     heP;
   struct sockaddr_in  server;

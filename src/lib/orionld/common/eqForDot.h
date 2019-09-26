@@ -3,7 +3,7 @@
 
 /*
 *
-* Copyright 2018 Telefonica Investigacion y Desarrollo, S.A.U
+* Copyright 2019 Telefonica Investigacion y Desarrollo, S.A.U
 *
 * This file is part of Orion Context Broker.
 *
