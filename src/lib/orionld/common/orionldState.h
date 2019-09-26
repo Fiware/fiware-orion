@@ -175,6 +175,7 @@ typedef struct OrionldConnectionState
   int                     delayedKjFreeVecSize;
   int                     notificationRecords;
   OrionldNotificationInfo notificationInfo[100];
+  bool                    notify;
 
 #ifdef DB_DRIVER_MONGOC
   //

@@ -658,6 +658,7 @@ static bool expandAttrNames(KjNode* treeP, char** detailsP)
     }
   }
 
+  orionldState.notify = true;
   return true;
 }
 
