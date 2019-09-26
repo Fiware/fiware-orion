@@ -40,6 +40,7 @@ brokerStart CB 212-249
 # 07. Attempt to upsert with an entity with 2 TYPE fields - see error
 # 08. Attempt to upsert with an entity with ID typed wrong - see error
 # 09. Attempt to upsert with an entity with TYPE typed wrong - see error
+# 10. Attempt to upsert with an empty array - see error
 #
 
 
@@ -233,11 +234,11 @@ payload='[
     }
   },
   {
-    "id": "urn:ngsi-ld:Vehicle:302",
-    "type": "Vehicle",
+    "id": "urn:ngsi-ld:Motocycle:402",
+    "type": "Motocycle",
     "brandName": {
       "type": "Property",
-      "value": "Mercedes"
+      "value": "Honda"
     }
   }
 ]'
@@ -268,11 +269,11 @@ payload='[
     }
   },
   {
-    "id": "urn:ngsi-ld:Vehicle:302",
-    "type": "Vehicle",
+    "id": "urn:ngsi-ld:Bicycle:502",
+    "type": "Bicycle",
     "brandName": {
       "type": "Property",
-      "value": "Mercedes"
+      "value": "Caloi"
     }
   }
 ]'
@@ -349,11 +350,18 @@ echo
 echo
 
 
+echo "10. Attempt to upsert with an empty array - see error"
+echo "====================================================="
+payload='[]'
+orionCurl --url /ngsi-ld/v1/entityOperations/upsert -X POST --payload "$payload" -H "Content-Type: application/ld+json"
+echo
+echo
+
 --REGEXPECT--
 01. Attempt to upsert with an entity having a ID that is not a string - see error
 =================================================================================
 HTTP/1.1 200 OK
-Content-Length: 120
+Content-Length: 125
 Content-Type: application/json
 Link: <https://uri.etsi.org/ngsi-ld/v1/ngsi-ld-core-context.jsonld>; rel="http://www.w3.org/ns/json-ld#context"; type="application/ld+json"
 Date: REGEX(.*)
@@ -361,8 +369,8 @@ Date: REGEX(.*)
 {
     "errors": [
         {
-            "id": "Invalid Entity-ID",
-            "reason": "Entity ID must be a JSON string"
+            "entityId": "Invalid Entity-ID",
+            "error": "Entity ID must be a JSON string"
         }
     ],
     "success": [
@@ -374,24 +382,6 @@ Date: REGEX(.*)
 02. Attempt to upsert with an entity without ID field - see error
 =================================================================
 HTTP/1.1 200 OK
-Content-Length: 68
-Content-Type: application/json
-Link: <https://uri.etsi.org/ngsi-ld/v1/ngsi-ld-core-context.jsonld>; rel="http://www.w3.org/ns/json-ld#context"; type="application/ld+json"
-Date: REGEX(.*)
-
-{
-    "errors": [
-        {
-            "id": "NO Entity-ID",
-            "reason": "Entity ID is mandatory"
-        }
-    ]
-}
-
-
-03. Attempt to upsert with an entity having a ID with URI invalid - see error
-=============================================================================
-HTTP/1.1 200 OK
 Content-Length: 73
 Content-Type: application/json
 Link: <https://uri.etsi.org/ngsi-ld/v1/ngsi-ld-core-context.jsonld>; rel="http://www.w3.org/ns/json-ld#context"; type="application/ld+json"
@@ -400,8 +390,26 @@ Date: REGEX(.*)
 {
     "errors": [
         {
-            "id": "ABC_123456",
-            "reason": "Entity ID must be a valid URI"
+            "entityId": "NO Entity-ID",
+            "error": "Entity ID is mandatory"
+        }
+    ]
+}
+
+
+03. Attempt to upsert with an entity having a ID with URI invalid - see error
+=============================================================================
+HTTP/1.1 200 OK
+Content-Length: 78
+Content-Type: application/json
+Link: <https://uri.etsi.org/ngsi-ld/v1/ngsi-ld-core-context.jsonld>; rel="http://www.w3.org/ns/json-ld#context"; type="application/ld+json"
+Date: REGEX(.*)
+
+{
+    "errors": [
+        {
+            "entityId": "ABC_123456",
+            "error": "Entity ID must be a valid URI"
         }
     ]
 }
@@ -410,7 +418,7 @@ Date: REGEX(.*)
 04. Attempt to upsert with an entity having a TYPE that is not a string - see error
 ===================================================================================
 HTTP/1.1 200 OK
-Content-Length: 128
+Content-Length: 133
 Content-Type: application/json
 Link: <https://uri.etsi.org/ngsi-ld/v1/ngsi-ld-core-context.jsonld>; rel="http://www.w3.org/ns/json-ld#context"; type="application/ld+json"
 Date: REGEX(.*)
@@ -418,8 +426,8 @@ Date: REGEX(.*)
 {
     "errors": [
         {
-            "id": "urn:ngsi-ld:Vehicle:302",
-            "reason": "Entity TYPE must be a JSON string"
+            "entityId": "urn:ngsi-ld:Vehicle:302",
+            "error": "Entity TYPE must be a JSON string"
         }
     ],
     "success": [
@@ -431,7 +439,7 @@ Date: REGEX(.*)
 05. Attempt to upsert with an entity without TYPE field - see error
 ===================================================================
 HTTP/1.1 200 OK
-Content-Length: 166
+Content-Length: 176
 Content-Type: application/json
 Link: <https://uri.etsi.org/ngsi-ld/v1/ngsi-ld-core-context.jsonld>; rel="http://www.w3.org/ns/json-ld#context"; type="application/ld+json"
 Date: REGEX(.*)
@@ -439,12 +447,12 @@ Date: REGEX(.*)
 {
     "errors": [
         {
-            "id": "urn:ngsi-ld:Vehicle:301",
-            "reason": "Entity TYPE missing - mandatory"
+            "entityId": "urn:ngsi-ld:Vehicle:301",
+            "error": "Entity TYPE missing - mandatory"
         },
         {
-            "id": "urn:ngsi-ld:Vehicle:302",
-            "reason": "Entity TYPE must be a JSON string"
+            "entityId": "urn:ngsi-ld:Vehicle:302",
+            "error": "Entity TYPE must be a JSON string"
         }
     ]
 }
@@ -453,7 +461,7 @@ Date: REGEX(.*)
 06. Attempt to upsert with an entity with 2 ID fields - see error
 =================================================================
 HTTP/1.1 200 OK
-Content-Length: 84
+Content-Length: 134
 Content-Type: application/json
 Link: <https://uri.etsi.org/ngsi-ld/v1/ngsi-ld-core-context.jsonld>; rel="http://www.w3.org/ns/json-ld#context"; type="application/ld+json"
 Date: REGEX(.*)
@@ -461,9 +469,12 @@ Date: REGEX(.*)
 {
     "errors": [
         {
-            "id": "2 Entity-ID Fields",
-            "reason": "Entity ID must be a unique field"
+            "entityId": "urn:ngsi-ld:Vehicle:301",
+            "error": "Entity ID must be a unique field"
         }
+    ],
+    "success": [
+        "urn:ngsi-ld:Motocycle:402"
     ]
 }
 
@@ -471,7 +482,7 @@ Date: REGEX(.*)
 07. Attempt to upsert with an entity with 2 TYPE fields - see error
 ===================================================================
 HTTP/1.1 200 OK
-Content-Length: 88
+Content-Length: 134
 Content-Type: application/json
 Link: <https://uri.etsi.org/ngsi-ld/v1/ngsi-ld-core-context.jsonld>; rel="http://www.w3.org/ns/json-ld#context"; type="application/ld+json"
 Date: REGEX(.*)
@@ -479,9 +490,12 @@ Date: REGEX(.*)
 {
     "errors": [
         {
-            "id": "2 Entity TYPE Fields",
-            "reason": "Entity TYPE must be a unique field"
+            "entityId": "urn:ngsi-ld:Vehicle:301",
+            "error": "Entity TYPE must be a unique field"
         }
+    ],
+    "success": [
+        "urn:ngsi-ld:Bicycle:502"
     ]
 }
 
@@ -489,7 +503,7 @@ Date: REGEX(.*)
 08. Attempt to upsert with an entity with ID typed wrong - see error
 ====================================================================
 HTTP/1.1 200 OK
-Content-Length: 68
+Content-Length: 73
 Content-Type: application/json
 Link: <https://uri.etsi.org/ngsi-ld/v1/ngsi-ld-core-context.jsonld>; rel="http://www.w3.org/ns/json-ld#context"; type="application/ld+json"
 Date: REGEX(.*)
@@ -497,8 +511,8 @@ Date: REGEX(.*)
 {
     "errors": [
         {
-            "id": "NO Entity-ID",
-            "reason": "Entity ID is mandatory"
+            "entityId": "NO Entity-ID",
+            "error": "Entity ID is mandatory"
         }
     ]
 }
@@ -507,7 +521,7 @@ Date: REGEX(.*)
 09. Attempt to upsert with an entity with TYPE typed wrong - see error
 ======================================================================
 HTTP/1.1 200 OK
-Content-Length: 88
+Content-Length: 93
 Content-Type: application/json
 Link: <https://uri.etsi.org/ngsi-ld/v1/ngsi-ld-core-context.jsonld>; rel="http://www.w3.org/ns/json-ld#context"; type="application/ld+json"
 Date: REGEX(.*)
@@ -515,10 +529,24 @@ Date: REGEX(.*)
 {
     "errors": [
         {
-            "id": "urn:ngsi-ld:Vehicle:301",
-            "reason": "Entity TYPE missing - mandatory"
+            "entityId": "urn:ngsi-ld:Vehicle:301",
+            "error": "Entity TYPE missing - mandatory"
         }
     ]
+}
+
+
+10. Attempt to upsert with an empty array - see error
+=====================================================
+HTTP/1.1 400 Bad Request
+Content-Length: 97
+Content-Type: application/json
+Date: REGEX(.*)
+
+{
+    "detail": "[]",
+    "title": "Empty Array",
+    "type": "https://uri.etsi.org/ngsi-ld/errors/InvalidRequest"
 }
 
 
