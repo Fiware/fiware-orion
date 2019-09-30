@@ -69,8 +69,7 @@ void orionldErrorResponseCreate
 (
   OrionldResponseErrorType  errorType,
   const char*               title,
-  const char*               detail,
-  OrionldDetailType         detailType
+  const char*               detail
 )
 {
   LM_T(LmtErrorResponse, ("Creating error response: %s (%s)", title, detail));

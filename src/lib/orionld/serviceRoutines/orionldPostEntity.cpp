@@ -914,7 +914,7 @@ bool orionldPostEntityOverwrite(ConnectionInfo* ciP)
   if (expandAttrNames(orionldState.requestTree, &details) == false)
   {
     ciP->httpStatusCode = SccReceiverInternalError;
-    orionldErrorResponseCreate(OrionldBadRequestData, "Can't expand attribute names", details, OrionldDetailString);
+    orionldErrorResponseCreate(OrionldBadRequestData, "Can't expand attribute names", details);
     return false;
   }
 
@@ -942,7 +942,7 @@ bool orionldPostEntityOverwrite(ConnectionInfo* ciP)
   if (currentEntityTree == NULL)
   {
     ciP->httpStatusCode = SccNotFound;
-    orionldErrorResponseCreate(OrionldBadRequestData, "Entity does not exist", orionldState.wildcard[0], OrionldDetailString);
+    orionldErrorResponseCreate(OrionldBadRequestData, "Entity does not exist", orionldState.wildcard[0]);
     return false;
   }
 
@@ -950,7 +950,7 @@ bool orionldPostEntityOverwrite(ConnectionInfo* ciP)
   if (kjTreeMergeAddNewAttrsOverwriteExisting(currentEntityTree, orionldState.requestTree, &title, &details) == false)
   {
     ciP->httpStatusCode = SccReceiverInternalError;
-    orionldErrorResponseCreate(OrionldInternalError, title, details, OrionldDetailString);
+    orionldErrorResponseCreate(OrionldInternalError, title, details);
     return false;
   }
 
@@ -1017,7 +1017,7 @@ bool orionldPostEntity(ConnectionInfo* ciP)
   if (mongoEntityExists(orionldState.wildcard[0], orionldState.tenant) == false)
   {
     ciP->httpStatusCode = SccNotFound;
-    orionldErrorResponseCreate(OrionldBadRequestData, "Entity does not exist", orionldState.wildcard[0], OrionldDetailString);
+    orionldErrorResponseCreate(OrionldBadRequestData, "Entity does not exist", orionldState.wildcard[0]);
     return false;
   }
 
@@ -1105,7 +1105,7 @@ bool orionldPostEntity(ConnectionInfo* ciP)
     else
     {
       LM_E(("mongoUpdateContext: HTTP Status Code: %d", ciP->httpStatusCode));
-      orionldErrorResponseCreate(OrionldBadRequestData, "Internal Error", "Error from Mongo-DB Backend", OrionldDetailString);
+      orionldErrorResponseCreate(OrionldBadRequestData, "Internal Error", "Error from Mongo-DB Backend");
     }
 
     retValue = false;
