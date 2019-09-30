@@ -33,6 +33,7 @@ extern "C"
 
 #include "ngsi/ContextAttribute.h"                               // ContextAttribute
 #include "rest/ConnectionInfo.h"                                 // ConnectionInfo
+#include "common/string.h"                                       // FT
 #include "orionld/common/geoJsonCheck.h"                         // geoJsonCheck
 #include "orionld/common/orionldState.h"                         // orionldState
 #include "orionld/common/orionldErrorResponse.h"                 // orionldErrorResponseCreate
@@ -41,6 +42,7 @@ extern "C"
 #include "orionld/common/urlCheck.h"                             // urlCheck
 #include "orionld/common/urnCheck.h"                             // urnCheck
 #include "orionld/context/orionldUriExpand.h"                    // orionldUriExpand
+#include "orionld/context/orionldValueExpand.h"                  // orionldValueExpand
 #include "orionld/common/orionldAttributeTreat.h"                // Own interface
 
 
@@ -469,6 +471,38 @@ bool orionldAttributeTreat(ConnectionInfo* ciP, KjNode* kNodeP, ContextAttribute
   ATTRIBUTE_IS_OBJECT_CHECK(kNodeP);
 
   //
+  // Expand name of attribute
+  //
+  if ((strcmp(kNodeP->name, "location")         != 0) &&
+      (strcmp(kNodeP->name, "observationSpace") != 0) &&
+      (strcmp(kNodeP->name, "operationSpace")   != 0))
+  {
+    char*  longName            = kaAlloc(&orionldState.kalloc, 512);
+    bool   valueMayBeExpanded  = false;
+    char*  detail;
+
+    LM_TMP(("VEX: ------------------------------------------------------------------------------------------"));
+    LM_TMP(("VEX: Calling orionldUriExpand for node '%s' is of type '%s'", kNodeP->name, kjValueType(kNodeP->type)));
+    if (orionldUriExpand(orionldState.contextP, kNodeP->name, longName, 512, &valueMayBeExpanded, &detail) == false)
+    {
+      LM_E(("VEX: orionldUriExpand failed for '%s': %s", kNodeP->name, detail));
+
+      orionldErrorResponseCreate(OrionldBadRequestData, detail, kNodeP->name, OrionldDetailString);
+      return false;
+    }
+    LM_TMP(("VEX: valueMayBeExpanded: %s", FT(valueMayBeExpanded)));
+
+    if (valueMayBeExpanded)
+      orionldValueExpand(kNodeP);
+
+    kNodeP->name = longName;
+    caP->name    = longName;
+    LM_TMP(("EXPAND: After orionldUriExpand, node name is: '%s'", kNodeP->name));
+  }
+  else
+    caP->name = kNodeP->name;
+
+  //
   // For performance issues, all predefined names should have their char-sum precalculated
   //
   // E.g.:
@@ -497,6 +531,7 @@ bool orionldAttributeTreat(ConnectionInfo* ciP, KjNode* kNodeP, ContextAttribute
   bool     isRelationship         = false;
   KjNode*  nodeP                  = kNodeP->value.firstChildP;
 
+  LM_TMP(("VEX: treating attribute '%s'", kNodeP->name));
   while (nodeP != NULL)
   {
     LM_T(LmtPayloadCheck, ("Treating part '%s' of attribute '%s'", nodeP->name, kNodeP->name));
@@ -531,6 +566,7 @@ bool orionldAttributeTreat(ConnectionInfo* ciP, KjNode* kNodeP, ContextAttribute
       {
         isProperty         = true;
         isTemporalProperty = true;
+        // FIXME: Give error - users can't create TemporalProperties
       }
       else
       {
@@ -614,18 +650,26 @@ bool orionldAttributeTreat(ConnectionInfo* ciP, KjNode* kNodeP, ContextAttribute
     }
     else  // Other
     {
+      LM_TMP(("VEX: Other: %s", nodeP->name));
       //
       // Expand sub-attribute name
       //
-      char* expandedName = kaAlloc(&orionldState.kalloc, 512);
+      char* expandedName        = kaAlloc(&orionldState.kalloc, 512);
       char* detail;
+      bool  valueMayBeExpanded  = false;
 
-      if (orionldUriExpand(orionldState.contextP, nodeP->name, expandedName, 512, &detail) == false)
+      LM_TMP(("VEX: Calling orionldUriExpand"));
+      if (orionldUriExpand(orionldState.contextP, nodeP->name, expandedName, 512, &valueMayBeExpanded, &detail) == false)
       {
         orionldErrorResponseCreate(OrionldBadRequestData, "Error expanding Attribute Name", nodeP->name, OrionldDetailString);
         return false;
       }
       nodeP->name = expandedName;
+
+      LM_TMP(("VEX: valueMayBeExpanded: %s", FT(valueMayBeExpanded)));
+
+      if (valueMayBeExpanded == true)
+        orionldValueExpand(nodeP);
 
       if (caP->metadataVector.lookupByName(nodeP->name) != NULL)
       {
@@ -838,33 +882,6 @@ bool orionldAttributeTreat(ConnectionInfo* ciP, KjNode* kNodeP, ContextAttribute
     else
       ATTRIBUTE_ERROR("relationship attribute with 'object' field of invalid type (must be a String or an Array or Strings)", caName);
   }
-
-
-  //
-  // Expand name of attribute
-  //
-  if ((strcmp(kNodeP->name, "location")         != 0) &&
-      (strcmp(kNodeP->name, "observationSpace") != 0) &&
-      (strcmp(kNodeP->name, "operationSpace")   != 0))
-  {
-    char*  longName = kaAlloc(&orionldState.kalloc, 512);
-    char*  detail;
-
-    LM_TMP(("EXPAND: Calling orionldUriExpand for '%s'", kNodeP->name));
-    if (orionldUriExpand(orionldState.contextP, kNodeP->name, longName, 512, &detail) == false)
-    {
-      LM_E(("EXPAND: orionldUriExpand failed for '%s': %s", kNodeP->name, detail));
-
-      orionldErrorResponseCreate(OrionldBadRequestData, detail, kNodeP->name, OrionldDetailString);
-      return false;
-    }
-
-    kNodeP->name = longName;
-    caP->name    = longName;
-    LM_TMP(("EXPAND: After orionldUriExpand, node name is: '%s'", kNodeP->name));
-  }
-  else
-    caP->name = kNodeP->name;
 
   return true;
 }

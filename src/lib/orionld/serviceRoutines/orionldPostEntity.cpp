@@ -54,6 +54,7 @@ extern "C"
 #include "orionld/db/dbEntityUpdate.h"                           // dbEntityUpdate
 #include "orionld/context/orionldUriExpand.h"                    // orionldUriExpand
 #include "orionld/context/orionldAliasLookup.h"                  // orionldAliasLookup
+#include "orionld/context/orionldValueExpand.h"                  // orionldValueExpand
 #include "orionld/serviceRoutines/orionldPostEntity.h"           // Own Interface
 
 
@@ -599,30 +600,24 @@ static bool expandAttrNames(KjNode* treeP, char** detailsP)
     //
 
 
+    bool  valueToBeExpanded  = false;
+
     LM_TMP(("NFY: expanding name of attribute '%s'", attrP->name));
-    if (orionldUriExpand(orionldState.contextP, attrP->name, expanded, sizeof(expanded), detailsP) == false)
+    if (orionldUriExpand(orionldState.contextP, attrP->name, expanded, sizeof(expanded), &valueToBeExpanded, detailsP) == false)
       return false;
 
-    //
-    // Allocate room for the expanded attribute name
-    //
-    int sLen = strlen(expanded);
+    attrP->name = kaStrdup(&orionldState.kalloc, expanded);
 
-    if ((attrP->name = kaAlloc(&orionldState.kalloc, sLen + 1)) == NULL)
-    {
-      *detailsP = (char*) "out of memory";
-      return false;
-    }
+    //
+    // Expand the value, if necessary (if the @context says so)
+    //
+    if (valueToBeExpanded == true)
+      orionldValueExpand(attrP);
 
 
     //
-    // Copy the expanded name into the attr name and change all '.' for a '='
-    //
-    // FIXME: If I write my own function strcpyAndChangeDorForEq, I should gain some performance
-    //
-    strcpy(attrP->name, expanded);
-
     // Expand also sub-attr names
+    //
     LM_TMP(("NFY: expanding name of sub-attributes of '%s'", attrP->name));
 
     for (KjNode* subAttrP = attrP->value.firstChildP; subAttrP != NULL; subAttrP = subAttrP->next)
@@ -636,25 +631,17 @@ static bool expandAttrNames(KjNode* treeP, char** detailsP)
         continue;
 
       LM_TMP(("NFY: expanding name of sub-attribute '%s' of '%s'", subAttrP->name, attrP->name));
-      if (orionldUriExpand(orionldState.contextP, subAttrP->name, expanded, sizeof(expanded), detailsP) == false)
+      if (orionldUriExpand(orionldState.contextP, subAttrP->name, expanded, sizeof(expanded), &valueToBeExpanded, detailsP) == false)
         return false;
+      subAttrP->name = kaStrdup(&orionldState.kalloc, expanded);
 
-      //
-      // Allocate room for the expanded attribute name
-      //
-      sLen = strlen(expanded);
-      if ((subAttrP->name = kaAlloc(&orionldState.kalloc, sLen + 1)) == NULL)
-      {
-         *detailsP = (char*) "out of memory";
-         return false;
-      }
-
-
-      //
-      // Copy the expanded name into the sub-attr name
-      //
-      strcpy(subAttrP->name, expanded);
       LM_TMP(("NFY: expanded name of sub-attribute '%s' of '%s'", subAttrP->name, attrP->name));
+
+      //
+      // Expand the value, if ...
+      //
+      if (valueToBeExpanded == true)
+        orionldValueExpand(subAttrP);
     }
   }
 

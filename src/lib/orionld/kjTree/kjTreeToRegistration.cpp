@@ -112,7 +112,7 @@ static bool kjTreeToRegistrationInformation(ConnectionInfo* ciP, KjNode* regInfo
           char  longName[256];
           char* details;
 
-          if (orionldUriExpand(orionldState.contextP, propP->value.s, longName, sizeof(longName), &details) == false)
+          if (orionldUriExpand(orionldState.contextP, propP->value.s, longName, sizeof(longName), NULL, &details) == false)
             return false;
 
           propP->value.s = longName;
@@ -130,7 +130,7 @@ static bool kjTreeToRegistrationInformation(ConnectionInfo* ciP, KjNode* regInfo
           char  longName[256];
           char* details;
 
-          if (orionldUriExpand(orionldState.contextP, relP->value.s, longName, sizeof(longName), &details) == false)
+          if (orionldUriExpand(orionldState.contextP, relP->value.s, longName, sizeof(longName), NULL, &details) == false)
             return false;
 
           relP->value.s = longName;
@@ -346,7 +346,7 @@ bool kjTreeToRegistration(ConnectionInfo* ciP, ngsiv2::Registration* regP, char*
       char* longName = (char*) kaAlloc(&orionldState.kalloc, 256);
       char* details;
 
-      if (orionldUriExpand(orionldState.contextP, kNodeP->name, longName, 256, &details) == false)
+      if (orionldUriExpand(orionldState.contextP, kNodeP->name, longName, 256, NULL, &details) == false)
         return false;
 
       kNodeP->name = longName;

@@ -278,7 +278,7 @@ bool orionldPostEntities(ConnectionInfo* ciP)
 
   char* expandedType = kaAlloc(&orionldState.kalloc, 512);
 
-  if (orionldUriExpand(orionldState.contextP, entityType, expandedType, 512, &detail) == false)
+  if (orionldUriExpand(orionldState.contextP, entityType, expandedType, 512, NULL, &detail) == false)
   {
     orionldErrorResponseCreate(OrionldBadRequestData, "Error expanding 'entity type'", detail, OrionldDetailString);
     mongoRequest.release();
@@ -300,7 +300,7 @@ bool orionldPostEntities(ConnectionInfo* ciP)
     ContextAttribute* caP            = new ContextAttribute();
     KjNode*           attrTypeNodeP  = NULL;
 
-    LM_TMP(("EXPAND: Treating attribute '%s'", kNodeP->name));
+    LM_TMP(("VEX: Treating attribute '%s'", kNodeP->name));
     if (orionldAttributeTreat(ciP, kNodeP, caP, &attrTypeNodeP) == false)
     {
       LM_TMP(("EXPAND: orionldAttributeTreat failed"));
@@ -320,6 +320,7 @@ bool orionldPostEntities(ConnectionInfo* ciP)
   //
   // Mongo
   //
+  LM_TMP(("VEX: Calling mongoUpdateContext"));
   ciP->httpStatusCode = mongoUpdateContext(&mongoRequest,
                                            &mongoResponse,
                                            orionldState.tenant,

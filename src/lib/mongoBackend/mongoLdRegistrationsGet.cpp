@@ -151,7 +151,7 @@ static bool uriParamTypeToFilter(mongo::BSONObjBuilder* queryBuilderP, char* typ
     }
     else
     {
-      if (orionldUriExpand(orionldState.contextP, type, typeExpanded, sizeof(typeExpanded), &details) == false)
+      if (orionldUriExpand(orionldState.contextP, type, typeExpanded, sizeof(typeExpanded), NULL, &details) == false)
       {
         orionldErrorResponseCreate(OrionldBadRequestData, "Error during URI expansion of entity type", details, OrionldDetailString);
         return false;
@@ -206,7 +206,7 @@ static bool uriParamAttrsToFilter(mongo::BSONObjBuilder* queryBuilderP, char* at
     }
     else
     {
-      if (orionldUriExpand(orionldState.contextP, attr, attrExpanded, sizeof(attrExpanded), &details) == false)
+      if (orionldUriExpand(orionldState.contextP, attr, attrExpanded, sizeof(attrExpanded), NULL, &details) == false)
       {
         orionldErrorResponseCreate(OrionldBadRequestData, "Error during URI expansion of entity attribute", details, OrionldDetailString);
         return false;

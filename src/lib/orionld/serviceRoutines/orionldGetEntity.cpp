@@ -121,7 +121,7 @@ bool orionldGetEntity(ConnectionInfo* ciP)
     {
       shortName = shortNameVector[ix];
 
-      if (orionldUriExpand(orionldState.contextP, shortName, longName, sizeof(longName), &details) == true)
+      if (orionldUriExpand(orionldState.contextP, shortName, longName, sizeof(longName), NULL, &details) == true)
       {
         int  len  = strlen(longName);
         int  used = (int) ((uint64_t) attrListEnd - (uint64_t) attrList);

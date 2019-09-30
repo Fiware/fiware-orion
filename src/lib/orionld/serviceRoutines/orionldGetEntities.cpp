@@ -285,7 +285,7 @@ bool orionldGetEntities(ConnectionInfo* ciP)
       // No expansion desired, the type is already a FQN
       strncpy(typeExpanded, type, sizeof(typeExpanded));
     }
-    else if (orionldUriExpand(orionldState.contextP, type, typeExpanded, sizeof(typeExpanded), &details) == false)
+    else if (orionldUriExpand(orionldState.contextP, type, typeExpanded, sizeof(typeExpanded), NULL, &details) == false)
     {
       orionldErrorResponseCreate(OrionldBadRequestData, "Error during URI expansion of entity type", details, OrionldDetailString);
       return false;
@@ -308,7 +308,7 @@ bool orionldGetEntities(ConnectionInfo* ciP)
     for (int ix = 0; ix < typeVecItems; ix++)
     {
       // FIXME: Check for FQN HERE TOO (once it is decided by ETSI)
-      if (orionldUriExpand(orionldState.contextP, typeVector[ix], typeExpanded, sizeof(typeExpanded), &details) == false)
+      if (orionldUriExpand(orionldState.contextP, typeVector[ix], typeExpanded, sizeof(typeExpanded), NULL, &details) == false)
       {
         orionldErrorResponseCreate(OrionldBadRequestData, "Error during URI expansion of entity type", details, OrionldDetailString);
         return false;
@@ -338,7 +338,7 @@ bool orionldGetEntities(ConnectionInfo* ciP)
     {
       shortName = shortNameVector[ix];
 
-      if (orionldUriExpand(orionldState.contextP, shortName, longName, sizeof(longName), &details) == true)
+      if (orionldUriExpand(orionldState.contextP, shortName, longName, sizeof(longName), NULL, &details) == true)
         parseData.qcr.res.attributeList.push_back(longName);
       else
       {

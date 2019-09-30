@@ -129,7 +129,7 @@ bool kjTreeToEntIdVector(ConnectionInfo* ciP, KjNode* kNodeP, std::vector<ngsiv2
     char  typeExpanded[256];
     char* details;
 
-    if (orionldUriExpand(orionldState.contextP, typeP, typeExpanded, sizeof(typeExpanded), &details) == false)
+    if (orionldUriExpand(orionldState.contextP, typeP, typeExpanded, sizeof(typeExpanded), NULL, &details) == false)
     {
       orionldErrorResponseCreate(OrionldBadRequestData, "Error during URI expansion of entity type", details, OrionldDetailString);
       return false;

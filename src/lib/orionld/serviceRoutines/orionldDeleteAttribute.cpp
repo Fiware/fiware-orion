@@ -57,7 +57,7 @@ bool orionldDeleteAttribute(ConnectionInfo* ciP)
   else
   {
     // Get the long name of the Context Attribute name
-    if (orionldUriExpand(orionldState.contextP, orionldState.wildcard[1], longAttrName, sizeof(longAttrName), &details) == false)
+    if (orionldUriExpand(orionldState.contextP, orionldState.wildcard[1], longAttrName, sizeof(longAttrName), NULL, &details) == false)
     {
       orionldErrorResponseCreate(OrionldBadRequestData, details, type, OrionldDetailAttribute);
       return false;
