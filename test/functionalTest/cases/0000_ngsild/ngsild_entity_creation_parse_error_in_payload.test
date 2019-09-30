@@ -59,9 +59,9 @@ Content-Type: application/json
 Date: REGEX(.*)
 
 {
-    "details": "JSON Parse Error: expecting comma or end of object",
+    "detail": "JSON Parse Error: expecting comma or end of object",
     "title": "JSON Parse Error",
-    "type": "http://uri.etsi.org/ngsi-ld/errors/InvalidRequest"
+    "type": "https://uri.etsi.org/ngsi-ld/errors/InvalidRequest"
 }
 
 

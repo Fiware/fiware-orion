@@ -55,9 +55,9 @@ Content-Type: application/json
 Date: REGEX(.*)
 
 {
-    "details": "Content-Type is application/json, yet a '@context' item was present in the payload body",
+    "detail": "Content-Type is application/json, yet a '@context' item was present in the payload body",
     "title": "Mismatch between /Content-Type/ and contents of the request payload body",
-    "type": "http://uri.etsi.org/ngsi-ld/errors/BadRequestData"
+    "type": "https://uri.etsi.org/ngsi-ld/errors/BadRequestData"
 }
 
 

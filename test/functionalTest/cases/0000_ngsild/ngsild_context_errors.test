@@ -110,7 +110,7 @@ payload='{
   },
   "@context": ""
 }'
-orionCurl --url /ngsi-ld/v1/entities -X POST --payload "$payload" -H "Content-Type: application/ld+json" -H "Accept: application/ld+json"
+orionCurl --url "/ngsi-ld/v1/entities?prettyPrint=yes" -X POST --payload "$payload" -H "Content-Type: application/ld+json" -H "Accept: application/ld+json" --noPayloadCheck
 echo
 echo
 
@@ -124,7 +124,7 @@ payload='{
     "type": "Property",
     "value": "John 2"
   },
-  "@context": "not an URL"
+  "@context": "This @context-value is not a URL"
 }'
 orionCurl --url /ngsi-ld/v1/entities -X POST --payload "$payload" -H "Content-Type: application/ld+json" -H "Accept: application/ld+json"
 echo
@@ -171,9 +171,9 @@ Content-Type: application/json
 Date: REGEX(.*)
 
 {
-    "details": "@context",
+    "detail": "@context",
     "title": "Not a JSON Array nor Object nor a String",
-    "type": "http://uri.etsi.org/ngsi-ld/errors/BadRequestData"
+    "type": "https://uri.etsi.org/ngsi-ld/errors/BadRequestData"
 }
 
 
@@ -185,9 +185,9 @@ Content-Type: application/json
 Date: REGEX(.*)
 
 {
-    "details": "@context",
+    "detail": "@context",
     "title": "Not a JSON Array nor Object nor a String",
-    "type": "http://uri.etsi.org/ngsi-ld/errors/BadRequestData"
+    "type": "https://uri.etsi.org/ngsi-ld/errors/BadRequestData"
 }
 
 
@@ -199,51 +199,52 @@ Content-Type: application/json
 Date: REGEX(.*)
 
 {
-    "details": "a",
+    "detail": "a",
     "title": "Invalid key-value in @context",
-    "type": "http://uri.etsi.org/ngsi-ld/errors/BadRequestData"
+    "type": "https://uri.etsi.org/ngsi-ld/errors/BadRequestData"
 }
 
 
 04. @context is an empty string
 ===============================
 HTTP/1.1 400 Bad Request
-Content-Length: 182
+Content-Length: 144
 Content-Type: application/json
 Date: REGEX(.*)
 
 {
-    "details": "URL parse error - no colon found - cannot determine the protocol",
-    "title": "Failure to create context from URL",
-    "type": "http://uri.etsi.org/ngsi-ld/errors/BadRequestData"
+  "type": "https://uri.etsi.org/ngsi-ld/errors/BadRequestData",
+  "title": "Failure to create context from URL",
+  "detail": "Empty string"
 }
+
 
 
 05. URL in context is an invalid URL
 ====================================
 HTTP/1.1 400 Bad Request
-Content-Length: 182
+Content-Length: 127
 Content-Type: application/json
 Date: REGEX(.*)
 
 {
-    "details": "URL parse error - no colon found - cannot determine the protocol",
+    "detail": "Not a URI",
     "title": "Failure to create context from URL",
-    "type": "http://uri.etsi.org/ngsi-ld/errors/BadRequestData"
+    "type": "https://uri.etsi.org/ngsi-ld/errors/BadRequestData"
 }
 
 
 06. URL in context is a valid URL but it doesn't exist
 ======================================================
-HTTP/1.1 400 Bad Request
-Content-Length: 141
+HTTP/1.1 503 Service Unavailable
+Content-Length: 147
 Content-Type: application/json
 Date: REGEX(.*)
 
 {
-    "details": "http://valid.url/oh/yes",
-    "title": "Failure to create context from URL",
-    "type": "http://uri.etsi.org/ngsi-ld/errors/BadRequestData"
+    "detail": "http://valid.url/oh/yes",
+    "title": "Unable to download context",
+    "type": "https://uri.etsi.org/ngsi-ld/errors/OrionldLdContextNotAvailable"
 }
 
 
@@ -255,9 +256,9 @@ Content-Type: application/json
 Date: REGEX(.*)
 
 {
-    "details": "JSON Parse Error: no colon found after name of member",
+    "detail": "JSON Parse Error: no colon found after name of member",
     "title": "JSON Parse Error",
-    "type": "http://uri.etsi.org/ngsi-ld/errors/InvalidRequest"
+    "type": "https://uri.etsi.org/ngsi-ld/errors/InvalidRequest"
 }
 
 

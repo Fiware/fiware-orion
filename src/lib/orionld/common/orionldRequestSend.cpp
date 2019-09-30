@@ -99,8 +99,10 @@ bool orionldRequestSend
   OrionldResponseBuffer*  rBufP,
   const char*             url,
   int                     tmoInMilliSeconds,
-  char**                  detailsPP,
-  bool*                   tryAgainP
+  char**                  detailPP,
+  bool*                   tryAgainP,
+  bool*                   downloadFailedP,
+  const char*             acceptHeader
 )
 {
   CURLcode             cCode;
@@ -112,9 +114,9 @@ bool orionldRequestSend
 
   *tryAgainP = false;
 
-  if (urlParse(url, protocol, sizeof(protocol), ip, sizeof(ip), &port, &urlPath, detailsPP) == false)
+  if (urlParse(url, protocol, sizeof(protocol), ip, sizeof(ip), &port, &urlPath, detailPP) == false)
   {
-    // urlParse sets *detailsPP
+    // urlParse sets *detailPP
 
     // This function must release the allocated respose buffer in case of errpr
     if ((rBufP->buf != NULL) && (rBufP->buf != rBufP->internalBuffer))
@@ -124,7 +126,8 @@ bool orionldRequestSend
     }
     rBufP->buf = NULL;
 
-    LM_E(("urlParse failed for url '%s': %s", url, *detailsPP));
+    LM_E(("urlParse failed for url '%s'. detail: %s", url, *detailPP));
+    *downloadFailedP = false;
     return false;
   }
 
@@ -151,7 +154,7 @@ bool orionldRequestSend
   get_curl_context(ip, &cc);
   if (cc.curl == NULL)
   {
-    *detailsPP = (char*) "Unable to obtain CURL context";
+    *detailPP = (char*) "Unable to obtain CURL context";
 
     // This function must release the allocated respose buffer in case of error
     if (rBufP->buf != rBufP->internalBuffer)
@@ -161,7 +164,8 @@ bool orionldRequestSend
     }
     rBufP->buf = NULL;
 
-    LM_E((*detailsPP));
+    LM_E(("Internal Error (Unable to obtain CURL context)"));
+    *downloadFailedP = true;
     return false;
   }
 
@@ -178,10 +182,13 @@ bool orionldRequestSend
   curl_easy_setopt(cc.curl, CURLOPT_FAILONERROR, true);                    // Fail On Error - to detect 404 etc.
   curl_easy_setopt(cc.curl, CURLOPT_FOLLOWLOCATION, 1L);                   // Follow redirections
 
-#if 0
-  curl_easy_setopt(cc.curl, CURLOPT_HEADER, 1);                            // Include header in body output
-  curl_easy_setopt(cc.curl, CURLOPT_HTTPHEADER, headers);                  // Put headers in place
-#endif
+  struct curl_slist* headers = NULL;
+
+  if (acceptHeader != NULL)
+  {
+    headers = curl_slist_append(headers, acceptHeader);
+    curl_easy_setopt(cc.curl, CURLOPT_HTTPHEADER, headers);
+  }
 
   LM_T(LmtRequestSend, ("Calling curl_easy_perform for GET %s", url));
   cCode = curl_easy_perform(cc.curl);
@@ -189,7 +196,7 @@ bool orionldRequestSend
 
   if (cCode != CURLE_OK)
   {
-    *detailsPP = (char*) url;
+    *detailPP = (char*) url;
 
     // This function must release the allocated respose buffer in case of error
     if (rBufP->buf != rBufP->internalBuffer)
@@ -200,11 +207,15 @@ bool orionldRequestSend
 
     rBufP->buf = NULL;
 
+    if (headers != NULL)
+      curl_slist_free_all(headers);
+
     release_curl_context(&cc);
     LM_E(("curl_easy_perform error %d", cCode));
 
     *tryAgainP = true;  // FIXME: might depend on cCode ...
 
+    *downloadFailedP = true;
     return false;
   }
 
@@ -213,5 +224,9 @@ bool orionldRequestSend
 
   release_curl_context(&cc);
 
+  if (headers != NULL)
+    curl_slist_free_all(headers);
+
+  *downloadFailedP = false;
   return true;
 }

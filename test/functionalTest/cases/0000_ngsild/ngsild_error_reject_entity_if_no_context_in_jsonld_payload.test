@@ -54,9 +54,9 @@ Content-Type: application/json
 Date: REGEX(.*)
 
 {
-    "details": "For application/ld+json, the @context must be present in the JSON payload",
+    "detail": "For application/ld+json, the @context must be present in the JSON payload",
     "title": "@context missing in JSON payload",
-    "type": "http://uri.etsi.org/ngsi-ld/errors/BadRequestData"
+    "type": "https://uri.etsi.org/ngsi-ld/errors/BadRequestData"
 }
 
 

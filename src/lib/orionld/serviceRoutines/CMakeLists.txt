@@ -44,6 +44,7 @@ SET (SOURCES
     orionldGetContext.cpp
     orionldGetVersion.cpp
     orionldNotImplemented.cpp
+    orionldNotify.cpp
 )
 
 # Include directories

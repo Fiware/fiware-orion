@@ -22,44 +22,43 @@
 *
 * Author: Ken Zangelin
 */
-#include <uuid/uuid.h>                                         // uuid_t, uuid_generate_time_safe, uuid_unparse_lower
-
-#include "logMsg/logMsg.h"                                     // LM_*
-#include "logMsg/traceLevels.h"                                // Lmt*
+#include "logMsg/logMsg.h"                                       // LM_*
+#include "logMsg/traceLevels.h"                                  // Lmt*
 
 extern "C"
 {
-#include "kjson/KjNode.h"                                      // KjNode
-#include "kjson/kjBufferCreate.h"                              // kjBufferCreate
-#include "kjson/kjParse.h"                                     // kjParse
-#include "kjson/kjRender.h"                                    // kjRender
-#include "kjson/kjClone.h"                                     // kjClone
-#include "kjson/kjFree.h"                                      // kjFree
-#include "kjson/kjBuilder.h"                                   // kjString, ...
-#include "kalloc/kaStrdup.h"                                   // kaStrdup
-#include "kalloc/kaAlloc.h"                                    // kaAlloc
+#include "kjson/KjNode.h"                                        // KjNode
+#include "kjson/kjBufferCreate.h"                                // kjBufferCreate
+#include "kjson/kjParse.h"                                       // kjParse
+#include "kjson/kjRender.h"                                      // kjRender
+#include "kjson/kjClone.h"                                       // kjClone
+#include "kjson/kjFree.h"                                        // kjFree
+#include "kjson/kjBuilder.h"                                     // kjString, ...
+#include "kalloc/kaStrdup.h"                                     // kaStrdup
+#include "kalloc/kaAlloc.h"                                      // kaAlloc
 }
 
-#include "common/string.h"                                     // FT
-#include "rest/ConnectionInfo.h"                               // ConnectionInfo
-#include "rest/httpHeaderAdd.h"                                // httpHeaderAdd, httpHeaderLinkAdd
-#include "rest/restReply.h"                                    // restReply
+#include "common/string.h"                                       // FT
+#include "rest/ConnectionInfo.h"                                 // ConnectionInfo
+#include "rest/httpHeaderAdd.h"                                  // httpHeaderAdd, httpHeaderLinkAdd
+#include "rest/restReply.h"                                      // restReply
 
-#include "orionld/common/orionldErrorResponse.h"               // orionldErrorResponseCreate
-#include "orionld/common/linkCheck.h"                          // linkCheck
-#include "orionld/common/SCOMPARE.h"                           // SCOMPARE
-#include "orionld/common/CHECK.h"                              // CHECK
-#include "orionld/common/orionldState.h"                       // orionldState
-#include "orionld/context/orionldCoreContext.h"                // ORIONLD_DEFAULT_CONTEXT_URL
-#include "orionld/context/orionldContextCreateFromUrl.h"       // orionldContextCreateFromUrl
-#include "orionld/context/orionldContextAppend.h"              // orionldContextAppend
-#include "orionld/context/orionldContextTreat.h"               // orionldContextTreat
-#include "orionld/context/orionldContextListInsert.h"          // orionldContextListInsert
-#include "orionld/serviceRoutines/orionldBadVerb.h"            // orionldBadVerb
-#include "orionld/rest/orionldServiceInit.h"                   // orionldRestServiceV
-#include "orionld/rest/orionldServiceLookup.h"                 // orionldServiceLookup
-#include "orionld/rest/temporaryErrorPayloads.h"               // Temporary Error Payloads
-#include "orionld/rest/orionldMhdConnectionTreat.h"            // Own Interface
+#include "orionld/common/orionldErrorResponse.h"                 // orionldErrorResponseCreate
+#include "orionld/common/linkCheck.h"                            // linkCheck
+#include "orionld/common/SCOMPARE.h"                             // SCOMPARE
+#include "orionld/common/CHECK.h"                                // CHECK
+#include "orionld/common/orionldState.h"                         // orionldState
+#include "orionld/common/uuidGenerate.h"                         // uuidGenerate
+#include "orionld/context/orionldCoreContext.h"                  // ORIONLD_CORE_CONTEXT_URL
+#include "orionld/context/orionldContextCreateFromUrl.h"         // orionldContextCreateFromUrl
+#include "orionld/context/orionldContextAppend.h"                // orionldContextAppend
+#include "orionld/context/orionldContextTreat.h"                 // orionldContextTreat
+#include "orionld/context/orionldContextListInsert.h"            // orionldContextListInsert
+#include "orionld/serviceRoutines/orionldBadVerb.h"              // orionldBadVerb
+#include "orionld/rest/orionldServiceInit.h"                     // orionldRestServiceV
+#include "orionld/rest/orionldServiceLookup.h"                   // orionldServiceLookup
+#include "orionld/rest/temporaryErrorPayloads.h"                 // Temporary Error Payloads
+#include "orionld/rest/orionldMhdConnectionTreat.h"              // Own Interface
 
 
 
@@ -134,7 +133,7 @@ static bool contentTypeCheck(ConnectionInfo* ciP)
   {
     LM_E(("Bad Input (%s: %s)", errorTitle, errorDetails));
 
-    orionldErrorResponseCreate(OrionldBadRequestData, errorTitle, errorDetails, OrionldDetailsString);
+    orionldErrorResponseCreate(OrionldBadRequestData, errorTitle, errorDetails, OrionldDetailString);
     ciP->httpStatusCode = SccBadRequest;
 
     return false;
@@ -219,7 +218,7 @@ static bool acceptHeaderExtractAndCheck(ConnectionInfo* ciP)
     const char* details = "HTTP Header /Accept/ contains neither 'application/json' nor 'application/ld+json'";
 
     LM_W(("Bad Input (HTTP Header /Accept/ contains neither 'application/json' nor 'application/ld+json')"));
-    orionldErrorResponseCreate(OrionldBadRequestData, title, details, OrionldDetailsString);
+    orionldErrorResponseCreate(OrionldBadRequestData, title, details, OrionldDetailString);
     ciP->httpStatusCode = SccNotAcceptable;
 
     return false;
@@ -260,7 +259,7 @@ static OrionLdRestService* serviceLookup(ConnectionInfo* ciP)
       ciP->httpStatusCode = SccBadVerb;
     else
     {
-      orionldErrorResponseCreate(OrionldInvalidRequest, "Service Not Found", orionldState.urlPath, OrionldDetailsString);
+      orionldErrorResponseCreate(OrionldInvalidRequest, "Service Not Found", orionldState.urlPath, OrionldDetailString);
       ciP->httpStatusCode = SccContextElementNotFound;
     }
   }
@@ -279,7 +278,7 @@ static bool payloadEmptyCheck(ConnectionInfo* ciP)
   // No payload?
   if (ciP->payload == NULL)
   {
-    orionldErrorResponseCreate(OrionldInvalidRequest, "payload missing", NULL, OrionldDetailsString);
+    orionldErrorResponseCreate(OrionldInvalidRequest, "payload missing", NULL, OrionldDetailString);
     ciP->httpStatusCode = SccBadRequest;
     return false;
   }
@@ -287,7 +286,7 @@ static bool payloadEmptyCheck(ConnectionInfo* ciP)
   // Empty payload?
   if (ciP->payload[0] == 0)
   {
-    orionldErrorResponseCreate(OrionldInvalidRequest, "payload missing", NULL, OrionldDetailsString);
+    orionldErrorResponseCreate(OrionldInvalidRequest, "payload missing", NULL, OrionldDetailString);
     ciP->httpStatusCode = SccBadRequest;
     return false;
   }
@@ -342,20 +341,6 @@ static void kjNodeDecouple(KjNode* nodeToDecouple, KjNode* prev, KjNode* parent)
 
 // -----------------------------------------------------------------------------
 //
-// uuidGenerate -
-//
-static void uuidGenerate(char* buf)
-{
-  uuid_t uuid;
-
-  uuid_generate_time_safe(uuid);
-  uuid_unparse_lower(uuid, buf);
-}
-
-
-
-// -----------------------------------------------------------------------------
-//
 // payloadParseAndExtractSpecialFields -
 //
 static bool payloadParseAndExtractSpecialFields(ConnectionInfo* ciP, bool* contextToBeCashedP)
@@ -370,7 +355,7 @@ static bool payloadParseAndExtractSpecialFields(ConnectionInfo* ciP, bool* conte
   //
   if (orionldState.requestTree == NULL)
   {
-    orionldErrorResponseCreate(OrionldInvalidRequest, "JSON Parse Error", orionldState.kjsonP->errorString, OrionldDetailsString);
+    orionldErrorResponseCreate(OrionldInvalidRequest, "JSON Parse Error", orionldState.kjsonP->errorString, OrionldDetailString);
     ciP->httpStatusCode = SccBadRequest;
     return false;
   }
@@ -380,7 +365,7 @@ static bool payloadParseAndExtractSpecialFields(ConnectionInfo* ciP, bool* conte
   //
   if ((orionldState.requestTree->type == KjObject) && (orionldState.requestTree->value.firstChildP == NULL))
   {
-    orionldErrorResponseCreate(OrionldInvalidRequest, "Empty Object", "{}", OrionldDetailsString);
+    orionldErrorResponseCreate(OrionldInvalidRequest, "Empty Object", "{}", OrionldDetailString);
     ciP->httpStatusCode = SccBadRequest;
     return false;
   }
@@ -390,7 +375,7 @@ static bool payloadParseAndExtractSpecialFields(ConnectionInfo* ciP, bool* conte
   //
   if ((orionldState.requestTree->type == KjArray) && (orionldState.requestTree->value.firstChildP == NULL))
   {
-    orionldErrorResponseCreate(OrionldInvalidRequest, "Empty Array", "[]", OrionldDetailsString);
+    orionldErrorResponseCreate(OrionldInvalidRequest, "Empty Array", "[]", OrionldDetailString);
     ciP->httpStatusCode = SccBadRequest;
     return false;
   }
@@ -424,7 +409,7 @@ static bool payloadParseAndExtractSpecialFields(ConnectionInfo* ciP, bool* conte
         if (orionldState.payloadContextNode != NULL)
         {
           LM_W(("Bad Input (duplicated attribute: '@context'"));
-          orionldErrorResponseCreate(OrionldBadRequestData, "Duplicated field", "@context", OrionldDetailsString);
+          orionldErrorResponseCreate(OrionldBadRequestData, "Duplicated field", "@context", OrionldDetailString);
           return false;
         }
         orionldState.payloadContextNode = attrNodeP;
@@ -439,7 +424,7 @@ static bool payloadParseAndExtractSpecialFields(ConnectionInfo* ciP, bool* conte
         if (orionldState.payloadIdNode != NULL)
         {
           LM_W(("Bad Input (duplicated attribute: 'Entity:id'"));
-          orionldErrorResponseCreate(OrionldBadRequestData, "Duplicated field", "Entity:id", OrionldDetailsString);
+          orionldErrorResponseCreate(OrionldBadRequestData, "Duplicated field", "Entity:id", OrionldDetailString);
           return false;
         }
 
@@ -455,7 +440,7 @@ static bool payloadParseAndExtractSpecialFields(ConnectionInfo* ciP, bool* conte
         if (orionldState.payloadTypeNode != NULL)
         {
           LM_W(("Bad Input (duplicated attribute: 'Entity:type'"));
-          orionldErrorResponseCreate(OrionldBadRequestData, "Duplicated field", "Entity:type", OrionldDetailsString);
+          orionldErrorResponseCreate(OrionldBadRequestData, "Duplicated field", "Entity:type", OrionldDetailString);
           return false;
         }
 
@@ -466,7 +451,7 @@ static bool payloadParseAndExtractSpecialFields(ConnectionInfo* ciP, bool* conte
         char* details;
         if (orionldValidName(orionldState.payloadTypeNode->value.s, &details) == false)
         {
-          orionldErrorResponseCreate(OrionldBadRequestData, "Invalid entity type name", details, OrionldDetailsString);
+          orionldErrorResponseCreate(OrionldBadRequestData, "Invalid entity type name", details, OrionldDetailString);
           return false;
         }
         LM_T(LmtContext, ("Found Entity::type in the payload (%p)", orionldState.payloadTypeNode));
@@ -495,7 +480,7 @@ static bool payloadParseAndExtractSpecialFields(ConnectionInfo* ciP, bool* conte
         if (orionldState.payloadContextNode != NULL)
         {
           LM_W(("Bad Input (duplicated attribute: '@context'"));
-          orionldErrorResponseCreate(OrionldBadRequestData, "Duplicated field", "@context", OrionldDetailsString);
+          orionldErrorResponseCreate(OrionldBadRequestData, "Duplicated field", "@context", OrionldDetailString);
           return false;
         }
 
@@ -515,7 +500,7 @@ static bool payloadParseAndExtractSpecialFields(ConnectionInfo* ciP, bool* conte
     // A @context in the payload must be a JSON String, Array, or an Object
     if ((orionldState.payloadContextNode->type != KjString) && (orionldState.payloadContextNode->type != KjArray) && (orionldState.payloadContextNode->type != KjObject))
     {
-      orionldErrorResponseCreate(OrionldBadRequestData, "Not a JSON Array nor Object nor a String", "@context", OrionldDetailsString);
+      orionldErrorResponseCreate(OrionldBadRequestData, "Not a JSON Array nor Object nor a String", "@context", OrionldDetailString);
       ciP->httpStatusCode = SccBadRequest;
       return false;
     }
@@ -563,7 +548,7 @@ static bool linkHeaderCheck(ConnectionInfo* ciP)
 
   if (orionldState.link[0] != '<')
   {
-    orionldErrorResponseCreate(OrionldBadRequestData, "invalid Link HTTP header", "link doesn't start with '<'", OrionldDetailsString);
+    orionldErrorResponseCreate(OrionldBadRequestData, "invalid Link HTTP header", "link doesn't start with '<'", OrionldDetailString);
     ciP->httpStatusCode = SccBadRequest;
     return false;
   }
@@ -573,14 +558,14 @@ static bool linkHeaderCheck(ConnectionInfo* ciP)
   if (linkCheck(orionldState.link, &details) == false)
   {
     LM_E(("linkCheck: %s", details));
-    orionldErrorResponseCreate(OrionldBadRequestData, "Invalid Link HTTP Header", details, OrionldDetailsString);
+    orionldErrorResponseCreate(OrionldBadRequestData, "Invalid Link HTTP Header", details, OrionldDetailString);
     ciP->httpStatusCode = SccBadRequest;
     return false;
   }
 
   if ((orionldState.contextP = orionldContextCreateFromUrl(ciP, orionldState.link, OrionldUserContext, &details)) == NULL)
   {
-    orionldErrorResponseCreate(OrionldBadRequestData, "Failure to create context from URL", details, OrionldDetailsString);
+    orionldErrorResponseCreate(OrionldBadRequestData, "Failure to create context from URL", details, OrionldDetailString);
     ciP->httpStatusCode = SccBadRequest;
     return false;
   }
@@ -623,7 +608,7 @@ static bool contextToCache(ConnectionInfo* ciP)
   if (clonedTree == NULL)
   {
     orionldState.contextP = NULL;  // FIXME: Memleak?
-    orionldErrorResponseCreate(OrionldInternalError, "Unable to clone context tree - out of memory?", NULL, OrionldDetailsString);
+    orionldErrorResponseCreate(OrionldInternalError, "Unable to clone context tree - out of memory?", NULL, OrionldDetailString);
     ciP->httpStatusCode = SccReceiverInternalError;
 
     return false;
@@ -659,14 +644,14 @@ static void contextToPayload(void)
   {
     // LM_TMP(("CTX: payloadContextNode == NULL, using Incoming Link header: '%s'", orionldState.link));
     if (orionldState.link == NULL)
-      orionldState.payloadContextNode = kjString(orionldState.kjsonP, "@context", ORIONLD_DEFAULT_CONTEXT_URL);
+      orionldState.payloadContextNode = kjString(orionldState.kjsonP, "@context", ORIONLD_CORE_CONTEXT_URL);
     else
       orionldState.payloadContextNode = kjString(orionldState.kjsonP, "@context", orionldState.link);
   }
 
   if (orionldState.payloadContextNode == NULL)
   {
-    orionldErrorResponseCreate(OrionldInternalError, "Out of memory", NULL, OrionldDetailsString);
+    orionldErrorResponseCreate(OrionldInternalError, "Out of memory", NULL, OrionldDetailString);
     return;
   }
 
@@ -690,7 +675,7 @@ static void contextToPayload(void)
       if (orionldState.payloadContextNode == NULL)
       {
         if (orionldState.link == NULL)
-          contextNode = kjString(orionldState.kjsonP, "@context", ORIONLD_DEFAULT_CONTEXT_URL);
+          contextNode = kjString(orionldState.kjsonP, "@context", ORIONLD_CORE_CONTEXT_URL);
         else
           contextNode = kjString(orionldState.kjsonP, "@context", orionldState.link);
       }
@@ -703,7 +688,7 @@ static void contextToPayload(void)
 
       if (contextNode == NULL)
       {
-        orionldErrorResponseCreate(OrionldInternalError, "Out of memory", NULL, OrionldDetailsString);
+        orionldErrorResponseCreate(OrionldInternalError, "Out of memory", NULL, OrionldDetailString);
         return;
       }
 
@@ -852,10 +837,9 @@ int orionldMhdConnectionTreat(ConnectionInfo* ciP)
       ciP->httpStatusCode = SccBadRequest;
   }
   else if ((contextToBeCashed == true) && (contextToCache(ciP) == false))
-    goto respond;  // Yes, I know, the label 'respond' comes right after ...
+    goto respond;  // Yes, I know, the label 'respond' comes right after this statement ...
 
 
-  LM_TMP(("PATCH: After service routine - we still have to send the response"));
  respond:
   //
   // For error responses, there is ALWAYS payload, describing the error
@@ -864,7 +848,7 @@ int orionldMhdConnectionTreat(ConnectionInfo* ciP)
   // The only exception is 405 that has no payload - the info comes in the "Accepted" HTTP header.
   //
   if ((ciP->httpStatusCode >= 400) && (orionldState.responseTree == NULL) && (ciP->httpStatusCode != 405))
-    orionldErrorResponseCreate(OrionldInternalError, "Unknown Error", "The reason for this error is unknown", OrionldDetailsString);
+    orionldErrorResponseCreate(OrionldInternalError, "Unknown Error", "The reason for this error is unknown", OrionldDetailString);
 
   //
   // On error, the Content-Type is always "application/json" and there is NO Link header
@@ -934,7 +918,7 @@ int orionldMhdConnectionTreat(ConnectionInfo* ciP)
     else
     {
       LM_E(("Error allocating buffer for response payload"));
-      orionldErrorResponseCreate(OrionldInternalError, "Out of memory", NULL, OrionldDetailsString);
+      orionldErrorResponseCreate(OrionldInternalError, "Out of memory", NULL, OrionldDetailString);
     }
   }
 

@@ -83,9 +83,9 @@ Content-Type: application/json
 Date: REGEX(.*)
 
 {
-    "details": "urn:ngsi-ld:T:12:13:14",
+    "detail": "urn:ngsi-ld:T:12:13:14",
     "title": "Entity already exists",
-    "type": "http://uri.etsi.org/ngsi-ld/errors/AlreadyExists"
+    "type": "https://uri.etsi.org/ngsi-ld/errors/AlreadyExists"
 }
 
 

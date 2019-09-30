@@ -74,9 +74,9 @@ Content-Type: application/json
 Date: REGEX(.*)
 
 {
-    "details": "http://example.org/cim/commonTerms.jsonld",
+    "detail": "http://example.org/cim/commonTerms.jsonld",
     "title": "Invalid context",
-    "type": "http://uri.etsi.org/ngsi-ld/errors/BadRequestData"
+    "type": "https://uri.etsi.org/ngsi-ld/errors/BadRequestData"
 }
 
 

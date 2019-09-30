@@ -36,7 +36,7 @@ extern "C"
 #include "apiTypesV2/Subscription.h"                           // Subscription
 #include "orionld/context/orionldContextLookup.h"              // orionldContextLookup
 #include "orionld/context/orionldAliasLookup.h"                // orionldAliasLookup
-#include "orionld/context/orionldCoreContext.h"                // orionldDefaultContext
+#include "orionld/context/orionldCoreContext.h"                // orionldCoreContext
 #include "orionld/common/numberToDate.h"                       // numberToDate
 #include "orionld/common/orionldErrorResponse.h"               // orionldErrorResponseCreate, OrionldInternalError
 #include "orionld/common/OrionldConnection.h"                  // orionldState
@@ -274,7 +274,7 @@ KjNode* kjTreeFromSubscription(ConnectionInfo* ciP, ngsiv2::Subscription* subscr
     if (numberToDate((time_t) subscriptionP->timeInterval, date, sizeof(date), &details) == false)
     {
       LM_E(("Error creating a stringified date for 'timeInterval'"));
-      orionldErrorResponseCreate(OrionldInternalError, "Unable to create a stringified date", details, OrionldDetailsEntity);
+      orionldErrorResponseCreate(OrionldInternalError, "Unable to create a stringified date", details, OrionldDetailEntity);
       return NULL;
     }
     nodeP = kjString(orionldState.kjsonP, "timeInterval", date);
@@ -320,7 +320,7 @@ KjNode* kjTreeFromSubscription(ConnectionInfo* ciP, ngsiv2::Subscription* subscr
       if (coordValueP == NULL)
       {
         LM_E(("error parsing coordinates: '%s'", coordinateString));
-        orionldErrorResponseCreate(OrionldInternalError, "Unable to parse coordinates string", coordinateString, OrionldDetailsEntity);
+        orionldErrorResponseCreate(OrionldInternalError, "Unable to parse coordinates string", coordinateString, OrionldDetailEntity);
         return NULL;
       }
 
@@ -434,7 +434,7 @@ KjNode* kjTreeFromSubscription(ConnectionInfo* ciP, ngsiv2::Subscription* subscr
     if (numberToDate((time_t) subscriptionP->expires, date, sizeof(date), &details) == false)
     {
       LM_E(("Error creating a stringified date for 'expires'"));
-      orionldErrorResponseCreate(OrionldInternalError, "Unable to create a stringified expires date", details, OrionldDetailsEntity);
+      orionldErrorResponseCreate(OrionldInternalError, "Unable to create a stringified expires date", details, OrionldDetailEntity);
       return NULL;
     }
     nodeP = kjString(orionldState.kjsonP, "expires", date);
@@ -461,7 +461,7 @@ KjNode* kjTreeFromSubscription(ConnectionInfo* ciP, ngsiv2::Subscription* subscr
     if (subscriptionP->ldContext != "")
       nodeP = kjString(orionldState.kjsonP, "@context", subscriptionP->ldContext.c_str());
     else
-      nodeP = kjString(orionldState.kjsonP, "@context", orionldDefaultContext.url);
+      nodeP = kjString(orionldState.kjsonP, "@context", orionldCoreContext.url);
 
     kjChildAdd(topP, nodeP);
   }

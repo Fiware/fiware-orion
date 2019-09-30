@@ -21,7 +21,7 @@
 # VALGRIND_READY - to mark the test ready for valgrindTestSuite.sh
 
 --NAME--
-Subscription Creation and DB Contebt
+Subscription Creation and DB Content
 
 --SHELL-INIT--
 export BROKER=orionld
@@ -386,7 +386,7 @@ MongoDB server version: REGEX(.*)
 		{
 			"id" : "urn:ngsi-ld:E01",
 			"isPattern" : "false",
-			"type" : "http://example.org/ngsi-ld/default/T1",
+			"type" : "https://uri.etsi.org/ngsi-ld/default-context/T1",
 			"isTypePattern" : false
 		},
 		{
@@ -405,7 +405,7 @@ MongoDB server version: REGEX(.*)
 	"attrs" : [
 		"http://example.org/P1",
 		"http://example.org/P2",
-		"http://example.org/ngsi-ld/default/A3"
+		"https://uri.etsi.org/ngsi-ld/default-context/A3"
 	],
 	"metadata" : [ ],
 	"blacklist" : false,
@@ -541,42 +541,42 @@ Date: REGEX(.*)
 05. Attempt to create a subscription with an ID that is not a URI - see failure
 ===============================================================================
 HTTP/1.1 400 Bad Request
-Content-Length: 153
+Content-Length: 163
 Content-Type: application/json
 Date: REGEX(.*)
 
 {
-    "details": "http://example.org/ngsi-ld/default/sub01",
+    "detail": "https://uri.etsi.org/ngsi-ld/default-context/sub01",
     "title": "Subscription::id is not a URI",
-    "type": "http://uri.etsi.org/ngsi-ld/errors/BadRequestData"
+    "type": "https://uri.etsi.org/ngsi-ld/errors/BadRequestData"
 }
 
 
 06. Attempt to create a subscription without 'entities' nor 'watchedAttributes' - see failure
 =============================================================================================
 HTTP/1.1 400 Bad Request
-Content-Length: 160
+Content-Length: 159
 Content-Type: application/json
 Date: REGEX(.*)
 
 {
-    "details": "no details",
+    "detail": "no detail",
     "title": "At least one of 'entities' and 'watchedAttributes' must be present",
-    "type": "http://uri.etsi.org/ngsi-ld/errors/BadRequestData"
+    "type": "https://uri.etsi.org/ngsi-ld/errors/BadRequestData"
 }
 
 
 07. Attempt to create a subscription with both 'watchedAttributes' and 'timeInterval' - see failure
 ===================================================================================================
 HTTP/1.1 400 Bad Request
-Content-Length: 145
+Content-Length: 144
 Content-Type: application/json
 Date: REGEX(.*)
 
 {
-    "details": "no details",
+    "detail": "no detail",
     "title": "Both 'timeInterval' and 'watchedAttributes' present",
-    "type": "http://uri.etsi.org/ngsi-ld/errors/BadRequestData"
+    "type": "https://uri.etsi.org/ngsi-ld/errors/BadRequestData"
 }
 
 

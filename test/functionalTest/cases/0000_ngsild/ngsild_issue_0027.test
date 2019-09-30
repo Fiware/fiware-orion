@@ -57,9 +57,9 @@ Content-Type: application/json
 Date: REGEX(.*)
 
 {
-    "details": "urn:ngsi-ld:T:00.00.00",
+    "detail": "urn:ngsi-ld:T:00.00.00",
     "title": "Entity does not exist",
-    "type": "http://uri.etsi.org/ngsi-ld/errors/BadRequestData"
+    "type": "https://uri.etsi.org/ngsi-ld/errors/BadRequestData"
 }
 
 

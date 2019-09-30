@@ -87,14 +87,14 @@ MongoDB server version: REGEX(.*)
 {
 	"_id" : {
 		"id" : "http://a.b.c/entity/E",
-		"type" : "http://example.org/ngsi-ld/default/TTT",
+		"type" : "https://uri.etsi.org/ngsi-ld/default-context/TTT",
 		"servicePath" : "/"
 	},
 	"attrNames" : [
-		"http://example.org/ngsi-ld/default/A"
+		"https://uri.etsi.org/ngsi-ld/default-context/A"
 	],
 	"attrs" : {
-		"http://example=org/ngsi-ld/default/A" : {
+		"https://uri=etsi=org/ngsi-ld/default-context/A" : {
 			"type" : "Property",
 			"creDate" : REGEX(.*),
 			"modDate" : REGEX(.*),
@@ -117,7 +117,7 @@ bye
 HTTP/1.1 200 OK
 Content-Length: 89
 Content-Type: application/json
-Link: <https://forge.etsi.org/gitlab/NGSI-LD/NGSI-LD/raw/master/defaultContext/defaultContext.jsonld>; rel="http://www.w3.org/ns/json-ld#context"; type="application/ld+json"
+Link: <https://uri.etsi.org/ngsi-ld/v1/ngsi-ld-core-context.jsonld>; rel="http://www.w3.org/ns/json-ld#context"; type="application/ld+json"
 Date: REGEX(.*)
 
 {

@@ -44,12 +44,15 @@ extern "C"
 //
 static const char* errorTypeStringV[] =
 {
-  "http://uri.etsi.org/ngsi-ld/errors/InvalidRequest",
-  "http://uri.etsi.org/ngsi-ld/errors/BadRequestData",
-  "http://uri.etsi.org/ngsi-ld/errors/AlreadyExists",
-  "http://uri.etsi.org/ngsi-ld/errors/OperationNotSupported",
-  "http://uri.etsi.org/ngsi-ld/errors/ResourceNotFound",
-  "http://uri.etsi.org/ngsi-ld/errors/InternalError"
+  "https://uri.etsi.org/ngsi-ld/errors/InvalidRequest",
+  "https://uri.etsi.org/ngsi-ld/errors/BadRequestData",
+  "https://uri.etsi.org/ngsi-ld/errors/AlreadyExists",
+  "https://uri.etsi.org/ngsi-ld/errors/OperationNotSupported",
+  "https://uri.etsi.org/ngsi-ld/errors/ResourceNotFound",
+  "https://uri.etsi.org/ngsi-ld/errors/InternalError",
+  "https://uri.etsi.org/ngsi-ld/errors/OrionldTooComplexQuery",
+  "https://uri.etsi.org/ngsi-ld/errors/OrionldTooManyResults",
+  "https://uri.etsi.org/ngsi-ld/errors/OrionldLdContextNotAvailable"
 };
 
 
@@ -60,54 +63,54 @@ static const char* errorTypeStringV[] =
 //
 // NOTE
 //   Only service routines should use this function.
-//   Lower level functions should just return the 'details' string.
+//   Lower level functions should just return the 'detail' string.
 //
 void orionldErrorResponseCreate
 (
   OrionldResponseErrorType  errorType,
   const char*               title,
-  const char*               details,
-  OrionldDetailsType        detailsType
-  )
+  const char*               detail,
+  OrionldDetailType         detailType
+)
 {
-  LM_T(LmtErrorResponse, ("Creating error response: %s (%s)", title, details));
+  LM_T(LmtErrorResponse, ("Creating error response: %s (%s)", title, detail));
 
   KjNode* typeP     = kjString(orionldState.kjsonP, "type",    errorTypeStringV[errorType]);
   KjNode* titleP    = kjString(orionldState.kjsonP, "title",   title);
-  KjNode* detailsP;
+  KjNode* detailP;
 
-  if ((details != NULL) && (details[0] != 0))
+  if ((detail != NULL) && (detail[0] != 0))
   {
-    char*   contextDetails = NULL;
+    char*   contextDetail = NULL;
 
-    if (detailsType == OrionldDetailsString)  // no replacement as it's just a descriptive string
+    if (detailType == OrionldDetailString)  // no replacement as it's just a descriptive string
     {
-      contextDetails = (char*) details;
+      contextDetail = (char*) detail;
     }
-    else  // lookup 'details' in context
+    else  // lookup 'detail' in context
     {
-      KjNode*  nodeP = orionldContextItemLookup(orionldState.contextP, details);
-      char     contextDetailsV[512];  // FIXME: Define a max length for a context item?
+      KjNode*  nodeP = orionldContextItemLookup(orionldState.contextP, detail);
+      char     contextDetailV[512];  // FIXME: Define a max length for a context item?
 
       if (nodeP == NULL)
       {
-        snprintf(contextDetailsV, sizeof(contextDetailsV), "%s%s", orionldDefaultUrl, details);
-        contextDetails = contextDetailsV;
+        snprintf(contextDetailV, sizeof(contextDetailV), "%s%s", orionldDefaultUrl, detail);
+        contextDetail = contextDetailV;
       }
       else
       {
-        contextDetails = nodeP->value.s;
+        contextDetail = nodeP->value.s;
       }
     }
 
-    detailsP = kjString(orionldState.kjsonP, "details", contextDetails);
+    detailP = kjString(orionldState.kjsonP, "detail", contextDetail);
   }
   else
-    detailsP = kjString(orionldState.kjsonP, "details", "no details");
+    detailP = kjString(orionldState.kjsonP, "detail", "no detail");
 
   orionldState.responseTree = kjObject(orionldState.kjsonP, NULL);
 
   kjChildAdd(orionldState.responseTree, typeP);
   kjChildAdd(orionldState.responseTree, titleP);
-  kjChildAdd(orionldState.responseTree, detailsP);
+  kjChildAdd(orionldState.responseTree, detailP);
 }

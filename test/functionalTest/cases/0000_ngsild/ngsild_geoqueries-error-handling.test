@@ -208,9 +208,9 @@ Content-Type: application/json
 Date: REGEX(.*)
 
 {
-    "details": "Mandatory 'coordinates' field missing for a GeoJSON Property",
+    "detail": "Mandatory 'coordinates' field missing for a GeoJSON Property",
     "title": "The value of an attribute of type GeoProperty must be valid GeoJson",
-    "type": "http://uri.etsi.org/ngsi-ld/errors/BadRequestData"
+    "type": "https://uri.etsi.org/ngsi-ld/errors/BadRequestData"
 }
 
 
@@ -222,9 +222,9 @@ Content-Type: application/json
 Date: REGEX(.*)
 
 {
-    "details": "the 'coordinates' field of a GeoJSON object must be a JSON Array",
+    "detail": "the 'coordinates' field of a GeoJSON object must be a JSON Array",
     "title": "not a JSON Array",
-    "type": "http://uri.etsi.org/ngsi-ld/errors/BadRequestData"
+    "type": "https://uri.etsi.org/ngsi-ld/errors/BadRequestData"
 }
 
 
@@ -236,9 +236,9 @@ Content-Type: application/json
 Date: REGEX(.*)
 
 {
-    "details": "array with only ONE member for 'coordinates'",
+    "detail": "array with only ONE member for 'coordinates'",
     "title": "The value of an attribute of type GeoProperty must be valid GeoJson",
-    "type": "http://uri.etsi.org/ngsi-ld/errors/BadRequestData"
+    "type": "https://uri.etsi.org/ngsi-ld/errors/BadRequestData"
 }
 
 
@@ -250,9 +250,9 @@ Content-Type: application/json
 Date: REGEX(.*)
 
 {
-    "details": "empty array for 'coordinates'",
+    "detail": "empty array for 'coordinates'",
     "title": "The value of an attribute of type GeoProperty must be valid GeoJson",
-    "type": "http://uri.etsi.org/ngsi-ld/errors/BadRequestData"
+    "type": "https://uri.etsi.org/ngsi-ld/errors/BadRequestData"
 }
 
 
@@ -264,9 +264,9 @@ Content-Type: application/json
 Date: REGEX(.*)
 
 {
-    "details": "Mandatory 'type' field missing for a GeoJSON Property",
+    "detail": "Mandatory 'type' field missing for a GeoJSON Property",
     "title": "The value of an attribute of type GeoProperty must be valid GeoJson",
-    "type": "http://uri.etsi.org/ngsi-ld/errors/BadRequestData"
+    "type": "https://uri.etsi.org/ngsi-ld/errors/BadRequestData"
 }
 
 
@@ -278,9 +278,9 @@ Content-Type: application/json
 Date: REGEX(.*)
 
 {
-    "details": "the 'type' field of a GeoJSON object must be a JSON String",
+    "detail": "the 'type' field of a GeoJSON object must be a JSON String",
     "title": "Not a JSON String",
-    "type": "http://uri.etsi.org/ngsi-ld/errors/BadRequestData"
+    "type": "https://uri.etsi.org/ngsi-ld/errors/BadRequestData"
 }
 
 
@@ -292,9 +292,9 @@ Content-Type: application/json
 Date: REGEX(.*)
 
 {
-    "details": "invalid string for geo type",
+    "detail": "invalid string for geo type",
     "title": "invalid GeoJSON type",
-    "type": "http://uri.etsi.org/ngsi-ld/errors/BadRequestData"
+    "type": "https://uri.etsi.org/ngsi-ld/errors/BadRequestData"
 }
 
 
@@ -306,9 +306,9 @@ Content-Type: application/json
 Date: REGEX(.*)
 
 {
-    "details": "geometry without coordinates",
+    "detail": "geometry without coordinates",
     "title": "no coordinates",
-    "type": "http://uri.etsi.org/ngsi-ld/errors/BadRequestData"
+    "type": "https://uri.etsi.org/ngsi-ld/errors/BadRequestData"
 }
 
 
@@ -320,9 +320,9 @@ Content-Type: application/json
 Date: REGEX(.*)
 
 {
-    "details": "invalid point in URI param /coords/",
+    "detail": "invalid point in URI param /coords/",
     "title": "error filling a scope",
-    "type": "http://uri.etsi.org/ngsi-ld/errors/InternalError"
+    "type": "https://uri.etsi.org/ngsi-ld/errors/InternalError"
 }
 
 
@@ -334,9 +334,9 @@ Content-Type: application/json
 Date: REGEX(.*)
 
 {
-    "details": "invalid point in URI param /coords/",
+    "detail": "invalid point in URI param /coords/",
     "title": "error filling a scope",
-    "type": "http://uri.etsi.org/ngsi-ld/errors/InternalError"
+    "type": "https://uri.etsi.org/ngsi-ld/errors/InternalError"
 }
 
 
@@ -348,9 +348,9 @@ Content-Type: application/json
 Date: REGEX(.*)
 
 {
-    "details": "no coordinates for geometry",
+    "detail": "no coordinates for geometry",
     "title": "error filling a scope",
-    "type": "http://uri.etsi.org/ngsi-ld/errors/InternalError"
+    "type": "https://uri.etsi.org/ngsi-ld/errors/InternalError"
 }
 
 

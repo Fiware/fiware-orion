@@ -53,7 +53,7 @@ bool orionldPostBatchDeleteEntities(ConnectionInfo* ciP)
 
   if (orionldState.requestTree->type != KjArray)
   {
-    orionldErrorResponseCreate(OrionldBadRequestData, "Invalid payload", "must be a JSON array", OrionldDetailsString);
+    orionldErrorResponseCreate(OrionldBadRequestData, "Invalid payload", "must be a JSON array", OrionldDetailString);
     ciP->httpStatusCode = SccBadRequest;
     return false;
   }
@@ -65,7 +65,7 @@ bool orionldPostBatchDeleteEntities(ConnectionInfo* ciP)
   {
     if (idNodeP->type != KjString)
     {
-      orionldErrorResponseCreate(OrionldBadRequestData, "Invalid payload", "must be a JSON Array of JSON Strings", OrionldDetailsString);
+      orionldErrorResponseCreate(OrionldBadRequestData, "Invalid payload", "must be a JSON Array of JSON Strings", OrionldDetailString);
       ciP->httpStatusCode = SccBadRequest;
       return false;
     }

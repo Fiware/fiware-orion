@@ -78,9 +78,9 @@ Content-Type: application/json
 Date: REGEX(.*)
 
 {
-    "details": "id, idPattern",
+    "detail": "id, idPattern",
     "title": "Incompatible parameters",
-    "type": "http://uri.etsi.org/ngsi-ld/errors/BadRequestData"
+    "type": "https://uri.etsi.org/ngsi-ld/errors/BadRequestData"
 }
 
 
@@ -100,9 +100,9 @@ Content-Type: application/json
 Date: REGEX(.*)
 
 {
-    "details": "entity type/id not given nor attribute list",
+    "detail": "entity type/id not given nor attribute list",
     "title": "too broad query",
-    "type": "http://uri.etsi.org/ngsi-ld/errors/BadRequestData"
+    "type": "https://uri.etsi.org/ngsi-ld/errors/BadRequestData"
 }
 
 

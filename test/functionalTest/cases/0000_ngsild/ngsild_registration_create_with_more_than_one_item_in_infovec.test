@@ -87,9 +87,9 @@ Content-Type: application/json
 Date: REGEX(.*)
 
 {
-    "details": "Not Implemented",
+    "detail": "Not Implemented",
     "title": "More than one item in Registration::information vector",
-    "type": "http://uri.etsi.org/ngsi-ld/errors/OperationNotSupported"
+    "type": "https://uri.etsi.org/ngsi-ld/errors/OperationNotSupported"
 }
 
 
