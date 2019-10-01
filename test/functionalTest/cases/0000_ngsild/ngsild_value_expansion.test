@@ -37,6 +37,12 @@ brokerStart CB 0-255
 # 04. GET the entity and see the expanded values
 # 05. PATCH the	entity,	changing an attribute (whose value is to be expanded)
 # 06. GET the entity and see the expanded values
+# 07. Create an entity E2 with a string attribute called 'Category', and the data model context (that defines 'Category' with @type: @vocab)
+# 08. GET E2 and see the expanded value of 'Category'
+# 09. Create an entity E3 with a string-array attribute called 'Category', and the data model context (that defines 'Category' with @type: @vocab)
+# 10. GET E3 and see the expanded values of 'Category'
+# 11. Create an entity E4 with a string-array attribute called 'relationships', and the core context (that defines 'relationships' with @type: @vocab)
+# 12. GET E4 and see the expanded values of 'relationships'
 #
 
 echo "01. Create an entity with inline context and attributes to be expanded (string and vector of strings)"
@@ -106,6 +112,42 @@ echo
 echo
 
 
+echo "07. Create an entity E2 with a string attribute called 'Category', and the data model context (that defines 'Category' with @type: @vocab)"
+echo "=========================================================================================================================================="
+echo
+echo
+
+
+echo "08. GET E2 and see the expanded value of 'Category'"
+echo "==================================================="
+echo
+echo
+
+
+echo "09. Create an entity E3 with a string-array attribute called 'Category', and the data model context (that defines 'Category' with @type: @vocab)"
+echo "================================================================================================================================================"
+echo
+echo
+
+
+echo "10. GET E3 and see the expanded values of 'Category'"
+echo "===================================================="
+echo
+echo
+
+
+echo "11. Create an entity E4 with a string-array attribute called 'relationships', and the core context (that defines 'relationships' with @type: @vocab)"
+echo "===================================================================================================================================================="
+echo
+echo
+
+
+echo "12. GET E4 and see the expanded values of 'relationships'"
+echo "========================================================="
+echo
+echo
+
+
 --REGEXPECT--
 01. Create an entity with inline context and attributes to be expanded (string and vector of strings)
 =====================================================================================================
@@ -162,6 +204,30 @@ Date: REGEX(.*)
 
 06. GET the entity and see the expanded values
 ==============================================
+
+
+07. Create an entity E2 with a string attribute called 'Category', and the data model context (that defines 'Category' with @type: @vocab)
+==========================================================================================================================================
+
+
+08. GET E2 and see the expanded value of 'Category'
+===================================================
+
+
+09. Create an entity E3 with a string-array attribute called 'Category', and the data model context (that defines 'Category' with @type: @vocab)
+================================================================================================================================================
+
+
+10. GET E3 and see the expanded values of 'Category'
+====================================================
+
+
+11. Create an entity E4 with a string-array attribute called 'relationships', and the core context (that defines 'relationships' with @type: @vocab)
+====================================================================================================================================================
+
+
+12. GET E4 and see the expanded values of 'relationships'
+=========================================================
 
 
 --TEARDOWN--
