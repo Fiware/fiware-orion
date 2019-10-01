@@ -64,8 +64,6 @@ extern "C"
 #include "orionld/context/orionldUriExpand.h"                              // orionldUriExpand
 #include "orionld/serviceRoutines/orionldPostEntityOperationsUpsert.h"     // Own Interface
 #include "orionld/mongoCppLegacy/mongoCppLegacyEntityOperationsUpsert.h"   // mongoCppLegacyEntityOperationsUpsert
-#include "orionld/common/orionldEntitiyPayloadCheck.h"                     // payloadCheck
-
 
 
 // ----------------------------------------------------------------------------
@@ -340,28 +338,6 @@ bool orionldPostEntityOperationsUpsert(ConnectionInfo* ciP)
     //
     char*   entityId           = entityIdNodeP->value.s;
     char*   entityType         = entityTypeNodeP->value.s;
-
-#if 0
-    //
-    // @Gabriel (remove this comment and its #if/#endif block when done)
-    //   I have removed the call to payloadCheck as it doesn't do what it should.
-    //   Instead, kjTreeToContextElementAttributes returns error detail if it fails, and then an error item is pushed
-    //   I am not sure kjTreeToContextElementAttributes checks everything that needs to be checked.
-    //   Test this empirically with functests.
-    //
-    //   Test EVERYTHING that could go wrong
-    //
-    KjNode*  locationP          = NULL;
-    KjNode*  observationSpaceP  = NULL;
-    KjNode*  operationSpaceP    = NULL;
-    LM_TMP(("Calling payloadCheck"));
-    if (payloadCheck(ciP, entityNodeP->value.firstChildP, &locationP, &observationSpaceP, &operationSpaceP, &createdAtP, &modifiedAtP, true) == false)
-    {
-      LM_TMP(("payloadCheck: error at index -> %d", ix));
-      return false;
-    }
-    LM_TMP(("After payloadCheck"));
-#endif
 
     ContextElement*  ceP = new ContextElement();  // FIXME: Any way I can avoid to allocate ?
     EntityId*        entityIdP;
