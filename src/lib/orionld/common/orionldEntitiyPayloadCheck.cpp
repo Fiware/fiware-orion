@@ -111,7 +111,7 @@ bool checkEntityIdFieldExists()
 {
   if (orionldState.payloadIdNode == NULL)
   {
-    orionldErrorResponseCreate(OrionldBadRequestData, "Entity id is missing", "The 'id' field is mandatory", OrionldDetailString);
+    orionldErrorResponseCreate(OrionldBadRequestData, "Entity id is missing", "The 'id' field is mandatory");
     return false;
   }
 
@@ -125,7 +125,7 @@ bool checkEntityIdFieldExists()
     strcpy(titleExpanded, entityStartTitle);
     strcat(titleExpanded, idEntityFromPayload);
 
-    orionldErrorResponseCreate(OrionldBadRequestData, titleExpanded, "The 'type' field is mandatory", OrionldDetailString);
+    orionldErrorResponseCreate(OrionldBadRequestData, titleExpanded, "The 'type' field is mandatory");
     return false;
   }
 
@@ -177,13 +177,13 @@ bool payloadCheck
 
         if (orionldState.payloadIdNode->type != KjString)
         {
-          orionldErrorResponseCreate(OrionldBadRequestData, "Invalid Entity Id", "Must be a JSON String", OrionldDetailString);
+          orionldErrorResponseCreate(OrionldBadRequestData, "Invalid Entity Id", "Must be a JSON String");
           return false;
         }
 
         if ((urlCheck(orionldState.payloadIdNode->value.s, &detailsP) == false) && (urnCheck(orionldState.payloadIdNode->value.s, &detailsP) == false))
         {
-          orionldErrorResponseCreate(OrionldBadRequestData, "Invalid Entity id", "The id specified cannot be resolved to a URL or URN", OrionldDetailString);
+          orionldErrorResponseCreate(OrionldBadRequestData, "Invalid Entity id", "The id specified cannot be resolved to a URL or URN");
           return false;
         }
         //
@@ -191,7 +191,7 @@ bool payloadCheck
         //
         // if (mongoEntityExists(orionldState.payloadIdNode->value.s, orionldState.tenant) == true)
         // {
-        //   orionldErrorResponseCreate(OrionldAlreadyExists, "Entity already exists", orionldState.payloadIdNode->value.s, OrionldDetailsString);
+        //   orionldErrorResponseCreate(OrionldAlreadyExists, "Entity already exists", orionldState.payloadIdNode->value.s);
         //   ciP->httpStatusCode = SccConflict;
         //   return false;
         // }
@@ -203,7 +203,7 @@ bool payloadCheck
 
         if (orionldState.payloadTypeNode->type != KjString)
         {
-          orionldErrorResponseCreate(OrionldBadRequestData, "Invalid Entity Type", "Must be a JSON String", OrionldDetailString);
+          orionldErrorResponseCreate(OrionldBadRequestData, "Invalid Entity Type", "Must be a JSON String");
           return false;
         }
       }
@@ -241,7 +241,7 @@ bool payloadCheck
       {
         if (orionldValidName(kNodeP->name, &detailsP) == false)
         {
-          orionldErrorResponseCreate(OrionldBadRequestData, "Invalid Property/Relationship name", detailsP, OrionldDetailString);
+          orionldErrorResponseCreate(OrionldBadRequestData, "Invalid Property/Relationship name", detailsP);
           return false;
         }
       }

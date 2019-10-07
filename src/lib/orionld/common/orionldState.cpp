@@ -71,13 +71,15 @@ uint16_t        portNo                   = 0;
 char*           hostname                 = (char*) "localhost";
 int             dbNameLen;
 
-#ifdef DB_DRIVER_MONGOC
+
 //
 // Variables for Mongo C Driver
 //
+#ifdef DB_DRIVER_MONGOC
 mongoc_collection_t*  mongoEntitiesCollectionP      = NULL;
 mongoc_collection_t*  mongoRegistrationsCollectionP = NULL;
 #endif
+
 
 
 // -----------------------------------------------------------------------------
@@ -139,7 +141,10 @@ void orionldStateInit(void)
 
   bzero(orionldState.delayedKjFreeVec, sizeof(orionldState.delayedKjFreeVec));
   orionldState.delayedKjFreeVecIndex = 0;
-  orionldState.delayedKjFreeVecSize = sizeof(orionldState.delayedKjFreeVec) / sizeof(orionldState.delayedKjFreeVec[0]);
+  orionldState.delayedKjFreeVecSize  = sizeof(orionldState.delayedKjFreeVec) / sizeof(orionldState.delayedKjFreeVec[0]);
+
+  orionldState.notify              = false;
+  orionldState.notificationRecords = 0;
 }
 
 

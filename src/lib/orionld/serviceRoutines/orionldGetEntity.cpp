@@ -38,7 +38,6 @@ extern "C"
 #include "orionld/common/OrionldConnection.h"                  // orionldState
 #include "orionld/context/orionldContextAdd.h"                 // Add a context to the context list
 #include "orionld/kjTree/kjTreeFromQueryContextResponse.h"     // kjTreeFromQueryContextResponse
-#include "orionld/kjTree/kjTreeFromQueryContextResponseWithAttrList.h"     // kjTreeFromQueryContextResponseWithAttrList
 #include "orionld/common/orionldErrorResponse.h"               // orionldErrorResponseCreate
 #include "orionld/context/orionldUriExpand.h"                  // orionldUriExpand
 #include "orionld/serviceRoutines/orionldGetEntity.h"          // Own Interface
@@ -72,7 +71,7 @@ bool orionldGetEntity(ConnectionInfo* ciP)
   if ((urlCheck(orionldState.wildcard[0], &details) == false) && (urnCheck(orionldState.wildcard[0], &details) == false))
   {
     LM_W(("Bad Input (Invalid Entity ID - Not a URL nor a URN)"));
-    orionldErrorResponseCreate(OrionldBadRequestData, "Invalid Entity ID", "Not a URL nor a URN", OrionldDetailString);
+    orionldErrorResponseCreate(OrionldBadRequestData, "Invalid Entity ID", "Not a URL nor a URN");
     return false;
   }
 
@@ -92,78 +91,15 @@ bool orionldGetEntity(ConnectionInfo* ciP)
 
   if (response.errorCode.code == SccBadRequest)
   {
-    orionldErrorResponseCreate(OrionldBadRequestData, "Bad Request", NULL, OrionldDetailString);
+    orionldErrorResponseCreate(OrionldBadRequestData, "Bad Request", NULL);
     return false;
   }
 
-  //
   // Create response by converting "QueryContextResponse response" into a KJson tree
-  // But first, check for "404 Not Found"
-  //
-  if (attrs != NULL)
-  {
-    char  longName[256];
-    char* details;
-    char* shortName;
-    char* shortNameVector[32];
-    int   vecItems = (int) sizeof(shortNameVector) / sizeof(shortNameVector[0]);
-
-    vecItems = kStringSplit(attrs, ',', (char**) shortNameVector, vecItems);
-
-    int   attrListLen = 1024;
-    char* attrList    = (char*) malloc(attrListLen);
-    char* attrListEnd = &attrList[1];
-
-    attrList[0] = ',';
-    attrList[1] = 0;
-
-    for (int ix = 0; ix < vecItems; ix++)
-    {
-      shortName = shortNameVector[ix];
-
-      if (orionldUriExpand(orionldState.contextP, shortName, longName, sizeof(longName), &details) == true)
-      {
-        int  len  = strlen(longName);
-        int  used = (int) ((uint64_t) attrListEnd - (uint64_t) attrList);
-
-        if (used + len > attrListLen + 1)
-        {
-          attrListLen += 1024;
-          attrList     = (char*) realloc(attrList, attrListLen);
-
-          if (attrList == NULL)
-          {
-            orionldErrorResponseCreate(OrionldInternalError, "Out of memory", NULL, OrionldDetailString);
-            return false;
-          }
-
-          attrListEnd = &attrList[used];
-        }
-
-        strcpy(attrListEnd, longName);
-        attrListEnd += len;
-        *attrListEnd = ',';
-        ++attrListEnd;
-      }
-      else
-      {
-        orionldErrorResponseCreate(OrionldBadRequestData, "Error during URI expansion of attribute", shortName, OrionldDetailString);
-        return false;
-      }
-    }
-    *attrListEnd = 0;
-
-    orionldState.responseTree = kjTreeFromQueryContextResponseWithAttrList(ciP, true, attrList, keyValues, &response);
-    free(attrList);
-  }
-  else
-    orionldState.responseTree = kjTreeFromQueryContextResponse(ciP, true, keyValues, &response);
-
+  orionldState.responseTree = kjTreeFromQueryContextResponse(ciP, true, attrs, keyValues, &response);
 
   if (orionldState.responseTree == NULL)
-  {
     ciP->httpStatusCode = SccContextElementNotFound;
-  }
 
   // request.entityIdVector.vec.erase(0);  // Remove 'entityId' from entityIdVector
 

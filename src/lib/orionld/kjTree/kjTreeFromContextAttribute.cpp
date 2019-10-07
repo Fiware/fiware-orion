@@ -66,7 +66,8 @@ extern "C"
 //
 KjNode* kjTreeFromContextAttribute(ContextAttribute* caP, OrionldContext* contextP, RenderFormat renderFormat, char** detailsP)
 {
-  char*    nameAlias = orionldAliasLookup(contextP, caP->name.c_str());
+  bool     valueMayBeContracted;
+  char*    nameAlias = orionldAliasLookup(contextP, caP->name.c_str(), &valueMayBeContracted);
   KjNode*  nodeP     = NULL;
 
   if (nameAlias == NULL)
@@ -81,7 +82,17 @@ KjNode* kjTreeFromContextAttribute(ContextAttribute* caP, OrionldContext* contex
     switch (caP->valueType)
     {
     case orion::ValueTypeString:
-      nodeP = kjString(orionldState.kjsonP, nameAlias, caP->stringValue.c_str());
+      if (valueMayBeContracted == true)
+      {
+        char* contractedValue = orionldAliasLookup(contextP, caP->stringValue.c_str(), NULL);
+
+        if (contractedValue != NULL)
+          nodeP = kjString(orionldState.kjsonP, nameAlias, contractedValue);
+        else
+          nodeP = kjString(orionldState.kjsonP, nameAlias, caP->stringValue.c_str());
+      }
+      else
+        nodeP = kjString(orionldState.kjsonP, nameAlias, caP->stringValue.c_str());
       ALLOCATION_CHECK(nodeP);
       break;
 
@@ -102,7 +113,7 @@ KjNode* kjTreeFromContextAttribute(ContextAttribute* caP, OrionldContext* contex
 
     case orion::ValueTypeVector:
     case orion::ValueTypeObject:
-      nodeP = kjTreeFromCompoundValue(caP->compoundValueP, NULL, detailsP);
+      nodeP = kjTreeFromCompoundValue(caP->compoundValueP, NULL, valueMayBeContracted, detailsP);
       if (nodeP == NULL)
         return NULL;
       break;
@@ -124,6 +135,7 @@ KjNode* kjTreeFromContextAttribute(ContextAttribute* caP, OrionldContext* contex
     return NULL;
   }
 
+  bool isRelationship = false;
   if (caP->type != "")
   {
     KjNode* typeNodeP = kjString(orionldState.kjsonP, "type", caP->type.c_str());
@@ -136,13 +148,17 @@ KjNode* kjTreeFromContextAttribute(ContextAttribute* caP, OrionldContext* contex
     }
 
     kjChildAdd(aTopNodeP, typeNodeP);
+    if (strcmp(typeNodeP->value.s, "Relationship") == 0)
+      isRelationship = true;
   }
 
   // Value
+  const char* valueName = (isRelationship == false)? "value" : "object";
+  LM_TMP(("NOTIF: valueType of attr '%s': '%s'", caP->name.c_str(), valueTypeName(caP->valueType)));
   switch (caP->valueType)
   {
   case orion::ValueTypeString:
-    nodeP = kjString(orionldState.kjsonP, "value", caP->stringValue.c_str());
+    nodeP = kjString(orionldState.kjsonP, valueName, caP->stringValue.c_str());
     ALLOCATION_CHECK(nodeP);
     break;
 
@@ -163,7 +179,8 @@ KjNode* kjTreeFromContextAttribute(ContextAttribute* caP, OrionldContext* contex
 
   case orion::ValueTypeVector:
   case orion::ValueTypeObject:
-    nodeP = kjTreeFromCompoundValue(caP->compoundValueP, NULL, detailsP);
+    nodeP = kjTreeFromCompoundValue(caP->compoundValueP, NULL, valueMayBeContracted, detailsP);
+    nodeP->name = (char*) "value";
     if (nodeP == NULL)
       return NULL;
     break;
@@ -175,12 +192,37 @@ KjNode* kjTreeFromContextAttribute(ContextAttribute* caP, OrionldContext* contex
   }
   kjChildAdd(aTopNodeP, nodeP);
 
+  bool isGeoProperty = false;
+  LM_TMP(("NOTIF: attribute type is: '%s'", caP->type.c_str()));
+  if (strcmp(caP->type.c_str(), "GeoProperty") == 0)
+  {
+    //
+    // GeoProperty attributes seem to get an extra metadata, called "location". It needs to be removed
+    //
+    LM_TMP(("NOTIF: It's a GeoProperty attribute!"));
+    isGeoProperty = true;
+  }
+
   // Metadata
+  LM_TMP(("NOTIF: converting %d metadata of attribute '%s' of type '%s'", caP->metadataVector.size(), caP->name.c_str(), caP->type.c_str()));
   for (unsigned int ix = 0; ix < caP->metadataVector.size(); ix++)
   {
     Metadata*   mdP    = caP->metadataVector[ix];
     const char* mdName = mdP->name.c_str();
 
+    if ((isGeoProperty == true) && (strcmp(mdName, "location") == 0))
+    {
+      //
+      // FIXME
+      //   Skipping the metadata "location" for GeoProperty attributes - for now
+      //   In the future we might want to keep this metadata, but the unit must be looked over (WGS84).
+      //   What was default unit in orion v1 is not default for orionld
+      //
+      LM_TMP(("NOTIF: skipping metadata '%s'", mdName));
+      continue;
+    }
+
+    LM_TMP(("NOTIF: converting metadata '%s'", mdName));
     //
     // Special case: observedAt - stored as Number but must be served as a string ...
     //                            also, not expanded
@@ -200,8 +242,66 @@ KjNode* kjTreeFromContextAttribute(ContextAttribute* caP, OrionldContext* contex
     }
     else
     {
-      char* mdLongName = orionldAliasLookup(contextP, mdName);
-      nodeP = kjString(orionldState.kjsonP, mdLongName, mdP->stringValue.c_str());
+      bool    valueMayBeContracted;
+      char*   mdLongName     = orionldAliasLookup(contextP, mdName, &valueMayBeContracted);
+      KjNode* typeNodeP      = kjString(orionldState.kjsonP, "type", mdP->type.c_str());
+      KjNode* valueNodeP     = NULL;
+
+      nodeP = kjObject(orionldState.kjsonP, mdLongName);
+
+      LM_TMP(("NOTIF: metadata '%s' is a '%s'", mdName, valueTypeName(mdP->valueType)));
+
+      kjChildAdd(nodeP, typeNodeP);
+      if (strcmp(mdP->type.c_str(), "Relationship") == 0)
+      {
+        valueNodeP = kjString(orionldState.kjsonP, "object", mdP->stringValue.c_str());
+      }
+      else if (strcmp(mdP->type.c_str(), "Property") == 0)
+      {
+        switch (mdP->valueType)
+        {
+        case orion::ValueTypeString:
+          if (valueMayBeContracted == true)
+          {
+            char* contractedValue = orionldAliasLookup(contextP, mdP->stringValue.c_str(), NULL);
+
+            if (contractedValue != NULL)
+              valueNodeP = kjString(orionldState.kjsonP, "value", contractedValue);
+            else
+              valueNodeP = kjString(orionldState.kjsonP, "value", mdP->stringValue.c_str());
+          }
+          else
+            valueNodeP = kjString(orionldState.kjsonP, "value", mdP->stringValue.c_str());
+          break;
+
+        case orion::ValueTypeNumber:
+          valueNodeP = kjFloat(orionldState.kjsonP, "value", mdP->numberValue);  // FIXME: kjInteger or kjFloat
+          break;
+
+        case orion::ValueTypeBoolean:
+          valueNodeP = kjBoolean(orionldState.kjsonP, "value", (KBool) mdP->boolValue);
+          break;
+
+        case orion::ValueTypeNull:
+          valueNodeP = kjNull(orionldState.kjsonP, "value");
+          break;
+
+        case orion::ValueTypeVector:
+        case orion::ValueTypeObject:
+          valueNodeP = kjTreeFromCompoundValue(mdP->compoundValueP, NULL, valueMayBeContracted, detailsP);
+          break;
+
+        case orion::ValueTypeNotGiven:
+          valueNodeP = kjString(orionldState.kjsonP, "value", "UNKNOWN TYPE");
+          break;
+        }
+      }
+      else
+      {
+        valueNodeP = kjString(orionldState.kjsonP, "NonSupportedAttributeType", mdP->type.c_str());
+      }
+
+      kjChildAdd(nodeP, valueNodeP);
     }
 
     kjChildAdd(aTopNodeP, nodeP);

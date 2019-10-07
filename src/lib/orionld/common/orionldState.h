@@ -25,18 +25,20 @@
 *
 * Author: Ken Zangelin
 */
-#include "orionld/db/dbDriver.h"                               // database driver header
-#include "orionld/db/dbConfiguration.h"                        // DB_DRIVER_MONGOC
+#include "orionld/db/dbDriver.h"                                 // database driver header
+#include "orionld/db/dbConfiguration.h"                          // DB_DRIVER_MONGOC
 
 extern "C"
 {
-#include "kjson/kjson.h"                                       // Kjson
-#include "kjson/KjNode.h"                                      // KjNode
+#include "kjson/kjson.h"                                         // Kjson
+#include "kjson/KjNode.h"                                        // KjNode
 }
-#include "common/globals.h"                                    // ApiVersion
-#include "orionld/common/QNode.h"                              // QNode
-#include "orionld/types/OrionldGeoJsonType.h"                  // OrionldGeoJsonType
-#include "orionld/context/OrionldContext.h"                    // OrionldContext
+
+#include "common/globals.h"                                      // ApiVersion
+#include "common/MimeType.h"                                     // MimeType
+#include "orionld/common/QNode.h"                                // QNode
+#include "orionld/types/OrionldGeoJsonType.h"                    // OrionldGeoJsonType
+#include "orionld/context/OrionldContext.h"                      // OrionldContext
 
 
 
@@ -83,6 +85,23 @@ typedef struct OrionldUriParams
   int   limit;     // Not Implemented - use ciP->uriParams for now
   // To Be Continued ...
 } OrionldUriParams;
+
+
+
+// -----------------------------------------------------------------------------
+//
+// OrionldNotificationInfo -
+//
+typedef struct OrionldNotificationInfo
+{
+  char*     subscriptionId;
+  MimeType  mimeType;
+  KjNode*   attrsForNotification;
+  char*     reference;
+  int       fd;
+  bool      connected;
+  bool      allOK;
+} OrionldNotificationInfo;
 
 
 
@@ -151,10 +170,12 @@ typedef struct OrionldConnectionState
   char                    qDebugBuffer[24 * 1024];
   mongo::BSONObj*         qMongoFilterP;
   char*                   jsonBuf;    // Used by kjTreeFromBsonObj
-
   KjNode*                 delayedKjFreeVec[50];
   int                     delayedKjFreeVecIndex;
   int                     delayedKjFreeVecSize;
+  int                     notificationRecords;
+  OrionldNotificationInfo notificationInfo[100];
+  bool                    notify;
 
 #ifdef DB_DRIVER_MONGOC
   //
@@ -181,28 +202,29 @@ extern __thread OrionldConnectionState orionldState;
 // Global state
 //
 extern char      kallocBuffer[32 * 1024];
-extern int       requestNo;  // Never mind protecting with semaphore. Just a debugging help
+extern int       requestNo;                // Never mind protecting with semaphore. Just a debugging help
 extern KAlloc    kalloc;
 extern Kjson     kjson;
 extern Kjson*    kjsonP;
 extern char*     hostname;
 extern uint16_t  portNo;
-extern char      dbName[];            // From orionld.cpp
+extern char      dbName[];                 // From orionld.cpp
 extern int       dbNameLen;
-extern char      dbUser[];            // From orionld.cpp
-extern char      dbPwd[];             // From orionld.cpp
-extern bool      multitenancy;        // From orionld.cpp
-extern char*     tenant;              // From orionld.cpp
+extern char      dbUser[];                 // From orionld.cpp
+extern char      dbPwd[];                  // From orionld.cpp
+extern bool      multitenancy;             // From orionld.cpp
+extern char*     tenant;                   // From orionld.cpp
+extern int       contextDownloadAttempts;  // From orionld.cpp
+extern int       contextDownloadTimeout;   // From orionld.cpp
 
-
-
-#ifdef DB_DRIVER_MONGOC
 //
 // Variables for Mongo C Driver
 //
+#ifdef DB_DRIVER_MONGOC
 extern mongoc_collection_t*  mongoEntitiesCollectionP;
 extern mongoc_collection_t*  mongoRegistrationsCollectionP;
 #endif
+
 
 
 // -----------------------------------------------------------------------------

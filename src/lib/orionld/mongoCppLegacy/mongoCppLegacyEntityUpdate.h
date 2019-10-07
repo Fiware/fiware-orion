@@ -29,6 +29,7 @@
 extern "C"
 {
 #include "kjson/KjNode.h"                                        // KjNode
+#include "kjson/kjBuilder.h"                                     // kjString, kjObject, ...
 }
 
 
@@ -37,6 +38,6 @@ extern "C"
 //
 // mongoCppLegacyEntityUpdate -
 //
-extern bool mongoCppLegacyEntityUpdate(char* entityId, KjNode* requestTree);
+extern bool mongoCppLegacyEntityUpdate(const char* entityId, KjNode* requestTree);
 
 #endif  // SRC_LIB_ORIONLD_MONGOCPPLEGACY_MONGOCPPLEGACYENTITYUPDATE_H_

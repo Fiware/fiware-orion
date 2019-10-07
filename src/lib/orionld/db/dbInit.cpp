@@ -25,12 +25,16 @@
 #include "orionld/db/dbConfiguration.h"                                    // This is where the DB is selected
 
 #if DB_DRIVER_MONGO_CPP_LEGACY
+
 #include "orionld/mongoCppLegacy/mongoCppLegacyInit.h"                     // mongoCppLegacyInit
 #include "orionld/mongoCppLegacy/mongoCppLegacyEntityUpdate.h"             // mongoCppLegacyEntityUpdate
 #include "orionld/mongoCppLegacy/mongoCppLegacyEntityLookup.h"             // mongoCppLegacyEntityLookup
 #include "orionld/mongoCppLegacy/mongoCppLegacyKjTreeFromBsonObj.h"        // mongoCppLegacyKjTreeFromBsonObj
 #include "orionld/mongoCppLegacy/mongoCppLegacyKjTreeToBsonObj.h"          // mongoCppLegacyKjTreeToBsonObj
 #include "orionld/mongoCppLegacy/mongoCppLegacyEntityOperationsUpsert.h"   // mongoCppLegacyKjTreeToBsonObj
+#include "orionld/mongoCppLegacy/mongoCppLegacyEntityBatchDelete.h"        // mongoCppLegacyEntityBatchDelete
+#include "orionld/mongoCppLegacy/mongoCppLegacySubscriptionMatchEntityIdAndAttributes.h"   // mongoCppLegacySubscriptionMatchEntityIdAndAttributes
+
 #elif DB_DRIVER_MONGOC
 #include "orionld/mongoc/mongocInit.h"                                     // mongocInit
 #include "orionld/mongoc/mongocEntityUpdate.h"                             // mongocEntityUpdate
@@ -53,20 +57,23 @@ void dbInit(const char* dbHost, const char* dbName)
 {
 #if DB_DRIVER_MONGO_CPP_LEGACY
 
-  dbEntityLookup           = mongoCppLegacyEntityLookup;
-  dbEntityUpdate           = mongoCppLegacyEntityUpdate;
-  dbDataToKjTree           = mongoCppLegacyKjTreeFromBsonObj;
-  dbDataFromKjTree         = mongoCppLegacyKjTreeToBsonObj;
-  dbEntityOperationsUpsert = mongoCppLegacyEntityOperationsUpsert;
+  dbEntityLookup                           = mongoCppLegacyEntityLookup;
+  dbEntityUpdate                           = mongoCppLegacyEntityUpdate;
+  dbDataToKjTree                           = mongoCppLegacyKjTreeFromBsonObj;
+  dbDataFromKjTree                         = mongoCppLegacyKjTreeToBsonObj;
+  dbEntityBatchDelete                      = mongoCppLegacyEntityBatchDelete;
+  dbEntityOperationsUpsert                 = mongoCppLegacyEntityOperationsUpsert;
+  dbSubscriptionMatchEntityIdAndAttributes = mongoCppLegacySubscriptionMatchEntityIdAndAttributes;
 
   mongoCppLegacyInit(dbHost, dbName);
 
 #elif DB_DRIVER_MONGOC
 
-  dbEntityLookup   = mongocEntityLookup;
-  dbEntityUpdate   = mongocEntityUpdate;
-  dbDataToKjTree   = mongocKjTreeFromBsonObj;
-  dbDataFromKjTree = NULL;  // FIXME: Implement mongocKjTreeToBson
+  dbEntityLookup                           = mongocEntityLookup;
+  dbEntityUpdate                           = mongocEntityUpdate;
+  dbDataToKjTree                           = mongocKjTreeFromBsonObj;
+  dbDataFromKjTree                         = NULL;  // FIXME: Implement mongocKjTreeToBson
+  dbSubscriptionMatchEntityIdAndAttributes = NULL;  // FIXME: Implement mongocSubscriptionMatchEntityIdAndAttributes
 
   mongocInit(dbHost, dbName);
 

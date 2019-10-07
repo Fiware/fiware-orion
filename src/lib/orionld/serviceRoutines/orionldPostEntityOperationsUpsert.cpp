@@ -165,10 +165,11 @@ bool kjTreeToContextElementAttributes
       char  longName[256];
       char* details;
 
-      if (orionldUriExpand(orionldState.contextP, itemP->name, longName, sizeof(longName), &details) == false)
+      if (orionldUriExpand(orionldState.contextP, itemP->name, longName, sizeof(longName), NULL, &details) == false)
       {
+        LM_E(("orionldUriExpand failed"));
         delete caP;
-        orionldErrorResponseCreate(OrionldBadRequestData, details, itemP->name, OrionldDetailAttribute);
+        orionldErrorResponseCreate(OrionldBadRequestData, details, itemP->name);
         return false;
       }
 
@@ -351,9 +352,11 @@ bool orionldPostEntityOperationsUpsert(ConnectionInfo* ciP)
 
     entityIdP->id = entityId;
 
-    if (orionldUriExpand(orionldState.contextP, entityType, typeExpanded, sizeof(typeExpanded), &details) == false)
+    if (orionldUriExpand(orionldState.contextP, entityType, typeExpanded, sizeof(typeExpanded), NULL, &details) == false)
     {
-      orionldErrorResponseCreate(OrionldBadRequestData, "Error during URI expansion of entity type", details, OrionldDetailString);
+      LM_E(("orionldUriExpand failed"));
+      delete(ceP);
+      orionldErrorResponseCreate(OrionldBadRequestData, "Error during URI expansion of entity type", details);
       return false;
     }
 
@@ -437,7 +440,8 @@ bool orionldPostEntityOperationsUpsert(ConnectionInfo* ciP)
   }
   else
   {
-    orionldErrorResponseCreate(OrionldBadRequestData, "Bad Request", "ERROR", OrionldDetailString);
+    LM_E(("mongoUpdateContext flagged an error"));
+    orionldErrorResponseCreate(OrionldBadRequestData, "Bad Request", "ERROR");
     ciP->httpStatusCode = SccBadRequest;
     return false;
   }
@@ -453,7 +457,7 @@ bool orionldPostEntityOperationsUpsert(ConnectionInfo* ciP)
   // {
   //   LM_E(("mongoCppLegacyEntityOperationsUpsert"));
   //   ciP->httpStatusCode = SccBadRequest;
-  //   orionldErrorResponseCreate(OrionldBadRequestData, "Internal Error", "Error from Mongo-DB backend", OrionldDetailsString);
+  //   orionldErrorResponseCreate(OrionldBadRequestData, "Internal Error", "Error from Mongo-DB backend");
   //   return false;
   // }
   //

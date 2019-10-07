@@ -25,6 +25,7 @@ SET (SOURCES
     orionldPostEntity.cpp
     orionldPostSubscriptions.cpp
     orionldPostRegistrations.cpp
+    orionldPostBatchDeleteEntities.cpp
     orionldGetEntities.cpp
     orionldGetEntity.cpp
     orionldGetSubscriptions.cpp
@@ -43,6 +44,7 @@ SET (SOURCES
     orionldGetContext.cpp
     orionldGetVersion.cpp
     orionldNotImplemented.cpp
+    orionldNotify.cpp
     orionldPostEntityOperationsUpsert.cpp
 )
 

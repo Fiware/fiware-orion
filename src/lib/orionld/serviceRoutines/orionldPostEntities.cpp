@@ -62,8 +62,9 @@ extern "C"
 #include "orionld/context/orionldContextPresent.h"               // orionldContextPresent
 #include "orionld/context/orionldUserContextKeyValuesCheck.h"    // orionldUserContextKeyValuesCheck
 #include "orionld/context/orionldUriExpand.h"                    // orionldUriExpand
-#include "orionld/serviceRoutines/orionldPostEntities.h"         // Own interface
 #include "orionld/common/orionldEntitiyPayloadCheck.h"           // orionldEntitiyPayloadCheck
+#include "orionld/serviceRoutines/orionldPostEntities.h"         // Own interface
+
 
 
 // ----------------------------------------------------------------------------
@@ -93,7 +94,7 @@ bool orionldPostEntities(ConnectionInfo* ciP)
   //
   if ((urlCheck(entityId, &detail) == false) && (urnCheck(entityId, &detail) == false))
   {
-    orionldErrorResponseCreate(OrionldBadRequestData, "Invalid Entity id", "The id specified cannot be resolved to a URL or URN", OrionldDetailString);
+    orionldErrorResponseCreate(OrionldBadRequestData, "Invalid Entity id", "The id specified cannot be resolved to a URL or URN");
     return false;
   }
 
@@ -103,7 +104,7 @@ bool orionldPostEntities(ConnectionInfo* ciP)
   //
   if (mongoEntityExists(entityId, orionldState.tenant) == true)
   {
-    orionldErrorResponseCreate(OrionldAlreadyExists, "Entity already exists", entityId, OrionldDetailString);
+    orionldErrorResponseCreate(OrionldAlreadyExists, "Entity already exists", entityId);
     ciP->httpStatusCode = SccConflict;
     return false;
   }
@@ -136,9 +137,9 @@ bool orionldPostEntities(ConnectionInfo* ciP)
 
   char* expandedType = kaAlloc(&orionldState.kalloc, 512);
 
-  if (orionldUriExpand(orionldState.contextP, entityType, expandedType, 512, &detail) == false)
+  if (orionldUriExpand(orionldState.contextP, entityType, expandedType, 512, NULL, &detail) == false)
   {
-    orionldErrorResponseCreate(OrionldBadRequestData, "Error expanding 'entity type'", detail, OrionldDetailString);
+    orionldErrorResponseCreate(OrionldBadRequestData, "Error expanding 'entity type'", detail);
     mongoRequest.release();
     return false;
   }
@@ -157,7 +158,7 @@ bool orionldPostEntities(ConnectionInfo* ciP)
 
     ContextAttribute* caP            = new ContextAttribute();
     KjNode*           attrTypeNodeP  = NULL;
-    char*             detail;
+    char*             detail         = (char*) "none";
 
     LM_TMP(("EXPAND: Treating attribute '%s'", kNodeP->name));
     if (orionldAttributeTreat(ciP, kNodeP, caP, &attrTypeNodeP, &detail) == false)
@@ -178,6 +179,7 @@ bool orionldPostEntities(ConnectionInfo* ciP)
   //
   // Mongo
   //
+  LM_TMP(("VEX: Calling mongoUpdateContext"));
   ciP->httpStatusCode = mongoUpdateContext(&mongoRequest,
                                            &mongoResponse,
                                            orionldState.tenant,
@@ -195,7 +197,7 @@ bool orionldPostEntities(ConnectionInfo* ciP)
   if (ciP->httpStatusCode != SccOk)
   {
     LM_E(("mongoUpdateContext: HTTP Status Code: %d", ciP->httpStatusCode));
-    orionldErrorResponseCreate(OrionldBadRequestData, "Internal Error", "Error from Mongo-DB backend", OrionldDetailString);
+    orionldErrorResponseCreate(OrionldBadRequestData, "Internal Error", "Error from Mongo-DB backend");
     return false;
   }
 
