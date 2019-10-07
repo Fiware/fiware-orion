@@ -25,22 +25,6 @@
 *
 * Author: Ken Zangelin
 */
-
-//
-// FIXME: Regardless of what DB is selected in dbConfiguration.h, I need to include "mongo/client/dbclient.h"
-//        This is this way because mongoBackend/MongoGlobal.cpp (entitiesQuery) uses orionldState.qMongoFilterP for the new NGSI-LD Q-filters.
-//        mongoBackend will ALWAYS use the old C++ Legacy driver so not sure this will ever be "fixed".
-//        At least not while we still use mongoBackend - the idea is to one day stop using mongoBackend
-//
-/* My branch changes LARYSSE
-#include "mongo/client/dbclient.h"                               // MongoDB C++ Client Legacy Driver
-
-#include "orionld/db/dbConfiguration.h"                          // DB_DRIVER_MONGOC, or not ...
-#include "orionld/db/dbDriver.h"                                 // database driver header
-
-#ifdef DB_DRIVER_MONGOC
-#include "mongoc/mongoc.h"                                       // MongoDB C Client Driver - if needed
-#endif*/
 #include "orionld/db/dbDriver.h"                                 // database driver header
 #include "orionld/db/dbConfiguration.h"                          // DB_DRIVER_MONGOC
 
@@ -49,6 +33,7 @@ extern "C"
 #include "kjson/kjson.h"                                         // Kjson
 #include "kjson/KjNode.h"                                        // KjNode
 }
+
 #include "common/globals.h"                                      // ApiVersion
 #include "common/MimeType.h"                                     // MimeType
 #include "orionld/common/QNode.h"                                // QNode

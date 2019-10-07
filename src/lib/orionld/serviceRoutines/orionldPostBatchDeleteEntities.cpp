@@ -62,7 +62,7 @@ bool orionldPostBatchDeleteEntities(ConnectionInfo* ciP)
   }
 
   //
-  // Making sure all items of the array are stringa and vbalid URIs
+  // Making sure all items of the array are stringa and valid URIs
   //
   for (KjNode* idNodeP = orionldState.requestTree->value.firstChildP; idNodeP != NULL; idNodeP = idNodeP->next)
   {
@@ -91,6 +91,7 @@ bool orionldPostBatchDeleteEntities(ConnectionInfo* ciP)
     ciP->httpStatusCode = SccBadRequest;
     if (orionldState.responseTree == NULL)
       orionldErrorResponseCreate(OrionldBadRequestData, "Database Error", "mongoCppLegacyEntityBatchDelete");
+    return false;
   }
   else
     ciP->httpStatusCode = SccOk;

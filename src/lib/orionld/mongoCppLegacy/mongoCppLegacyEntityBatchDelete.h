@@ -25,13 +25,12 @@
 *
 * Author: Larysse Savanna
 */
-#include <string>
-#include <vector>
-
 extern "C"
 {
 #include "kjson/KjNode.h"                                        // KjNode
 }
+
+
 
 // -----------------------------------------------------------------------------
 //

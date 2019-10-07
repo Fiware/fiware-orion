@@ -34,7 +34,6 @@ extern "C"
 #include "logMsg/logMsg.h"                                            // LM_*
 #include "logMsg/traceLevels.h"                                       // Lmt*
 
-#include <vector>
 #include "mongoBackend/MongoGlobal.h"                                 // getMongoConnection, releaseMongoConnection, ...
 #include "orionld/common/orionldState.h"                              // orionldState, dbName, mongoEntitiesCollectionP
 #include "orionld/db/dbCollectionPathGet.h"                           // dbCollectionPathGet
