@@ -41,7 +41,7 @@ SET (SOURCES
     qParse.cpp
     qTreePresent.cpp
     qTreeToBsonObj.cpp
-    orionldEntitiyPayloadCheck.cpp
+    orionldEntityPayloadCheck.cpp
     uuidGenerate.cpp
     orionldServerConnect.cpp
     dotForEq.cpp

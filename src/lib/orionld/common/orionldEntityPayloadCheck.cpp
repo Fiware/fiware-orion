@@ -60,7 +60,9 @@ extern "C"
 #include "orionld/context/orionldContextListInsert.h"            // orionldContextListInsert
 #include "orionld/context/orionldContextPresent.h"               // orionldContextPresent
 #include "orionld/context/orionldUserContextKeyValuesCheck.h"    // orionldUserContextKeyValuesCheck
-#include "orionld/common/orionldEntitiyPayloadCheck.h"           // orionldEntitiyPayloadCheck
+#include "orionld/common/orionldEntityPayloadCheck.h"            // Own interface
+
+
 
 // -----------------------------------------------------------------------------
 //
@@ -107,7 +109,7 @@ bool orionldValidName(char* name, char** detailsPP)
 //
 // checkEntityIdFieldExistis -
 //
-bool checkEntityIdFieldExists()
+static bool checkEntityIdFieldExists()
 {
   if (orionldState.payloadIdNode == NULL)
   {
@@ -135,9 +137,9 @@ bool checkEntityIdFieldExists()
 
 // -----------------------------------------------------------------------------
 //
-// payloadCheck -
+// orionldEntityPayloadCheck -
 //
-bool payloadCheck
+bool orionldEntityPayloadCheck
 (
   ConnectionInfo*  ciP,
   KjNode*          kNodeP,

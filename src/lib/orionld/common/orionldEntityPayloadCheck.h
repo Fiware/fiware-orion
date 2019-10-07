@@ -25,8 +25,28 @@
 *
 * Author: Gabriel Quaresma
 */
+extern "C"
+{
+#include "kjson/KjNode.h"                                        // KjNode
+}
 
-bool payloadCheck
+#include "rest/ConnectionInfo.h"                                 // ConnectionInfo
+
+
+
+// -----------------------------------------------------------------------------
+//
+// orionldValidName -
+//
+extern bool orionldValidName(char* name, char** detailsPP);
+
+
+
+// -----------------------------------------------------------------------------
+//
+// orionldEntityPayloadCheck -
+//
+extern bool orionldEntityPayloadCheck
 (
   ConnectionInfo*  ciP,
   KjNode*          kNodeP,

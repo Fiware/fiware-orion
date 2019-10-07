@@ -62,7 +62,7 @@ extern "C"
 #include "orionld/context/orionldContextPresent.h"               // orionldContextPresent
 #include "orionld/context/orionldUserContextKeyValuesCheck.h"    // orionldUserContextKeyValuesCheck
 #include "orionld/context/orionldUriExpand.h"                    // orionldUriExpand
-#include "orionld/common/orionldEntitiyPayloadCheck.h"           // orionldEntitiyPayloadCheck
+#include "orionld/common/orionldEntityPayloadCheck.h"            // orionldEntityPayloadCheck
 #include "orionld/serviceRoutines/orionldPostEntities.h"         // Own interface
 
 
@@ -82,7 +82,7 @@ bool orionldPostEntities(ConnectionInfo* ciP)
   KjNode*  createdAtP         = NULL;
   KjNode*  modifiedAtP        = NULL;
 
-  if (payloadCheck(ciP, orionldState.requestTree->value.firstChildP, &locationP, &observationSpaceP, &operationSpaceP, &createdAtP, &modifiedAtP, false) == false)
+  if (orionldEntityPayloadCheck(ciP, orionldState.requestTree->value.firstChildP, &locationP, &observationSpaceP, &operationSpaceP, &createdAtP, &modifiedAtP, false) == false)
     return false;
 
   char*    entityId           = orionldState.payloadIdNode->value.s;
