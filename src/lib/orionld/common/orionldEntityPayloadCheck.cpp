@@ -105,6 +105,7 @@ bool orionldValidName(char* name, char** detailsPP)
 }
 
 
+
 // -----------------------------------------------------------------------------
 //
 // checkEntityIdFieldExistis -
@@ -133,6 +134,7 @@ static bool checkEntityIdFieldExists()
 
   return true;
 }
+
 
 
 // -----------------------------------------------------------------------------
