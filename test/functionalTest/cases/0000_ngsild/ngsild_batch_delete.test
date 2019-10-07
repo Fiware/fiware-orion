@@ -33,8 +33,11 @@ brokerStart CB 212-249
 #
 # 01. POST /ngsi-ld/v1/entityOperations/delete, with a JSON object as payload - see error
 # 02. POST /ngsi-ld/v1/entityOperations/delete, with a JSON Array of 2 strings and a boolean as payload - see error
-# 03. Create 4 entities: E1, E2, E3, and E4
-# 04. POST /ngsi-ld/v1/entityOperations/delete, with a JSON Array of 4 strings - E1, E2, E3, and E4 - OK
+# 03. POST /ngsi-ld/v1/entityOperations/delete, with a JSON Array of 2 strings of  which the first is a URN and the seconds is not a valid URI - see error
+# 04. Create 4 entities: E1, E2, E3, and E4
+# 05. Get all entities - see E1-E4
+# 06. Remove entities E1-E3 using POST /ngsi-ld/v1/entityOperations/delete
+# 07. Get all entities - see E4
 #
 
 echo "01. POST /ngsi-ld/v1/entityOperations/delete, with a JSON object as payload - see error"
@@ -50,8 +53,8 @@ echo
 echo "02. POST /ngsi-ld/v1/entityOperations/delete, with a JSON Array of 2 strings and a boolean as payload - see error"
 echo "================================================================================================================="
 payload='[
-  "id1",
-  "id2",
+  "urn:ngsi-ld:entity:E1",
+  "urn:ngsi-ld:entity:E2",
   true
 ]'
 orionCurl --url /ngsi-ld/v1/entityOperations/delete -X POST --payload "$payload"
@@ -59,7 +62,18 @@ echo
 echo
 
 
-echo "03. Create 4 entities: E1, E2, E3, and E4"
+echo "03. POST /ngsi-ld/v1/entityOperations/delete, with a JSON Array of 2 strings of  which the first is a URN and the seconds is not a valid URI - see error"
+echo "========================================================================================================================================================"
+payload='[
+  "urn:ngsi-ld:entity:E1",
+  "mal"
+]'
+orionCurl --url /ngsi-ld/v1/entityOperations/delete -X POST --payload "$payload"
+echo
+echo
+
+
+echo "04. Create 4 entities: E1, E2, E3, and E4"
 echo "========================================="
 payload='{
   "id": "urn:ngsi-ld:entity:E1",
@@ -104,14 +118,14 @@ echo
 echo
 
 
-echo "04. Get all entities - see E1-E4"
+echo "05. Get all entities - see E1-E4"
 echo "================================"
 orionCurl --url "/ngsi-ld/v1/entities?options=keyValues&type=T"
 echo
 echo
 
 
-echo "05. Remove entities E1-E3 using POST /ngsi-ld/v1/entityOperations/delete"
+echo "06. Remove entities E1-E3 using POST /ngsi-ld/v1/entityOperations/delete"
 echo "========================================================================"
 payload='[
   "urn:ngsi-ld:entity:E1",
@@ -123,7 +137,7 @@ echo
 echo
 
 
-echo "06. Get all entities - see E4"
+echo "07. Get all entities - see E4"
 echo "================================"
 orionCurl --url "/ngsi-ld/v1/entities?options=keyValues&type=T"
 echo
@@ -139,7 +153,7 @@ Content-Type: application/json
 Date: REGEX(.*)
 
 {
-    "detail": "must be a JSON array",
+    "detail": "Must be a JSON Array",
     "title": "Invalid payload",
     "type": "https://uri.etsi.org/ngsi-ld/errors/BadRequestData"
 }
@@ -148,18 +162,32 @@ Date: REGEX(.*)
 02. POST /ngsi-ld/v1/entityOperations/delete, with a JSON Array of 2 strings and a boolean as payload - see error
 =================================================================================================================
 HTTP/1.1 400 Bad Request
-Content-Length: 135
+Content-Length: 131
 Content-Type: application/json
 Date: REGEX(.*)
 
 {
-    "detail": "must be a JSON Array of JSON Strings",
+    "detail": "Array items must be JSON Strings",
     "title": "Invalid payload",
     "type": "https://uri.etsi.org/ngsi-ld/errors/BadRequestData"
 }
 
 
-03. Create 4 entities: E1, E2, E3, and E4
+03. POST /ngsi-ld/v1/entityOperations/delete, with a JSON Array of 2 strings of  which the first is a URN and the seconds is not a valid URI - see error
+========================================================================================================================================================
+HTTP/1.1 400 Bad Request
+Content-Length: 129
+Content-Type: application/json
+Date: REGEX(.*)
+
+{
+    "detail": "Array items must be valid URIs",
+    "title": "Invalid payload",
+    "type": "https://uri.etsi.org/ngsi-ld/errors/BadRequestData"
+}
+
+
+04. Create 4 entities: E1, E2, E3, and E4
 =========================================
 HTTP/1.1 201 Created
 Content-Length: 0
@@ -183,7 +211,7 @@ Date: REGEX(.*)
 
 
 
-04. Get all entities - see E1-E4
+05. Get all entities - see E1-E4
 ================================
 HTTP/1.1 200 OK
 Content-Length: 193
@@ -215,7 +243,7 @@ Date: REGEX(.*)
 ]
 
 
-05. Remove entities E1-E3 using POST /ngsi-ld/v1/entityOperations/delete
+06. Remove entities E1-E3 using POST /ngsi-ld/v1/entityOperations/delete
 ========================================================================
 HTTP/1.1 200 OK
 Content-Length: 0
@@ -223,7 +251,7 @@ Date: REGEX(.*)
 
 
 
-06. Get all entities - see E4
+07. Get all entities - see E4
 ================================
 HTTP/1.1 200 OK
 Content-Length: 49

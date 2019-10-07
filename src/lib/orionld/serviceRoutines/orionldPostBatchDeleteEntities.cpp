@@ -33,11 +33,13 @@ extern "C"
 #include "logMsg/traceLevels.h"                                       // Lmt*
 
 #include "rest/ConnectionInfo.h"                                      // ConnectionInfo
-#include "orionld/common/orionldState.h"                              // orionldState
-#include "orionld/db/dbEntityBatchDelete.h"                           // dbEntityBatchDelete.h
-#include "orionld/common/orionldErrorResponse.h"                      // orionldErrorResponseCreate
 #include "ngsi10/UpdateContextRequest.h"                              // UpdateContextRequest
 #include "ngsi10/UpdateContextResponse.h"                             // UpdateContextResponse
+#include "orionld/common/urlCheck.h"                                  // urlCheck
+#include "orionld/common/urnCheck.h"                                  // urnCheck
+#include "orionld/common/orionldState.h"                              // orionldState
+#include "orionld/common/orionldErrorResponse.h"                      // orionldErrorResponseCreate
+#include "orionld/db/dbEntityBatchDelete.h"                           // dbEntityBatchDelete.h
 #include "orionld/mongoCppLegacy/mongoCppLegacyEntityBatchDelete.h"   // mongoCppLegacyEntityBatchDelete
 #include "orionld/serviceRoutines/orionldPostBatchDeleteEntities.h"   // Own interface
 
@@ -53,27 +55,45 @@ bool orionldPostBatchDeleteEntities(ConnectionInfo* ciP)
 
   if (orionldState.requestTree->type != KjArray)
   {
-    orionldErrorResponseCreate(OrionldBadRequestData, "Invalid payload", "must be a JSON array");
+    LM_W(("Bad Input (Payload must be a JSON Array)"));
+    orionldErrorResponseCreate(OrionldBadRequestData, "Invalid payload", "Must be a JSON Array");
     ciP->httpStatusCode = SccBadRequest;
     return false;
   }
 
   //
-  // Debugging - see all IDs
+  // Making sure all items of the array are stringa and vbalid URIs
   //
   for (KjNode* idNodeP = orionldState.requestTree->value.firstChildP; idNodeP != NULL; idNodeP = idNodeP->next)
   {
+    char* detail;
+
     if (idNodeP->type != KjString)
     {
-      orionldErrorResponseCreate(OrionldBadRequestData, "Invalid payload", "must be a JSON Array of JSON Strings");
+      LM_W(("Bad Input (Invalid payload - Array items must be JSON Strings)"));
+      orionldErrorResponseCreate(OrionldBadRequestData, "Invalid payload", "Array items must be JSON Strings");
+      ciP->httpStatusCode = SccBadRequest;
+      return false;
+    }
+
+    if (!urlCheck(idNodeP->value.s, &detail) && !urnCheck(idNodeP->value.s, &detail))
+    {
+      LM_W(("Bad Input (Invalid payload - Array items must be valid URIs)"));
+      orionldErrorResponseCreate(OrionldBadRequestData, "Invalid payload", "Array items must be valid URIs");
       ciP->httpStatusCode = SccBadRequest;
       return false;
     }
   }
 
-  mongoCppLegacyEntityBatchDelete(orionldState.requestTree);
-
-  ciP->httpStatusCode = SccOk;
+  if (mongoCppLegacyEntityBatchDelete(orionldState.requestTree) == false)
+  {
+    LM_E(("mongoCppLegacyEntityBatchDelete returned false"));
+    ciP->httpStatusCode = SccBadRequest;
+    if (orionldState.responseTree == NULL)
+      orionldErrorResponseCreate(OrionldBadRequestData, "Database Error", "mongoCppLegacyEntityBatchDelete");
+  }
+  else
+    ciP->httpStatusCode = SccOk;
 
   return true;
 }

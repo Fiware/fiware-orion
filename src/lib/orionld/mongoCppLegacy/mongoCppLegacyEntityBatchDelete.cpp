@@ -49,19 +49,25 @@ extern "C"
 //
 bool mongoCppLegacyEntityBatchDelete(KjNode* entityIdsArray)
 {              
-  char                  collectionPath[256];
+  char collectionPath[256];
 
-  dbCollectionPathGet(collectionPath, sizeof(collectionPath), "entities");
+  if (dbCollectionPathGet(collectionPath, sizeof(collectionPath), "entities") == -1)
+  {
+    LM_E(("Internal Error (dbCollectionPathGet returned -1)"));
+    return false;
+  }
+
   LM_TMP(("LARYSSE DB: Collection Path: %s", collectionPath));
 
-  mongo::DBClientBase*  connectionP = getMongoConnection();
-  mongo::BulkOperationBuilder bulk  = connectionP->initializeUnorderedBulkOp(collectionPath);
-  const mongo::WriteConcern writeConcern;
-  mongo::WriteResult writeResults;
+  mongo::DBClientBase*         connectionP  = getMongoConnection();
+  mongo::BulkOperationBuilder  bulk         = connectionP->initializeUnorderedBulkOp(collectionPath);
+  const mongo::WriteConcern    writeConcern;
+  mongo::WriteResult           writeResults;
 
   for (KjNode* idNodeP = entityIdsArray->value.firstChildP; idNodeP != NULL; idNodeP = idNodeP->next)
   {
     mongo::BSONObjBuilder filterObj;
+
     filterObj.append("_id.id", idNodeP->value.s);
     bulk.find(filterObj.obj()).remove();
   }
