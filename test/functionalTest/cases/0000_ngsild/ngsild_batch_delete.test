@@ -33,7 +33,8 @@ brokerStart CB 212-249
 #
 # 01. POST /ngsi-ld/v1/entityOperations/delete, with a JSON object as payload - see error
 # 02. POST /ngsi-ld/v1/entityOperations/delete, with a JSON Array of 2 strings and a boolean as payload - see error
-# 03. POST /ngsi-ld/v1/entityOperations/delete, with a JSON Array of 4 strings - OK
+# 03. Create 4 entities: E1, E2, E3, and E4
+# 04. POST /ngsi-ld/v1/entityOperations/delete, with a JSON Array of 4 strings - E1, E2, E3, and E4 - OK
 #
 
 echo "01. POST /ngsi-ld/v1/entityOperations/delete, with a JSON object as payload - see error"
@@ -41,7 +42,7 @@ echo "==========================================================================
 payload='{
   "id1": "id2"
 }'
-orionCurl --url /ngsi-ld/v1/entityOperations/delete -X POST --payload "$payload" -H "Accept: application/ld+json" --linkHeaderFix
+orionCurl --url /ngsi-ld/v1/entityOperations/delete -X POST --payload "$payload"
 echo
 echo
 
@@ -53,20 +54,78 @@ payload='[
   "id2",
   true
 ]'
-orionCurl --url /ngsi-ld/v1/entityOperations/delete -X POST --payload "$payload" -H "Accept: application/ld+json" --linkHeaderFix
+orionCurl --url /ngsi-ld/v1/entityOperations/delete -X POST --payload "$payload"
 echo
 echo
 
 
-echo "03. POST /ngsi-ld/v1/entityOperations/delete, with a JSON Array of 4 strings - OK"
-echo "================================================================================="
+echo "03. Create 4 entities: E1, E2, E3, and E4"
+echo "========================================="
+payload='{
+  "id": "urn:ngsi-ld:entity:E1",
+  "type": "T",
+  "A": {
+    "type": "Property",
+    "value": 1
+  }
+}'
+orionCurl --url /ngsi-ld/v1/entities --payload "$payload"
+
+payload='{
+  "id": "urn:ngsi-ld:entity:E2",
+  "type": "T",
+  "A": {
+    "type": "Property",
+    "value": 2
+  }
+}'
+orionCurl --url /ngsi-ld/v1/entities --payload "$payload"
+
+payload='{
+  "id": "urn:ngsi-ld:entity:E3",
+  "type": "T",
+  "A": {
+    "type": "Property",
+    "value": 3
+  }
+}'
+orionCurl --url /ngsi-ld/v1/entities --payload "$payload"
+
+payload='{
+  "id": "urn:ngsi-ld:entity:E4",
+  "type": "T",
+  "A": {
+    "type": "Property",
+    "value": 4
+  }
+}'
+orionCurl --url /ngsi-ld/v1/entities --payload "$payload"
+echo
+echo
+
+
+echo "04. Get all entities - see E1-E4"
+echo "================================"
+orionCurl --url "/ngsi-ld/v1/entities?options=keyValues&type=T"
+echo
+echo
+
+
+echo "05. Remove entities E1-E3 using POST /ngsi-ld/v1/entityOperations/delete"
+echo "========================================================================"
 payload='[
-  "id1",
-  "id2",
-  "id3",
-  "id4"
+  "urn:ngsi-ld:entity:E1",
+  "urn:ngsi-ld:entity:E2",
+  "urn:ngsi-ld:entity:E3"
 ]'
 orionCurl --url /ngsi-ld/v1/entityOperations/delete -X POST --payload "$payload" -H "Accept: application/ld+json" --linkHeaderFix
+echo
+echo
+
+
+echo "06. Get all entities - see E4"
+echo "================================"
+orionCurl --url "/ngsi-ld/v1/entities?options=keyValues&type=T"
 echo
 echo
 
@@ -80,9 +139,9 @@ Content-Type: application/json
 Date: REGEX(.*)
 
 {
-    "details": "must be a JSON array",
+    "detail": "must be a JSON array",
     "title": "Invalid payload",
-    "type": "http://uri.etsi.org/ngsi-ld/errors/BadRequestData"
+    "type": "https://uri.etsi.org/ngsi-ld/errors/BadRequestData"
 }
 
 
@@ -94,18 +153,91 @@ Content-Type: application/json
 Date: REGEX(.*)
 
 {
-    "details": "must be a JSON Array of JSON Strings",
+    "detail": "must be a JSON Array of JSON Strings",
     "title": "Invalid payload",
-    "type": "http://uri.etsi.org/ngsi-ld/errors/BadRequestData"
+    "type": "https://uri.etsi.org/ngsi-ld/errors/BadRequestData"
 }
 
 
-03. POST /ngsi-ld/v1/entityOperations/delete, with a JSON Array of 4 strings - OK
-=================================================================================
+03. Create 4 entities: E1, E2, E3, and E4
+=========================================
+HTTP/1.1 201 Created
+Content-Length: 0
+Location: /ngsi-ld/v1/entities/urn:ngsi-ld:entity:E1
+Date: REGEX(.*)
+
+HTTP/1.1 201 Created
+Content-Length: 0
+Location: /ngsi-ld/v1/entities/urn:ngsi-ld:entity:E2
+Date: REGEX(.*)
+
+HTTP/1.1 201 Created
+Content-Length: 0
+Location: /ngsi-ld/v1/entities/urn:ngsi-ld:entity:E3
+Date: REGEX(.*)
+
+HTTP/1.1 201 Created
+Content-Length: 0
+Location: /ngsi-ld/v1/entities/urn:ngsi-ld:entity:E4
+Date: REGEX(.*)
+
+
+
+04. Get all entities - see E1-E4
+================================
+HTTP/1.1 200 OK
+Content-Length: 193
+Content-Type: application/json
+Link: <https://uri.etsi.org/ngsi-ld/v1/ngsi-ld-core-context.jsonld>; rel="http://www.w3.org/ns/json-ld#context"; type="application/ld+json"
+Date: REGEX(.*)
+
+[
+    {
+        "A": 1,
+        "id": "urn:ngsi-ld:entity:E1",
+        "type": "T"
+    },
+    {
+        "A": 2,
+        "id": "urn:ngsi-ld:entity:E2",
+        "type": "T"
+    },
+    {
+        "A": 3,
+        "id": "urn:ngsi-ld:entity:E3",
+        "type": "T"
+    },
+    {
+        "A": 4,
+        "id": "urn:ngsi-ld:entity:E4",
+        "type": "T"
+    }
+]
+
+
+05. Remove entities E1-E3 using POST /ngsi-ld/v1/entityOperations/delete
+========================================================================
 HTTP/1.1 200 OK
 Content-Length: 0
 Date: REGEX(.*)
 
+
+
+06. Get all entities - see E4
+================================
+HTTP/1.1 200 OK
+Content-Length: 49
+Content-Type: application/json
+Link: <https://uri.etsi.org/ngsi-ld/v1/ngsi-ld-core-context.jsonld>; rel="http://www.w3.org/ns/json-ld#context"; type="application/ld+json"
+Date: REGEX(.*)
+
+[
+    {
+        "A": 4,
+        "id": "urn:ngsi-ld:entity:E4",
+        "type": "T"
+    }
+]
 
 
 --TEARDOWN--
