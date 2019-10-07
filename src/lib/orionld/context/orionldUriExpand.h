@@ -33,6 +33,14 @@
 //
 // orionldUriExpand -
 //
-extern bool orionldUriExpand(OrionldContext* contextP, char* shortName, char* longName, int longNameLen, char** detailsP);
+extern bool orionldUriExpand
+(
+  OrionldContext*  contextP,
+  char*            shortName,
+  char*            longName,
+  int              longNameLen,
+  bool*            valueMayBeExpandedP,
+  char**           detailsP
+);
 
 #endif  // SRC_LIB_ORIONLD_CONTEXT_ORIONLDURIEXPAND_H_

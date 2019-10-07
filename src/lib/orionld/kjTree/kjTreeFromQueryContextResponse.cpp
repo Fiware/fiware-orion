@@ -24,6 +24,8 @@
 */
 extern "C"
 {
+#include "kalloc/kaAlloc.h"                                    // kaAlloc
+#include "kalloc/kaStrdup.h"                                   // kaStrdup
 #include "kjson/KjNode.h"                                      // KjNode
 #include "kjson/kjBuilder.h"                                   // kjObject, kjString, kjBoolean, ...
 #include "kjson/kjClone.h"                                     // kjClone
@@ -49,10 +51,132 @@ extern "C"
 #include "orionld/context/orionldContextListInsert.h"          // orionldContextListInsert
 #include "orionld/context/orionldContextListPresent.h"         // orionldContextListPresent
 #include "orionld/context/orionldAliasLookup.h"                // orionldAliasLookup
+#include "orionld/context/orionldUriExpand.h"                  // orionldUriExpand
 #include "orionld/kjTree/kjTreeFromContextAttribute.h"         // kjTreeFromContextAttribute
 #include "orionld/kjTree/kjTreeFromContextContextAttribute.h"  // kjTreeFromContextContextAttribute
 #include "orionld/kjTree/kjTreeFromCompoundValue.h"            // kjTreeFromCompoundValue
 #include "orionld/kjTree/kjTreeFromQueryContextResponse.h"     // Own interface
+
+
+
+// -----------------------------------------------------------------------------
+//
+// inAttrList -
+//
+static bool inAttrList(const char* attrName, char** attrListExpanded, int attrsInAttrList)
+{
+  LM_TMP(("ATTRS: Checking attribute '%s'", attrName));
+  for (int ix = 0; ix < attrsInAttrList; ix++)
+  {
+    if (strcmp(attrName, attrListExpanded[ix]) == 0)
+    {
+      LM_TMP(("ATTRS: '%s' is in the attrs list, so, must be included in the response", attrName));
+      return true;
+    }
+  }
+
+  LM_TMP(("ATTRS: '%s' is NOT in the attrs list, so, must NOT be included in the response", attrName));
+  return false;
+}
+
+
+
+// -----------------------------------------------------------------------------
+//
+// attrListParseAndExpand -
+//
+static void attrListParseAndExpand(int* attrsInAttrListP, char*** attrListExpandedVecP, char* attrList)
+{
+  int   attrs = 0;
+  char* cP;
+
+  LM_TMP(("ATTRS: incoming attrList: %s", attrList));
+
+  //
+  // attrList is a comma-separated list.
+  // First we need to find out how many attributes are in the list (== number of commas + 1)
+  //
+  if (*attrList != 0)
+  {
+    cP = attrList;
+    while (*cP != 0)
+    {
+      if (*cP == ',')
+      {
+        if (cP[1] != 0)  // If the comma is the last character - then there is no no next attribute
+          ++attrs;
+      }
+
+      ++cP;
+    }
+  }
+
+  ++attrs;  // Number of attributes == number of commas + 1
+
+
+  //
+  // Allocate room for the attribute name pointers
+  //
+  char** expandedV = (char**) kaAlloc(&orionldState.kalloc, attrs * sizeof(char*));
+
+  //
+  // And, parse attrList, to make the items in the vector point to each attribute name
+  //
+
+  // The first one is given:
+  expandedV[0] = attrList;
+
+  int aIx = 1;
+  cP = attrList;
+  while (*cP != 0)
+  {
+    if (*cP == ',')
+    {
+      *cP = 0;
+
+      if (cP[1] != 0)  // If the comma is the last character - then there is no no next attribute
+      {
+        ++cP;
+        expandedV[aIx++] = cP;
+      }
+      else
+        ++cP;
+    }
+    else
+      ++cP;
+  }
+
+
+#if 0
+  // <DEBUG>
+  LM_TMP(("ATTRS: Got %d attributes in the attrs URI Param", aIx));
+  for (int ix = 0; ix < attrs; ix++)
+    LM_TMP(("ATTRS: attr %d: %s", ix, expandedV[ix]));
+  // </DEBUG>
+#endif
+
+  //
+  // Expand attribute names
+  //
+  for (int ix = 0; ix < attrs; ix++)
+  {
+    char  longName[256];
+    char* detail;
+
+    if (orionldUriExpand(orionldState.contextP, expandedV[ix], longName, 256, NULL, &detail) == true)
+    {
+      LM_TMP(("ATTRS: Expanded: %s => %s", expandedV[ix], longName));
+      expandedV[ix] = kaStrdup(&orionldState.kalloc, longName);
+    }
+    else
+      LM_TMP(("ATTRS: Not expanded: %s", expandedV[ix]));
+  }
+
+  *attrListExpandedVecP = expandedV;
+  *attrsInAttrListP     = attrs;
+
+  LM_TMP(("ATTRS: Expanded Array created (%d items)", attrs));
+}
 
 
 
@@ -72,7 +196,7 @@ bool orionldSysAttrs(ConnectionInfo* ciP, double creDate, double modDate, KjNode
   if (numberToDate((time_t) creDate, date, sizeof(date), &details) == false)
   {
     LM_E(("Error creating a stringified date for 'createdAt'"));
-    orionldErrorResponseCreate(OrionldInternalError, "Unable to create a stringified createdAt date", details, OrionldDetailEntity);
+    orionldErrorResponseCreate(OrionldInternalError, "Unable to create a stringified createdAt date", details);
     return false;
   }
 
@@ -83,7 +207,7 @@ bool orionldSysAttrs(ConnectionInfo* ciP, double creDate, double modDate, KjNode
   if (numberToDate((time_t) modDate, date, sizeof(date), &details) == false)
   {
     LM_E(("Error creating a stringified date for 'modifiedAt'"));
-    orionldErrorResponseCreate(OrionldInternalError, "Unable to create a stringified modifiedAt date", details, OrionldDetailEntity);
+    orionldErrorResponseCreate(OrionldInternalError, "Unable to create a stringified modifiedAt date", details);
     return false;
   }
 
@@ -111,7 +235,7 @@ bool orionldSysAttrs(ConnectionInfo* ciP, double creDate, double modDate, KjNode
 // The context for the entity is found in the context-cache.
 // If not present, it is retreived from the "@context" attribute of the entity and put in the cache
 //
-KjNode* kjTreeFromQueryContextResponse(ConnectionInfo* ciP, bool oneHit, bool keyValues, QueryContextResponse* responseP)
+KjNode* kjTreeFromQueryContextResponse(ConnectionInfo* ciP, bool oneHit, char* attrList, bool keyValues, QueryContextResponse* responseP)
 {
   char* details  = NULL;
   bool  sysAttrs = ciP->uriParamOptions["sysAttrs"];
@@ -141,7 +265,7 @@ KjNode* kjTreeFromQueryContextResponse(ConnectionInfo* ciP, bool oneHit, bool ke
     LM_E(("Error %d from mongoBackend", responseP->errorCode.code));
     OrionldResponseErrorType errorType = httpStatusCodeToOrionldErrorType(responseP->errorCode.code);
 
-    orionldErrorResponseCreate(errorType, responseP->errorCode.reasonPhrase.c_str(), responseP->errorCode.details.c_str(), OrionldDetailString);
+    orionldErrorResponseCreate(errorType, responseP->errorCode.reasonPhrase.c_str(), responseP->errorCode.details.c_str());
 
     if (responseP->errorCode.code == SccContextElementNotFound)
       ciP->httpStatusCode = responseP->errorCode.code;
@@ -164,7 +288,7 @@ KjNode* kjTreeFromQueryContextResponse(ConnectionInfo* ciP, bool oneHit, bool ke
   }
   else if ((hits > 1) && (oneHit == true))  // More than one hit - not possible!
   {
-    orionldErrorResponseCreate(OrionldInternalError, "More than one hit", orionldState.wildcard[0], OrionldDetailEntity);
+    orionldErrorResponseCreate(OrionldInternalError, "More than one hit", orionldState.wildcard[0]);
     return NULL;
   }
 
@@ -181,9 +305,18 @@ KjNode* kjTreeFromQueryContextResponse(ConnectionInfo* ciP, bool oneHit, bool ke
   if (oneHit == true)
     top = root;
 
+  //
+  // Expanding attrList, if present
+  //
+  int    attrsInAttrList  = 0;
+  char** attrListExpanded = NULL;
+
+  if (attrList)
+    attrListParseAndExpand(&attrsInAttrList, &attrListExpanded, attrList);
+
   for (int ix = 0; ix < hits; ix++)
   {
-    ContextElement* ceP      = &responseP->contextElementResponseVector[ix]->contextElement;
+    ContextElement* ceP = &responseP->contextElementResponseVector[ix]->contextElement;
 
     if (oneHit == false)
     {
@@ -208,12 +341,12 @@ KjNode* kjTreeFromQueryContextResponse(ConnectionInfo* ciP, bool oneHit, bool ke
     {
       char* alias;
 
-      alias = orionldAliasLookup(orionldState.contextP, ceP->entityId.type.c_str());
+      alias = orionldAliasLookup(orionldState.contextP, ceP->entityId.type.c_str(), NULL);
       nodeP = kjString(orionldState.kjsonP, "type", alias);
       if (nodeP == NULL)
       {
         LM_E(("out of memory"));
-        orionldErrorResponseCreate(OrionldInternalError, "Unable to create tree node", "out of memory", OrionldDetailEntity);
+        orionldErrorResponseCreate(OrionldInternalError, "Unable to create tree node", "out of memory");
         return NULL;
       }
 
@@ -239,21 +372,45 @@ KjNode* kjTreeFromQueryContextResponse(ConnectionInfo* ciP, bool oneHit, bool ke
     //
     for (unsigned int aIx = 0; aIx < ceP->contextAttributeVector.size(); aIx++)
     {
-      ContextAttribute* aP       = ceP->contextAttributeVector[aIx];
-      char*             attrName;
-      const char*       aName    = aP->name.c_str();
-      KjNode*           aTop     = NULL;
+      KjNode*           aTop                 = NULL;
+      ContextAttribute* aP                   = ceP->contextAttributeVector[aIx];
+      const char*       attrShortName        = aP->name.c_str();
+      char*             attrName;              // Attribute Long Name
       char*             valueFieldName;
+      bool              valueMayBeContracted = false;
 
-      attrName = orionldAliasLookup(orionldState.contextP, aP->name.c_str());
+      LM_TMP(("VAL: Treating attribute '%s'", attrShortName));
+
+      attrName = orionldAliasLookup(orionldState.contextP, attrShortName, &valueMayBeContracted);
+
+      //
+      // If URI param attrList has been used, only matching attributes should be included in the response
+      //
+      if ((attrListExpanded != NULL) && (inAttrList(attrShortName, attrListExpanded, attrsInAttrList) == false))
+        continue;
+
+      LM_TMP(("VAL: Value of %s may be contracted? - %s", attrShortName, FT(valueMayBeContracted)));
       if (keyValues)
       {
+        LM_TMP(("VAL: keyValues"));
         // If keyValues, then just the value of the attribute is to be rendered (built)
         switch (aP->valueType)
         {
         case orion::ValueTypeNumber:    aTop = kjFloat(orionldState.kjsonP, attrName,   aP->numberValue);          break;
         case orion::ValueTypeBoolean:   aTop = kjBoolean(orionldState.kjsonP, attrName, aP->boolValue);            break;
-        case orion::ValueTypeString:    aTop = kjString(orionldState.kjsonP, attrName,  aP->stringValue.c_str());  break;
+        case orion::ValueTypeString:
+          if (valueMayBeContracted == true)
+          {
+            char* contractedValue = orionldAliasLookup(orionldState.contextP, aP->stringValue.c_str(), NULL);
+            if (contractedValue == NULL)
+              aTop = kjString(orionldState.kjsonP, attrName, contractedValue);
+            else
+              aTop = kjString(orionldState.kjsonP, attrName, aP->stringValue.c_str());
+          }
+          else
+            aTop = kjString(orionldState.kjsonP, attrName, aP->stringValue.c_str());
+          break;
+
         case orion::ValueTypeNull:      aTop = kjNull(orionldState.kjsonP, attrName);                              break;
         case orion::ValueTypeVector:
         case orion::ValueTypeObject:
@@ -261,24 +418,24 @@ KjNode* kjTreeFromQueryContextResponse(ConnectionInfo* ciP, bool oneHit, bool ke
 
           if (aTop != NULL)
           {
-            if (kjTreeFromCompoundValue(aP->compoundValueP, aTop, &details) == NULL)
+            if (kjTreeFromCompoundValue(aP->compoundValueP, aTop, valueMayBeContracted, &details) == NULL)
             {
               LM_E(("kjTreeFromCompoundValue: %s", details));
-              orionldErrorResponseCreate(OrionldInternalError, "Unable to create tree node from a compound value", details, OrionldDetailEntity);
+              orionldErrorResponseCreate(OrionldInternalError, "Unable to create tree node from a compound value", details);
               return NULL;
             }
           }
           break;
 
         case orion::ValueTypeNotGiven:
-          orionldErrorResponseCreate(OrionldInternalError, "Invalid internal JSON type for Context Atribute", NULL, OrionldDetailEntity);
+          orionldErrorResponseCreate(OrionldInternalError, "Invalid internal JSON type for Context Atribute", NULL);
           break;
         }
 
         if (aTop == NULL)
         {
           LM_E(("kjTreeFromCompoundValue: %s", details));
-          orionldErrorResponseCreate(OrionldInternalError, "Unable to create tree node for a compound value", "out of memory", OrionldDetailEntity);
+          orionldErrorResponseCreate(OrionldInternalError, "Unable to create tree node for a compound value", "out of memory");
           return NULL;
         }
 
@@ -289,11 +446,12 @@ KjNode* kjTreeFromQueryContextResponse(ConnectionInfo* ciP, bool oneHit, bool ke
         //
         // NOT keyValues - create entire attribute tree
         //
+        LM_TMP(("VAL: Not keyValues"));
         aTop = kjObject(orionldState.kjsonP, attrName);
         if (aTop == NULL)
         {
           LM_E(("Error creating a KjNode Object"));
-          orionldErrorResponseCreate(OrionldInternalError, "Unable to create tree node", "out of memory", OrionldDetailEntity);
+          orionldErrorResponseCreate(OrionldInternalError, "Unable to create tree node", "out of memory");
           return NULL;
         }
 
@@ -304,7 +462,7 @@ KjNode* kjTreeFromQueryContextResponse(ConnectionInfo* ciP, bool oneHit, bool ke
           if (nodeP == NULL)
           {
             LM_E(("Error creating a KjNode String"));
-            orionldErrorResponseCreate(OrionldInternalError, "Unable to create tree node", "out of memory", OrionldDetailEntity);
+            orionldErrorResponseCreate(OrionldInternalError, "Unable to create tree node", "out of memory");
             return NULL;
           }
 
@@ -313,11 +471,11 @@ KjNode* kjTreeFromQueryContextResponse(ConnectionInfo* ciP, bool oneHit, bool ke
 
         // value
         valueFieldName = (char*) ((aP->type == "Relationship")? "object" : "value");
-
+        LM_TMP(("VAL: value type: %s", valueTypeName(aP->valueType)));
         switch (aP->valueType)
         {
         case orion::ValueTypeNumber:
-          if (SCOMPARE11(aName, 'o', 'b', 's', 'e', 'r', 'v', 'e', 'd', 'A', 't', 0))
+          if (SCOMPARE11(attrShortName, 'o', 'b', 's', 'e', 'r', 'v', 'e', 'd', 'A', 't', 0))
           {
             char   date[128];
             char*  details;
@@ -325,7 +483,7 @@ KjNode* kjTreeFromQueryContextResponse(ConnectionInfo* ciP, bool oneHit, bool ke
             if (numberToDate((time_t) aP->numberValue, date, sizeof(date), &details) == false)
             {
               LM_E(("Error creating a stringified date"));
-              orionldErrorResponseCreate(OrionldInternalError, "Unable to create a stringified observedAt date", details, OrionldDetailEntity);
+              orionldErrorResponseCreate(OrionldInternalError, "Unable to create a stringified observedAt date", details);
               return NULL;
             }
 
@@ -335,25 +493,52 @@ KjNode* kjTreeFromQueryContextResponse(ConnectionInfo* ciP, bool oneHit, bool ke
             nodeP = kjFloat(orionldState.kjsonP, valueFieldName, aP->numberValue);
           break;
 
-        case orion::ValueTypeString:    nodeP = kjString(orionldState.kjsonP, valueFieldName, aP->stringValue.c_str());      break;
+        case orion::ValueTypeString:
+          LM_TMP(("VAL: It's a string ..."));
+
+          if (valueMayBeContracted == true)
+          {
+            LM_TMP(("VAL: ... and it may be contracted"));
+            char* contractedValue = orionldAliasLookup(orionldState.contextP, aP->stringValue.c_str(), NULL);
+
+            if (contractedValue != NULL)
+            {
+              LM_TMP(("VAL: contracted value is: %s", contractedValue));
+              nodeP = kjString(orionldState.kjsonP, valueFieldName, contractedValue);
+            }
+            else
+            {
+              LM_TMP(("VAL: contracted value - not found"));
+              nodeP = kjString(orionldState.kjsonP, valueFieldName, aP->stringValue.c_str());
+            }
+          }
+          else
+          {
+            LM_TMP(("VAL: ... and it may NOT be contracted"));
+            nodeP = kjString(orionldState.kjsonP, valueFieldName, aP->stringValue.c_str());
+          }
+          break;
+
         case orion::ValueTypeBoolean:   nodeP = kjBoolean(orionldState.kjsonP, valueFieldName, (KBool) aP->boolValue);       break;
         case orion::ValueTypeNull:      nodeP = kjNull(orionldState.kjsonP, valueFieldName);                                 break;
         case orion::ValueTypeNotGiven:  nodeP = kjString(orionldState.kjsonP, valueFieldName, "UNKNOWN TYPE");               break;
 
         case orion::ValueTypeVector:
+          LM_TMP(("VAL: Compound value, of Array type"));
         case orion::ValueTypeObject:
+          LM_TMP(("VAL: Compound value"));
           nodeP = (aP->compoundValueP->valueType == orion::ValueTypeVector)? kjArray(orionldState.kjsonP, valueFieldName) : kjObject(orionldState.kjsonP, valueFieldName);
           if (nodeP == NULL)
           {
             LM_E(("kjTreeFromCompoundValue: %s", details));
-            orionldErrorResponseCreate(OrionldInternalError, "Unable to create tree node for compound value", "out of memory", OrionldDetailEntity);
+            orionldErrorResponseCreate(OrionldInternalError, "Unable to create tree node for compound value", "out of memory");
             return NULL;
           }
 
-          if (kjTreeFromCompoundValue(aP->compoundValueP, nodeP, &details) == NULL)
+          if (kjTreeFromCompoundValue(aP->compoundValueP, nodeP, valueMayBeContracted, &details) == NULL)
           {
             LM_E(("kjTreeFromCompoundValue: %s", details));
-            orionldErrorResponseCreate(OrionldInternalError, "Unable to create tree node from compound value", details, OrionldDetailEntity);
+            orionldErrorResponseCreate(OrionldInternalError, "Unable to create tree node from compound value", details);
             return NULL;
           }
           break;
@@ -378,8 +563,9 @@ KjNode* kjTreeFromQueryContextResponse(ConnectionInfo* ciP, bool oneHit, bool ke
           //
           // Metadata with "type" != "" are built as Objects with type+value/object
           //
-          Metadata* mdP     = aP->metadataVector[ix];
-          char*     mdName  = (char*) mdP->name.c_str();
+          Metadata* mdP                  = aP->metadataVector[ix];
+          char*     mdName               = (char*) mdP->name.c_str();
+          bool      valueMayBeContracted = false;
 
           if ((strcmp(mdName, "observedAt") != 0) &&
               (strcmp(mdName, "createdAt")  != 0) &&
@@ -388,7 +574,7 @@ KjNode* kjTreeFromQueryContextResponse(ConnectionInfo* ciP, bool oneHit, bool ke
             //
             // Looking up short name for the sub-attribute
             //
-            mdName = orionldAliasLookup(orionldState.contextP, mdName);
+            mdName = orionldAliasLookup(orionldState.contextP, mdName, &valueMayBeContracted);
           }
 
           if (mdP->type != "")
@@ -414,7 +600,7 @@ KjNode* kjTreeFromQueryContextResponse(ConnectionInfo* ciP, bool oneHit, bool ke
                 if (numberToDate((time_t) mdP->numberValue, date, sizeof(date), &details) == false)
                 {
                   LM_E(("Error creating a stringified date"));
-                  orionldErrorResponseCreate(OrionldInternalError, "Unable to create a stringified observedAt date", details, OrionldDetailEntity);
+                  orionldErrorResponseCreate(OrionldInternalError, "Unable to create a stringified observedAt date", details);
                   return NULL;
                 }
 
@@ -424,13 +610,26 @@ KjNode* kjTreeFromQueryContextResponse(ConnectionInfo* ciP, bool oneHit, bool ke
                 valueP = kjFloat(orionldState.kjsonP, valueFieldName, mdP->numberValue);
               break;
 
-            case orion::ValueTypeString:   valueP = kjString(orionldState.kjsonP, valueFieldName, mdP->stringValue.c_str());     break;
+            case orion::ValueTypeString:
+              if (valueMayBeContracted == true)
+              {
+                char* contractedValue = orionldAliasLookup(orionldState.contextP, mdP->stringValue.c_str(), NULL);
+
+                if (contractedValue != NULL)
+                  valueP = kjString(orionldState.kjsonP, valueFieldName, contractedValue);
+                else
+                  valueP = kjString(orionldState.kjsonP, valueFieldName, mdP->stringValue.c_str());
+              }
+              else
+                valueP = kjString(orionldState.kjsonP, valueFieldName, mdP->stringValue.c_str());
+              break;
+
             case orion::ValueTypeBoolean:  valueP = kjBoolean(orionldState.kjsonP, valueFieldName, mdP->boolValue);              break;
             case orion::ValueTypeNull:     valueP = kjNull(orionldState.kjsonP, valueFieldName);                                 break;
             case orion::ValueTypeNotGiven: valueP = kjString(orionldState.kjsonP, valueFieldName, "UNKNOWN TYPE IN MONGODB 1");  break;
 
-            case orion::ValueTypeObject:   valueP = kjTreeFromCompoundValue(mdP->compoundValueP, NULL, &details); valueP->name = (char*) "value"; break;
-            case orion::ValueTypeVector:   valueP = kjTreeFromCompoundValue(mdP->compoundValueP, NULL, &details); valueP->name = (char*) "value"; break;
+            case orion::ValueTypeObject:   valueP = kjTreeFromCompoundValue(mdP->compoundValueP, NULL, valueMayBeContracted, &details); valueP->name = (char*) "value"; break;
+            case orion::ValueTypeVector:   valueP = kjTreeFromCompoundValue(mdP->compoundValueP, NULL, valueMayBeContracted, &details); valueP->name = (char*) "value"; break;
             }
 
             kjChildAdd(nodeP, valueP);
@@ -449,7 +648,7 @@ KjNode* kjTreeFromQueryContextResponse(ConnectionInfo* ciP, bool oneHit, bool ke
                 if (numberToDate((time_t) mdP->numberValue, date, sizeof(date), &details) == false)
                 {
                   LM_E(("Error creating a stringified date"));
-                  orionldErrorResponseCreate(OrionldInternalError, "Unable to create a stringified date", details, OrionldDetailEntity);
+                  orionldErrorResponseCreate(OrionldInternalError, "Unable to create a stringified date", details);
                   return NULL;
                 }
 
@@ -459,13 +658,26 @@ KjNode* kjTreeFromQueryContextResponse(ConnectionInfo* ciP, bool oneHit, bool ke
                 nodeP = kjFloat(orionldState.kjsonP, mdName, mdP->numberValue);
               break;
 
-            case orion::ValueTypeString:   nodeP = kjString(orionldState.kjsonP, mdName, mdP->stringValue.c_str());            break;
+            case orion::ValueTypeString:
+              if (valueMayBeContracted == true)
+              {
+                char* contractedValue = orionldAliasLookup(orionldState.contextP, mdP->stringValue.c_str(), NULL);
+
+                if (contractedValue != NULL)
+                  nodeP = kjString(orionldState.kjsonP, mdName, contractedValue);
+                else
+                  nodeP = kjString(orionldState.kjsonP, mdName, mdP->stringValue.c_str());
+             }
+              else
+                nodeP = kjString(orionldState.kjsonP, mdName, mdP->stringValue.c_str());
+              break;
+
             case orion::ValueTypeBoolean:  nodeP = kjBoolean(orionldState.kjsonP, mdName, mdP->boolValue);                     break;
             case orion::ValueTypeNull:     nodeP = kjNull(orionldState.kjsonP, mdName);                                        break;
             case orion::ValueTypeNotGiven: nodeP = kjString(orionldState.kjsonP, mdName, "UNKNOWN TYPE IN MONGODB 2");         break;
 
-            case orion::ValueTypeObject:   nodeP = kjTreeFromCompoundValue(mdP->compoundValueP, NULL, &details);  nodeP->name = (char*) "value"; break;
-            case orion::ValueTypeVector:   nodeP = kjTreeFromCompoundValue(mdP->compoundValueP, NULL, &details);  nodeP->name = (char*) "value"; break;
+            case orion::ValueTypeObject:   nodeP = kjTreeFromCompoundValue(mdP->compoundValueP, NULL, valueMayBeContracted, &details);  nodeP->name = (char*) "value"; break;
+            case orion::ValueTypeVector:   nodeP = kjTreeFromCompoundValue(mdP->compoundValueP, NULL, valueMayBeContracted, &details);  nodeP->name = (char*) "value"; break;
             }
           }
 
