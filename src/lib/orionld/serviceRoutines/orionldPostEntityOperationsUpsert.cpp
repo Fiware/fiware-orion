@@ -66,6 +66,7 @@ extern "C"
 #include "orionld/mongoCppLegacy/mongoCppLegacyEntityOperationsUpsert.h"   // mongoCppLegacyEntityOperationsUpsert
 
 
+
 // ----------------------------------------------------------------------------
 //
 // orionldPartialUpdateResponseCreateBatch -
@@ -232,14 +233,12 @@ bool orionldPostEntityOperationsUpsert(ConnectionInfo* ciP)
   ARRAY_CHECK(orionldState.requestTree,       "toplevel");
   EMPTY_ARRAY_CHECK(orionldState.requestTree, "toplevel");
 
-  KjNode*  createdAtP         = NULL;
-  KjNode*  modifiedAtP        = NULL;
-
   UpdateContextRequest   mongoRequest;
   UpdateContextResponse  mongoResponse;
-
-  KjNode* successArrayP = NULL;
-  KjNode* errorsArrayP  = NULL;
+  KjNode*                createdAtP       = NULL;
+  KjNode*                modifiedAtP      = NULL;
+  KjNode*                successArrayP    = NULL;
+  KjNode*                errorsArrayP     = NULL;
 
   mongoRequest.updateActionType = ActionTypeAppendStrict;
 
@@ -248,6 +247,7 @@ bool orionldPostEntityOperationsUpsert(ConnectionInfo* ciP)
   //
   // if (uriParamOption != NULL && strcmp("update", uriParamOption) == 0)
   // {
+
   int ix = 0;
   for (KjNode* entityNodeP = orionldState.requestTree->value.firstChildP; entityNodeP != NULL; entityNodeP = entityNodeP->next)
   {
@@ -264,6 +264,7 @@ bool orionldPostEntityOperationsUpsert(ConnectionInfo* ciP)
     KjNode*   itemP           = entityNodeP->value.firstChildP;
     KjNode*   entityIdNodeP   = NULL;
     KjNode*   entityTypeNodeP = NULL;
+
     while (itemP != NULL)
     {
       LM_TMP(("Batch: got item '%s'", itemP->name));
@@ -272,7 +273,9 @@ bool orionldPostEntityOperationsUpsert(ConnectionInfo* ciP)
         LM_TMP(("Batch: got Entity::ID"));
         if (entityIdNodeP != NULL)
           entityErrorPush(&errorsArrayP, entityIdNodeP->value.s, "Entity ID must be a unique field");
-        // Make sure Entity ID is a string and a valid URL
+
+        // FIXME: Make sure Entity ID is a string and a valid URL
+
         entityIdNodeP = itemP;
         next = itemP->next;
         kjChildRemove(entityNodeP, entityIdNodeP);
@@ -283,7 +286,8 @@ bool orionldPostEntityOperationsUpsert(ConnectionInfo* ciP)
         if (entityTypeNodeP != NULL)
           entityErrorPush(&errorsArrayP, entityIdNodeP->value.s, "Entity TYPE must be a unique field");
 
-        // Make sure  Entity TYPE is a string
+        // FIXME: Make sure Entity TYPE is a string
+
         entityTypeNodeP = itemP;
         next = itemP->next;
         kjChildRemove(entityNodeP, entityTypeNodeP);
@@ -294,23 +298,23 @@ bool orionldPostEntityOperationsUpsert(ConnectionInfo* ciP)
       itemP = next;
     }
 
-    //
-    // Entity ID is mandatory
-    //
-    char* detail;
 
+    // Entity ID is mandatory
+    char* detail;
     if (entityIdNodeP == NULL)
     {
       entityErrorPush(&errorsArrayP, "NO Entity-ID", "Entity ID is mandatory");
       continue;
     }
 
+    // Entity ID must be a string
     if (entityIdNodeP->type != KjString)
     {
       entityErrorPush(&errorsArrayP, "Invalid Entity-ID", "Entity ID must be a JSON string");
       continue;
     }
 
+    // Entity ID must be a valid URI
     if ((urlCheck(entityIdNodeP->value.s, &detail) == false) && (urnCheck(entityIdNodeP->value.s, &detail) == false))
     {
       entityErrorPush(&errorsArrayP, entityIdNodeP->value.s, "Entity ID must be a valid URI");
@@ -318,15 +322,15 @@ bool orionldPostEntityOperationsUpsert(ConnectionInfo* ciP)
     }
 
 
-    //
+
     // Entity TYPE is mandatory
-    //
     if (entityTypeNodeP == NULL)
     {
       entityErrorPush(&errorsArrayP, entityIdNodeP->value.s, "Entity TYPE missing - mandatory");
       continue;
     }
 
+    // Entity TYPE must be a string
     if (entityTypeNodeP->type != KjString)
     {
       entityErrorPush(&errorsArrayP, entityIdNodeP->value.s, "Entity TYPE must be a JSON string");
@@ -337,26 +341,23 @@ bool orionldPostEntityOperationsUpsert(ConnectionInfo* ciP)
     //
     // Both Entity::id and Entity::type are OK
     //
-    char*   entityId           = entityIdNodeP->value.s;
-    char*   entityType         = entityTypeNodeP->value.s;
-
-    ContextElement*  ceP = new ContextElement();  // FIXME: Any way I can avoid to allocate ?
+    char*            entityId    = entityIdNodeP->value.s;
+    char*            entityType  = entityTypeNodeP->value.s;
+    ContextElement*  ceP         = new ContextElement();  // FIXME: Any way I can avoid to allocate ?
     EntityId*        entityIdP;
+    char             typeExpanded[256];
 
     mongoRequest.contextElementVector.push_back(ceP);
+
     entityIdP                     = &mongoRequest.contextElementVector[ix]->entityId;
     mongoRequest.updateActionType = ActionTypeAppendStrict;
+    entityIdP->id                 = entityId;
 
-    char  typeExpanded[256];
-    char* details;
-
-    entityIdP->id = entityId;
-
-    if (orionldUriExpand(orionldState.contextP, entityType, typeExpanded, sizeof(typeExpanded), NULL, &details) == false)
+    if (orionldUriExpand(orionldState.contextP, entityType, typeExpanded, sizeof(typeExpanded), NULL, &detail) == false)
     {
       LM_E(("orionldUriExpand failed"));
       delete(ceP);
-      orionldErrorResponseCreate(OrionldBadRequestData, "Error during URI expansion of entity type", details);
+      orionldErrorResponseCreate(OrionldBadRequestData, "Error during URI expansion of entity type", detail);
       return false;
     }
 
