@@ -38,8 +38,8 @@ brokerStart CB 212-249
 #
 
 
-echo "01. POST /ngsi-ld/v1/entityOperations/upsert 4 Entities"
-echo "======================================================="
+echo "01. POST /ngsi-ld/v1/entityOperations/upsert - 4 Entities"
+echo "========================================================="
 payload='[
     {
         "id": "urn:ngsi-ld:Vehicle:00001",
@@ -220,8 +220,8 @@ echo
 
 
 --REGEXPECT--
-01. POST /ngsi-ld/v1/entityOperations/upsert 4 Entities
-=======================================================
+01. POST /ngsi-ld/v1/entityOperations/upsert - 4 Entities
+=========================================================
 HTTP/1.1 200 OK
 Content-Length: 125
 Content-Type: application/json

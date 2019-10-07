@@ -41,6 +41,8 @@ brokerStart CB 212-249
 # 08. Attempt to upsert with an entity with ID typed wrong - see error
 # 09. Attempt to upsert with an entity with TYPE typed wrong - see error
 # 10. Attempt to upsert with an empty array - see error
+# 11. POST /ngsi-ld/v1/entityOperations/upsert - 4 entities
+# 12. POST /ngsi-ld/v1/entityOperations/upsert - 4 same entities from 11. functional test
 #
 
 
@@ -357,6 +359,160 @@ orionCurl --url /ngsi-ld/v1/entityOperations/upsert -X POST --payload "$payload"
 echo
 echo
 
+
+echo "11. POST /ngsi-ld/v1/entityOperations/upsert - 4 entities"
+echo "========================================================="
+payload='[
+    {
+        "id": "urn:ngsi-ld:Vehicle:00001",
+        "type": "Vehicle",
+        "brandName": {
+            "type": "Property",
+            "value": "Mercedes"
+        },
+        "isParked": {
+            "type": "Relationship",
+            "object": "urn:ngsi-ld:OffStreetParking:Downtown1",
+            "observedAt": "2017-07-29T12:00:04Z",
+            "providedBy": {
+                "type": "Relationship",
+                "object": "urn:ngsi-ld:Person:Bob"
+            }
+        }
+    },
+    {
+        "id": "urn:ngsi-ld:Vehicle:00002",
+        "type": "Vehicle",
+        "brandName": {
+            "type": "Property",
+            "value": "Mercedes"
+        },
+        "isParked": {
+            "type": "Relationship",
+            "object": "urn:ngsi-ld:OffStreetParking:Downtown1",
+            "observedAt": "2017-07-29T12:00:04Z",
+            "providedBy": {
+                "type": "Relationship",
+                "object": "urn:ngsi-ld:Person:Bob"
+            }
+        }
+    },
+    {
+        "id": "urn:ngsi-ld:Vehicle:00003",
+        "type": "Vehicle",
+        "brandName": {
+            "type": "Property",
+            "value": "Mercedes"
+        },
+        "isParked": {
+            "type": "Relationship",
+            "object": "urn:ngsi-ld:OffStreetParking:Downtown1",
+            "observedAt": "2017-07-29T12:00:04Z",
+            "providedBy": {
+                "type": "Relationship",
+                "object": "urn:ngsi-ld:Person:Bob"
+            }
+        }
+    },
+    {
+        "id": "urn:ngsi-ld:Vehicle:00004",
+        "type": "Vehicle",
+        "brandName": {
+            "type": "Property",
+            "value": "Mercedes"
+        },
+        "isParked": {
+            "type": "Relationship",
+            "object": "urn:ngsi-ld:OffStreetParking:Downtown1",
+            "observedAt": "2017-07-29T12:00:04Z",
+            "providedBy": {
+                "type": "Relationship",
+                "object": "urn:ngsi-ld:Person:Bob"
+            }
+        }
+    }
+]'
+orionCurl --url /ngsi-ld/v1/entityOperations/upsert -X POST --payload "$payload" -H "Content-Type: application/ld+json"
+echo
+echo
+
+
+echo "12. POST /ngsi-ld/v1/entityOperations/upsert - 4 same entities from 11. functional test"
+echo "======================================================================================="
+payload='[
+    {
+        "id": "urn:ngsi-ld:Vehicle:00001",
+        "type": "Vehicle",
+        "brandName": {
+            "type": "Property",
+            "value": "Mercedes"
+        },
+        "isParked": {
+            "type": "Relationship",
+            "object": "urn:ngsi-ld:OffStreetParking:Downtown1",
+            "observedAt": "2017-07-29T12:00:04Z",
+            "providedBy": {
+                "type": "Relationship",
+                "object": "urn:ngsi-ld:Person:Bob"
+            }
+        }
+    },
+    {
+        "id": "urn:ngsi-ld:Vehicle:00002",
+        "type": "Vehicle",
+        "brandName": {
+            "type": "Property",
+            "value": "Mercedes"
+        },
+        "isParked": {
+            "type": "Relationship",
+            "object": "urn:ngsi-ld:OffStreetParking:Downtown1",
+            "observedAt": "2017-07-29T12:00:04Z",
+            "providedBy": {
+                "type": "Relationship",
+                "object": "urn:ngsi-ld:Person:Bob"
+            }
+        }
+    },
+    {
+        "id": "urn:ngsi-ld:Vehicle:00003",
+        "type": "Vehicle",
+        "brandName": {
+            "type": "Property",
+            "value": "Mercedes"
+        },
+        "isParked": {
+            "type": "Relationship",
+            "object": "urn:ngsi-ld:OffStreetParking:Downtown1",
+            "observedAt": "2017-07-29T12:00:04Z",
+            "providedBy": {
+                "type": "Relationship",
+                "object": "urn:ngsi-ld:Person:Bob"
+            }
+        }
+    },
+    {
+        "id": "urn:ngsi-ld:Vehicle:00004",
+        "type": "Vehicle",
+        "brandName": {
+            "type": "Property",
+            "value": "Mercedes"
+        },
+        "isParked": {
+            "type": "Relationship",
+            "object": "urn:ngsi-ld:OffStreetParking:Downtown1",
+            "observedAt": "2017-07-29T12:00:04Z",
+            "providedBy": {
+                "type": "Relationship",
+                "object": "urn:ngsi-ld:Person:Bob"
+            }
+        }
+    }
+]'
+orionCurl --url /ngsi-ld/v1/entityOperations/upsert -X POST --payload "$payload" -H "Content-Type: application/ld+json"
+echo
+echo
+
 --REGEXPECT--
 01. Attempt to upsert with an entity having a ID that is not a string - see error
 =================================================================================
@@ -548,6 +704,35 @@ Date: REGEX(.*)
     "title": "Empty Array",
     "type": "https://uri.etsi.org/ngsi-ld/errors/InvalidRequest"
 }
+
+
+11. POST /ngsi-ld/v1/entityOperations/upsert - 4 entities
+=========================================================
+HTTP/1.1 200 OK
+Content-Length: 125
+Content-Type: application/json
+Link: <https://uri.etsi.org/ngsi-ld/v1/ngsi-ld-core-context.jsonld>; rel="http://www.w3.org/ns/json-ld#context"; type="application/ld+json"
+Date: REGEX(.*)
+
+{
+    "success": [
+        "urn:ngsi-ld:Vehicle:00001",
+        "urn:ngsi-ld:Vehicle:00002",
+        "urn:ngsi-ld:Vehicle:00003",
+        "urn:ngsi-ld:Vehicle:00004"
+    ]
+}
+
+
+12. POST /ngsi-ld/v1/entityOperations/upsert - 4 same entities from 11. functional test
+=======================================================================================
+HTTP/1.1 200 OK
+Content-Length: 2
+Content-Type: application/json
+Link: <https://uri.etsi.org/ngsi-ld/v1/ngsi-ld-core-context.jsonld>; rel="http://www.w3.org/ns/json-ld#context"; type="application/ld+json"
+Date: REGEX(.*)
+
+{}
 
 
 --TEARDOWN--

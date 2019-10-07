@@ -20,7 +20,7 @@
 * For those usages not covered by this license please contact with
 * iot_support at tid dot es
 *
-* Author: Gabriel Quaresma ans Ken Zangelin
+* Author: Gabriel Quaresma and Ken Zangelin
 */
 #include "logMsg/logMsg.h"                                                 // LM_*
 #include "logMsg/traceLevels.h"                                            // Lmt*
@@ -412,7 +412,7 @@ bool orionldPostEntityOperationsUpsert(ConnectionInfo* ciP)
     for (unsigned int ix = 0; ix < mongoResponse.contextElementResponseVector.vec.size(); ix++)
     {
       const char* entityId = mongoResponse.contextElementResponseVector.vec[ix]->contextElement.entityId.id.c_str();
-
+      LM_TMP(("Status CODE: %d", mongoResponse.contextElementResponseVector.vec[ix]->statusCode.code));
       //
       // FIXME: Here we assume all items in mongoResponse.contextElementResponseVector are SUCCESSFUL
       //        But, ContextElementResponse has a field called "statusCode" that we could look at ...
@@ -428,7 +428,9 @@ bool orionldPostEntityOperationsUpsert(ConnectionInfo* ciP)
       //
       //        It can be tested with gmock, but I'm not an expert ...
       //
-      entitySuccessPush(&successArrayP, entityId);
+
+      if (mongoResponse.contextElementResponseVector.vec[ix]->statusCode.code == SccOk)
+        entitySuccessPush(&successArrayP, entityId);
     }
 
     if (successArrayP != NULL)
