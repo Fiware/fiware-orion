@@ -62,7 +62,7 @@ extern "C"
 #include "orionld/context/orionldContextPresent.h"                         // orionldContextPresent
 #include "orionld/context/orionldUserContextKeyValuesCheck.h"              // orionldUserContextKeyValuesCheck
 #include "orionld/context/orionldUriExpand.h"                              // orionldUriExpand
-#include "orionld/serviceRoutines/orionldPostEntityOperationsUpsert.h"     // Own Interface
+#include "orionld/serviceRoutines/orionldPostBatchUpsert.h"                // Own Interface
 #include "orionld/mongoCppLegacy/mongoCppLegacyEntityOperationsUpsert.h"   // mongoCppLegacyEntityOperationsUpsert
 
 
@@ -240,7 +240,7 @@ static void entityErrorPush(KjNode** errorsArrayPP, const char* entityId, const 
 //   Update:   Existing Entity content shall be updated           - like PATCH
 //
 //
-bool orionldPostEntityOperationsUpsert(ConnectionInfo* ciP)
+bool orionldPostBatchUpsert(ConnectionInfo* ciP)
 {
   //
   // Prerequisites 1: payload must be an array, and it cannot be empty

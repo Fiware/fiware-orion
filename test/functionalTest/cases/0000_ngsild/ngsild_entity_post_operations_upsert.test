@@ -31,15 +31,15 @@ brokerStart CB 212-249
 --SHELL--
 
 #
-# 01. POST /ngsi-ld/v1/entityOperations/upsert - 4 Entities
+# 01. POST /ngsi-ld/v1/entityOperations/upsert?options=update - 4 Entities
 # 02. GET  /ngsi-ld/v1/entities?type=Vehicle   - See 4 Entities
-# 03. POST /ngsi-ld/v1/entityOperations/upsert - Change 2 Entities
+# 03. POST /ngsi-ld/v1/entityOperations/upsert?options=update - Change 2 Entities
 # 04. GET  /ngsi-ld/v1/entities?type=Vehicle   - See changes of 2 Entities
 #
 
 
-echo "01. POST /ngsi-ld/v1/entityOperations/upsert - 4 Entities"
-echo "========================================================="
+echo "01. POST /ngsi-ld/v1/entityOperations/upsert?options=update - 4 Entities"
+echo "========================================================================"
 payload='[
     {
         "id": "urn:ngsi-ld:Vehicle:00001",
@@ -122,8 +122,8 @@ echo
 echo
 
 
-echo "03. POST /ngsi-ld/v1/entityOperations/upsert Change 2 Entities"
-echo "=============================================================="
+echo "03. POST /ngsi-ld/v1/entityOperations/upsert?options=update - Change 2 Entities"
+echo "==============================================================================="
 payload='[
     {
         "id": "urn:ngsi-ld:Vehicle:00001",
@@ -220,8 +220,8 @@ echo
 
 
 --REGEXPECT--
-01. POST /ngsi-ld/v1/entityOperations/upsert - 4 Entities
-=========================================================
+01. POST /ngsi-ld/v1/entityOperations/upsert?options=update - 4 Entities
+========================================================================
 HTTP/1.1 200 OK
 Content-Length: 125
 Content-Type: application/json
@@ -319,8 +319,8 @@ Date: REGEX(.*)
 
 
 
-03. POST /ngsi-ld/v1/entityOperations/upsert Change 2 Entities
-==============================================================
+03. POST /ngsi-ld/v1/entityOperations/upsert?options=update - Change 2 Entities
+===============================================================================
 HTTP/1.1 200 OK
 Content-Length: 69
 Content-Type: application/json
