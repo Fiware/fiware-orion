@@ -278,7 +278,6 @@ bool orionldPostBatchUpsert(ConnectionInfo* ciP)
 
   mongoRequest.updateActionType = ActionTypeAppend;
 
-  int ix = 0;
   for (KjNode* entityNodeP = orionldState.requestTree->value.firstChildP; entityNodeP != NULL; entityNodeP = entityNodeP->next)
   {
     OBJECT_CHECK(entityNodeP, kjValueType(entityNodeP->type));
@@ -342,7 +341,7 @@ bool orionldPostBatchUpsert(ConnectionInfo* ciP)
       continue;
     }
 
-    // Entity ID must be a value URI
+    // Entity ID must be a valid URI
     if (!urlCheck(entityIdNodeP->value.s, &detail) && !urnCheck(entityIdNodeP->value.s, &detail))
     {
       entityErrorPush(&errorsArrayP, entityIdNodeP->value.s, "Not a URI");
@@ -422,7 +421,6 @@ bool orionldPostBatchUpsert(ConnectionInfo* ciP)
 
     orionldState.payloadIdNode   = NULL;
     orionldState.payloadTypeNode = NULL;
-    ++ix;
   }
 
 

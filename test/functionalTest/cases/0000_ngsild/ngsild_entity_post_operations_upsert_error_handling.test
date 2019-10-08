@@ -31,9 +31,9 @@ brokerStart CB 0-255
 --SHELL--
 
 #
-# 01. Attempt to upsert with an entity having a ID that is not a string - see error
+# 01. Attempt to upsert with an entity having an ID that is not a string - see error
 # 02. Attempt to upsert with an entity without ID field - see error
-# 03. Attempt to upsert with an entity having a ID with URI invalid - see error
+# 03. Attempt to upsert with an entity having an ID with URI invalid - see error
 # 04. Attempt to upsert with an entity having a TYPE that is not a string - see error
 # 05. Attempt to upsert with an entity without TYPE field - see error
 # 06. Attempt to upsert with an entity with 2 ID fields - see error
@@ -46,8 +46,8 @@ brokerStart CB 0-255
 #
 
 
-echo "01. Attempt to upsert with an entity having a ID that is not a string - see error"
-echo "================================================================================="
+echo "01. Attempt to upsert with an entity having an id that is not a string - see error"
+echo "=================================================================================="
 payload='[
   {
     "id": 123456,
@@ -113,8 +113,8 @@ echo
 echo
 
 
-echo "03. Attempt to upsert with an entity having a ID with URI invalid - see error"
-echo "============================================================================="
+echo "03. Attempt to upsert with an entity having an id with URI invalid - see error"
+echo "=============================================================================="
 payload='[
   {
     "id": "ABC_123456",
@@ -515,8 +515,8 @@ echo
 
 
 --REGEXPECT--
-01. Attempt to upsert with an entity having a ID that is not a string - see error
-=================================================================================
+01. Attempt to upsert with an entity having an id that is not a string - see error
+==================================================================================
 HTTP/1.1 200 OK
 Content-Length: 106
 Content-Type: application/json
@@ -554,8 +554,8 @@ Date: REGEX(.*)
 }
 
 
-03. Attempt to upsert with an entity having a ID with URI invalid - see error
-=============================================================================
+03. Attempt to upsert with an entity having an id with URI invalid - see error
+==============================================================================
 HTTP/1.1 200 OK
 Content-Length: 58
 Content-Type: application/json
