@@ -190,14 +190,11 @@ bool kjTreeToContextElementAttributes
 //
 // entitySuccessPush -
 //
-static void entitySuccessPush(KjNode** successsArrayPP, const char* entityId)
+static void entitySuccessPush(KjNode* successsArrayP, const char* entityId)
 {
   KjNode* eIdP = kjString(orionldState.kjsonP, "id", entityId);
 
-  if (*successsArrayPP == NULL)
-    *successsArrayPP = kjArray(orionldState.kjsonP, "success");
-
-  kjChildAdd(*successsArrayPP, eIdP);
+  kjChildAdd(successsArrayP, eIdP);
 }
 
 
@@ -206,7 +203,7 @@ static void entitySuccessPush(KjNode** successsArrayPP, const char* entityId)
 //
 // entityErrorPush -
 //
-static void entityErrorPush(KjNode** errorsArrayPP, const char* entityId, const char* reason)
+static void entityErrorPush(KjNode* errorsArrayP, const char* entityId, const char* reason)
 {
   KjNode* objP    = kjObject(orionldState.kjsonP, NULL);
   KjNode* eIdP    = kjString(orionldState.kjsonP, "entityId", entityId);
@@ -215,10 +212,7 @@ static void entityErrorPush(KjNode** errorsArrayPP, const char* entityId, const 
   kjChildAdd(objP, eIdP);
   kjChildAdd(objP, reasonP);
 
-  if (*errorsArrayPP == NULL)
-    *errorsArrayPP = kjArray(orionldState.kjsonP, "errors");
-
-  kjChildAdd(*errorsArrayPP, objP);
+  kjChildAdd(errorsArrayP, objP);
 }
 
 
@@ -292,8 +286,8 @@ bool orionldPostBatchUpsert(ConnectionInfo* ciP)
   UpdateContextResponse  mongoResponse;
   KjNode*                createdAtP       = NULL;
   KjNode*                modifiedAtP      = NULL;
-  KjNode*                successArrayP    = NULL;
-  KjNode*                errorsArrayP     = NULL;
+  KjNode*                successArrayP    = kjArray(orionldState.kjsonP, "success");
+  KjNode*                errorsArrayP     = kjArray(orionldState.kjsonP, "errors");
   char*                  detail;
 
   ciP->httpStatusCode = SccOk;
@@ -352,21 +346,21 @@ bool orionldPostBatchUpsert(ConnectionInfo* ciP)
     // Entity ID is mandatory
     if (entityIdNodeP == NULL)
     {
-      entityErrorPush(&errorsArrayP, "no entity::id", "entity::id is mandatory");
+      entityErrorPush(errorsArrayP, "no entity::id", "entity::id is mandatory");
       continue;
     }
 
     // Entity ID must be a string
     if (entityIdNodeP->type != KjString)
     {
-      entityErrorPush(&errorsArrayP, "Invalid type for Entity ID", kjValueType(entityIdNodeP->type));
+      entityErrorPush(errorsArrayP, "Invalid type for Entity ID", kjValueType(entityIdNodeP->type));
       continue;
     }
 
     // Entity ID must be a valid URI
     if (!urlCheck(entityIdNodeP->value.s, &detail) && !urnCheck(entityIdNodeP->value.s, &detail))
     {
-      entityErrorPush(&errorsArrayP, entityIdNodeP->value.s, "Not a URI");
+      entityErrorPush(errorsArrayP, entityIdNodeP->value.s, "Not a URI");
       continue;
     }
 
@@ -374,7 +368,7 @@ bool orionldPostBatchUpsert(ConnectionInfo* ciP)
     if (duplicatedId == true)
     {
       LM_W(("Bad Input (Duplicated entity::id)"));
-      entityErrorPush(&errorsArrayP, entityIdNodeP->value.s, "Duplicated entity::id in payload");
+      entityErrorPush(errorsArrayP, entityIdNodeP->value.s, "Duplicated entity::id in payload");
       continue;
     }
 
@@ -382,7 +376,7 @@ bool orionldPostBatchUpsert(ConnectionInfo* ciP)
     // Entity TYPE is mandatory
     if (entityTypeNodeP == NULL)
     {
-      entityErrorPush(&errorsArrayP, entityIdNodeP->value.s, "mandatory entity::type missing in payload");
+      entityErrorPush(errorsArrayP, entityIdNodeP->value.s, "mandatory entity::type missing in payload");
       continue;
     }
 
@@ -390,7 +384,7 @@ bool orionldPostBatchUpsert(ConnectionInfo* ciP)
     if (duplicatedType == true)
     {
       LM_W(("Bad Input (Duplicated entity::type)"));
-      entityErrorPush(&errorsArrayP, entityIdNodeP->value.s, "Duplicated entity::type in payload");
+      entityErrorPush(errorsArrayP, entityIdNodeP->value.s, "Duplicated entity::type in payload");
       continue;
     }
 
@@ -398,7 +392,7 @@ bool orionldPostBatchUpsert(ConnectionInfo* ciP)
     if (entityTypeNodeP->type != KjString)
     {
       LM_W(("Bad Input (entity::type not a string)"));
-      entityErrorPush(&errorsArrayP, entityIdNodeP->value.s, "entity::type must be a JSON string");
+      entityErrorPush(errorsArrayP, entityIdNodeP->value.s, "entity::type must be a JSON string");
       continue;
     }
 
@@ -418,7 +412,7 @@ bool orionldPostBatchUpsert(ConnectionInfo* ciP)
     if (orionldUriExpand(orionldState.contextP, entityType, typeExpanded, sizeof(typeExpanded), NULL, &detail) == false)
     {
       LM_E(("orionldUriExpand failed: %s", detail));
-      entityErrorPush(&errorsArrayP, entityIdNodeP->value.s, detail);
+      entityErrorPush(errorsArrayP, entityIdNodeP->value.s, detail);
       delete ceP;
       continue;
     }
@@ -434,7 +428,7 @@ bool orionldPostBatchUpsert(ConnectionInfo* ciP)
     if (kjTreeToContextElementAttributes(ciP, entityNodeP, createdAtP, modifiedAtP, ceP, &detail) == false)
     {
       LM_W(("kjTreeToContextElementAttributes flags error '%s' for entity '%s'", detail, entityId));
-      entityErrorPush(&errorsArrayP, entityId, detail);
+      entityErrorPush(errorsArrayP, entityId, detail);
       delete ceP;
       continue;
     }
@@ -477,36 +471,25 @@ bool orionldPostBatchUpsert(ConnectionInfo* ciP)
       const char* entityId = mongoResponse.contextElementResponseVector.vec[ix]->contextElement.entityId.id.c_str();
 
       if (mongoResponse.contextElementResponseVector.vec[ix]->statusCode.code == SccOk)
-        entitySuccessPush(&successArrayP, entityId);
+        entitySuccessPush(successArrayP, entityId);
       else
-        entityErrorPush(&errorsArrayP, entityId, mongoResponse.contextElementResponseVector.vec[ix]->statusCode.reasonPhrase.c_str());
+        entityErrorPush(errorsArrayP, entityId, mongoResponse.contextElementResponseVector.vec[ix]->statusCode.reasonPhrase.c_str());
     }
 
 
-    if (mongoRequest.contextElementVector.vec.size() > 0)
+    for (unsigned int ix = 0; ix < mongoRequest.contextElementVector.vec.size(); ix++)
     {
-      for (unsigned int ix = 0; ix < mongoRequest.contextElementVector.vec.size(); ix++)
-      {
-        const char* entityIdReq = mongoRequest.contextElementVector.vec[ix]->entityId.id.c_str();
+      const char* entityId = mongoRequest.contextElementVector.vec[ix]->entityId.id.c_str();
 
-        if (kjStringValueLookupInArray(successArrayP, entityIdReq) == NULL)
-          entitySuccessPush(&successArrayP, entityIdReq);
-      }
-      kjChildAdd(orionldState.responseTree, successArrayP);
+      if (kjStringValueLookupInArray(successArrayP, entityId) == NULL)
+        entitySuccessPush(successArrayP, entityId);
     }
 
     //
-    // Only add the success/error arrays if non-empty
+    // Add the success/error arrays to the response-tree
     //
-    if (successArrayP != NULL)
-      kjChildAdd(orionldState.responseTree, successArrayP);
-    else
-      kjChildAdd(orionldState.responseTree, kjArray(orionldState.kjsonP, "success"));
-
-    if (errorsArrayP != NULL)
-      kjChildAdd(orionldState.responseTree, errorsArrayP);
-    else
-      kjChildAdd(orionldState.responseTree, kjArray(orionldState.kjsonP, "errors"));
+    kjChildAdd(orionldState.responseTree, successArrayP);
+    kjChildAdd(orionldState.responseTree, errorsArrayP);
 
     ciP->httpStatusCode = SccOk;
   }
@@ -524,7 +507,7 @@ bool orionldPostBatchUpsert(ConnectionInfo* ciP)
   return true;
 
   //
-  // TO-DO (Operation with new way)
+  // TO-DO (Operation with "new way")
   // if (mongoCppLegacyEntityOperationsUpsert(orionldState.requestTree) == false)
   // {
   //   LM_E(("mongoCppLegacyEntityOperationsUpsert"));
