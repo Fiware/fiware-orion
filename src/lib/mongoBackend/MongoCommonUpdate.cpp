@@ -3452,8 +3452,7 @@ static void updateEntity
     }
     else
     {
-      cerP->statusCode.fill(SccNone);
-      responseP->contextElementResponseVector.push_back(cerP);
+      delete cerP;
     }
 
     releaseTriggeredSubscriptions(&subsToNotify);

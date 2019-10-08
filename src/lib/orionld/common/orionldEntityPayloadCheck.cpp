@@ -110,7 +110,7 @@ bool orionldValidName(char* name, char** detailsPP)
 //
 // checkEntityIdFieldExistis -
 //
-bool checkEntityIdFieldExists(void)
+static bool checkEntityIdFieldExists(void)
 {
   if (orionldState.payloadIdNode == NULL)
   {

@@ -230,6 +230,7 @@ static void entityErrorPush(KjNode** errorsArrayPP, const char* entityId, const 
 bool orionldPostEntityOperationsUpsert(ConnectionInfo* ciP)
 {
   ciP->httpStatusCode = SccOk;
+
   ARRAY_CHECK(orionldState.requestTree,       "toplevel");
   EMPTY_ARRAY_CHECK(orionldState.requestTree, "toplevel");
 
@@ -239,6 +240,7 @@ bool orionldPostEntityOperationsUpsert(ConnectionInfo* ciP)
   KjNode*                modifiedAtP      = NULL;
   KjNode*                successArrayP    = NULL;
   KjNode*                errorsArrayP     = NULL;
+  char*                  detail;
 
   mongoRequest.updateActionType = ActionTypeAppendStrict;
 
@@ -259,81 +261,95 @@ bool orionldPostEntityOperationsUpsert(ConnectionInfo* ciP)
     // As we will remove items from the tree, we need to save the 'next-pointer' a priori
     // If not, after removing an item, its next pointer point to NULL and the for-loop (if used) is ended
     //
-
-    KjNode*   next;
     KjNode*   itemP           = entityNodeP->value.firstChildP;
     KjNode*   entityIdNodeP   = NULL;
     KjNode*   entityTypeNodeP = NULL;
+    bool      duplicatedType  = false;
+    bool      duplicatedId    = false;
 
+    //
+    // We only check for duplicated entries in this loop.
+    // The rest is taken care of after we've looked up entity::id
+    //
     while (itemP != NULL)
     {
       LM_TMP(("Batch: got item '%s'", itemP->name));
+
       if (SCOMPARE3(itemP->name, 'i', 'd', 0))
       {
-        LM_TMP(("Batch: got Entity::ID"));
         if (entityIdNodeP != NULL)
-          entityErrorPush(&errorsArrayP, entityIdNodeP->value.s, "Entity ID must be a unique field");
+          duplicatedId = true;
+        else
+          entityIdNodeP = itemP;
 
-        // FIXME: Make sure Entity ID is a string and a valid URL
-
-        entityIdNodeP = itemP;
-        next = itemP->next;
+        itemP = itemP->next;  // Point to the next item BEFORE the current one is removed
         kjChildRemove(entityNodeP, entityIdNodeP);
       }
       else if (SCOMPARE5(itemP->name, 't', 'y', 'p', 'e', 0))
       {
-        LM_TMP(("Batch: got Entity::TYPE"));
-        if (entityTypeNodeP != NULL)
-          entityErrorPush(&errorsArrayP, entityIdNodeP->value.s, "Entity TYPE must be a unique field");
+        if (entityTypeNodeP != NULL)  // Duplicated 'type' in payload?
+          duplicatedType = true;
+        else
+          entityTypeNodeP = itemP;
 
-        // FIXME: Make sure Entity TYPE is a string
-
-        entityTypeNodeP = itemP;
-        next = itemP->next;
+        itemP = itemP->next;  // Point to the next item BEFORE the current one is removed
         kjChildRemove(entityNodeP, entityTypeNodeP);
       }
       else
-        next = itemP->next;
-
-      itemP = next;
+        itemP = itemP->next;
     }
 
 
     // Entity ID is mandatory
-    char* detail;
     if (entityIdNodeP == NULL)
     {
-      entityErrorPush(&errorsArrayP, "NO Entity-ID", "Entity ID is mandatory");
+      entityErrorPush(&errorsArrayP, "no entity::id", "entity::id is mandatory");
       continue;
     }
 
     // Entity ID must be a string
     if (entityIdNodeP->type != KjString)
     {
-      entityErrorPush(&errorsArrayP, "Invalid Entity-ID", "Entity ID must be a JSON string");
+      entityErrorPush(&errorsArrayP, "Invalid type for Entity ID", kjValueType(entityIdNodeP->type));
       continue;
     }
 
-    // Entity ID must be a valid URI
-    if ((urlCheck(entityIdNodeP->value.s, &detail) == false) && (urnCheck(entityIdNodeP->value.s, &detail) == false))
+    // Entity ID must be a value URI
+    if (!urlCheck(entityIdNodeP->value.s, &detail) && !urnCheck(entityIdNodeP->value.s, &detail))
     {
-      entityErrorPush(&errorsArrayP, entityIdNodeP->value.s, "Entity ID must be a valid URI");
+      entityErrorPush(&errorsArrayP, entityIdNodeP->value.s, "Not a URI");
       continue;
     }
 
+    // Entity ID must not be duplicated
+    if (duplicatedId == true)
+    {
+      LM_W(("Bad Input (Duplicated entity::id)"));
+      entityErrorPush(&errorsArrayP, entityIdNodeP->value.s, "Duplicated entity::id in payload");
+      continue;
+    }
 
 
     // Entity TYPE is mandatory
     if (entityTypeNodeP == NULL)
     {
-      entityErrorPush(&errorsArrayP, entityIdNodeP->value.s, "Entity TYPE missing - mandatory");
+      entityErrorPush(&errorsArrayP, entityIdNodeP->value.s, "mandatory entity::type missing in payload");
+      continue;
+    }
+
+    // Entity TYPE must not be duplicated
+    if (duplicatedType == true)
+    {
+      LM_W(("Bad Input (Duplicated entity::type)"));
+      entityErrorPush(&errorsArrayP, entityIdNodeP->value.s, "Duplicated entity::type in payload");
       continue;
     }
 
     // Entity TYPE must be a string
     if (entityTypeNodeP->type != KjString)
     {
-      entityErrorPush(&errorsArrayP, entityIdNodeP->value.s, "Entity TYPE must be a JSON string");
+      LM_W(("Bad Input (entity::type not a string)"));
+      entityErrorPush(&errorsArrayP, entityIdNodeP->value.s, "entity::type must be a JSON string");
       continue;
     }
 
@@ -344,21 +360,18 @@ bool orionldPostEntityOperationsUpsert(ConnectionInfo* ciP)
     char*            entityId    = entityIdNodeP->value.s;
     char*            entityType  = entityTypeNodeP->value.s;
     ContextElement*  ceP         = new ContextElement();  // FIXME: Any way I can avoid to allocate ?
-    EntityId*        entityIdP;
+    EntityId*        entityIdP   = &ceP->entityId;
     char             typeExpanded[256];
 
-    mongoRequest.contextElementVector.push_back(ceP);
-
-    entityIdP                     = &mongoRequest.contextElementVector[ix]->entityId;
     mongoRequest.updateActionType = ActionTypeAppendStrict;
     entityIdP->id                 = entityId;
 
     if (orionldUriExpand(orionldState.contextP, entityType, typeExpanded, sizeof(typeExpanded), NULL, &detail) == false)
     {
-      LM_E(("orionldUriExpand failed"));
-      delete(ceP);
-      orionldErrorResponseCreate(OrionldBadRequestData, "Error during URI expansion of entity type", detail);
-      return false;
+      LM_E(("orionldUriExpand failed: %s", detail));
+      entityErrorPush(&errorsArrayP, entityIdNodeP->value.s, detail);
+      delete ceP;
+      continue;
     }
 
     entityIdP->type      = typeExpanded;
@@ -373,14 +386,17 @@ bool orionldPostEntityOperationsUpsert(ConnectionInfo* ciP)
     {
       LM_W(("kjTreeToContextElementAttributes flags error '%s' for entity '%s'", detail, entityId));
       entityErrorPush(&errorsArrayP, entityId, detail);
+      delete ceP;
       continue;
     }
+
+    mongoRequest.contextElementVector.push_back(ceP);
 
     orionldState.payloadIdNode   = NULL;
     orionldState.payloadTypeNode = NULL;
     ++ix;
   }
-  // }
+
 
   //
   // Call mongoBackend
@@ -431,6 +447,8 @@ bool orionldPostEntityOperationsUpsert(ConnectionInfo* ciP)
 
       if (mongoResponse.contextElementResponseVector.vec[ix]->statusCode.code == SccOk)
         entitySuccessPush(&successArrayP, entityId);
+      else
+        entityErrorPush(&errorsArrayP, entityId, mongoResponse.contextElementResponseVector.vec[ix]->statusCode.reasonPhrase.c_str());
     }
 
     if (successArrayP != NULL)
