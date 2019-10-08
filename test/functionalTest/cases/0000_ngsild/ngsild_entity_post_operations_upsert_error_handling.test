@@ -26,7 +26,7 @@ Entity Creation and Retrieval
 --SHELL-INIT--
 export BROKER=orionld
 dbInit CB
-brokerStart CB 212-249
+brokerStart CB 0-255
 
 --SHELL--
 
@@ -42,7 +42,7 @@ brokerStart CB 212-249
 # 09. Attempt to upsert with an entity with TYPE typed wrong - see error
 # 10. Attempt to upsert with an empty array - see error
 # 11. POST /ngsi-ld/v1/entityOperations/upsert - 4 entities
-# 12. POST /ngsi-ld/v1/entityOperations/upsert - 4 same entities from 11. functional test
+# 12. POST /ngsi-ld/v1/entityOperations/upsert - 4 same entities from step 11
 #
 
 
@@ -75,7 +75,7 @@ payload='[
     }
   }
 ]'
-orionCurl --url /ngsi-ld/v1/entityOperations/upsert -X POST --payload "$payload" -H "Content-Type: application/ld+json"
+orionCurl --url "/ngsi-ld/v1/entityOperations/upsert?options=update" --payload "$payload"
 echo
 echo
 
@@ -108,7 +108,7 @@ payload='[
     }
   }
 ]'
-orionCurl --url /ngsi-ld/v1/entityOperations/upsert -X POST --payload "$payload" -H "Content-Type: application/ld+json"
+orionCurl --url '/ngsi-ld/v1/entityOperations/upsert?options=update' --payload "$payload"
 echo
 echo
 
@@ -142,7 +142,7 @@ payload='[
     }
   }
 ]'
-orionCurl --url /ngsi-ld/v1/entityOperations/upsert -X POST --payload "$payload" -H "Content-Type: application/ld+json"
+orionCurl --url '/ngsi-ld/v1/entityOperations/upsert?options=update' --payload "$payload"
 echo
 echo
 
@@ -176,7 +176,7 @@ payload='[
     }
   }
 ]'
-orionCurl --url /ngsi-ld/v1/entityOperations/upsert -X POST --payload "$payload" -H "Content-Type: application/ld+json"
+orionCurl --url '/ngsi-ld/v1/entityOperations/upsert?options=update' --payload "$payload"
 echo
 echo
 
@@ -209,7 +209,7 @@ payload='[
     }
   }
 ]'
-orionCurl --url /ngsi-ld/v1/entityOperations/upsert -X POST --payload "$payload" -H "Content-Type: application/ld+json"
+orionCurl --url '/ngsi-ld/v1/entityOperations/upsert?options=update' --payload "$payload"
 echo
 echo
 
@@ -244,7 +244,7 @@ payload='[
     }
   }
 ]'
-orionCurl --url /ngsi-ld/v1/entityOperations/upsert -X POST --payload "$payload" -H "Content-Type: application/ld+json"
+orionCurl --url '/ngsi-ld/v1/entityOperations/upsert?options=update' --payload "$payload"
 echo
 echo
 
@@ -279,7 +279,7 @@ payload='[
     }
   }
 ]'
-orionCurl --url /ngsi-ld/v1/entityOperations/upsert -X POST --payload "$payload" -H "Content-Type: application/ld+json"
+orionCurl --url '/ngsi-ld/v1/entityOperations/upsert?options=update' --payload "$payload"
 echo
 echo
 
@@ -313,7 +313,7 @@ payload='[
     }
   }
 ]'
-orionCurl --url /ngsi-ld/v1/entityOperations/upsert -X POST --payload "$payload" -H "Content-Type: application/ld+json"
+orionCurl --url '/ngsi-ld/v1/entityOperations/upsert?options=update' --payload "$payload"
 echo
 echo
 
@@ -347,7 +347,7 @@ payload='[
     }
   }
 ]'
-orionCurl --url /ngsi-ld/v1/entityOperations/upsert -X POST --payload "$payload" -H "Content-Type: application/ld+json"
+orionCurl --url '/ngsi-ld/v1/entityOperations/upsert?options=update' --payload "$payload"
 echo
 echo
 
@@ -355,7 +355,7 @@ echo
 echo "10. Attempt to upsert with an empty array - see error"
 echo "====================================================="
 payload='[]'
-orionCurl --url /ngsi-ld/v1/entityOperations/upsert -X POST --payload "$payload" -H "Content-Type: application/ld+json"
+orionCurl --url '/ngsi-ld/v1/entityOperations/upsert?options=update' --payload "$payload"
 echo
 echo
 
@@ -432,13 +432,13 @@ payload='[
         }
     }
 ]'
-orionCurl --url /ngsi-ld/v1/entityOperations/upsert -X POST --payload "$payload" -H "Content-Type: application/ld+json"
+orionCurl --url '/ngsi-ld/v1/entityOperations/upsert?options=update' --payload "$payload"
 echo
 echo
 
 
-echo "12. POST /ngsi-ld/v1/entityOperations/upsert - 4 same entities from 11. functional test"
-echo "======================================================================================="
+echo "12. POST /ngsi-ld/v1/entityOperations/upsert - 4 same entities from step 11"
+echo "==========================================================================="
 payload='[
     {
         "id": "urn:ngsi-ld:Vehicle:00001",
@@ -509,9 +509,10 @@ payload='[
         }
     }
 ]'
-orionCurl --url /ngsi-ld/v1/entityOperations/upsert -X POST --payload "$payload" -H "Content-Type: application/ld+json"
+orionCurl --url '/ngsi-ld/v1/entityOperations/upsert?options=update' --payload "$payload"
 echo
 echo
+
 
 --REGEXPECT--
 01. Attempt to upsert with an entity having a ID that is not a string - see error
@@ -724,8 +725,8 @@ Date: REGEX(.*)
 }
 
 
-12. POST /ngsi-ld/v1/entityOperations/upsert - 4 same entities from 11. functional test
-=======================================================================================
+12. POST /ngsi-ld/v1/entityOperations/upsert - 4 same entities from step 11
+===========================================================================
 HTTP/1.1 200 OK
 Content-Length: 2
 Content-Type: application/json

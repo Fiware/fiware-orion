@@ -110,7 +110,7 @@ payload='[
         }
     }
 ]'
-orionCurl --url /ngsi-ld/v1/entityOperations/upsert -X POST --payload "$payload" -H "Content-Type: application/ld+json"
+orionCurl --url "/ngsi-ld/v1/entityOperations/upsert?options=update" -X POST --payload "$payload" -H "Content-Type: application/ld+json"
 echo
 echo
 
@@ -207,7 +207,7 @@ payload='[
         }
     }
 ]'
-orionCurl --url /ngsi-ld/v1/entityOperations/upsert -X POST --payload "$payload" -H "Content-Type: application/ld+json"
+orionCurl --url "/ngsi-ld/v1/entityOperations/upsert?options=update" -X POST --payload "$payload" -H "Content-Type: application/ld+json"
 echo
 echo
 

@@ -227,12 +227,44 @@ static void entityErrorPush(KjNode** errorsArrayPP, const char* entityId, const 
 //
 // orionldPostEntityOperationsUpsert -
 //
+// POST /ngsu-ld/v1/entityOperations/upsert
+//
+// From the spec:
+//   This operation allows creating a batch of NGSI-LD Entities, updating each of them if they already exist.
+//
+//   An optional flag indicating the update mode (only applies in case the Entity already exists):
+//     - ?options=replace  (default)
+//     - ?options=update
+//
+//   Replace:  All the existing Entity content shall be replaced  - like PUT
+//   Update:   Existing Entity content shall be updated           - like PATCH
+//
+//
 bool orionldPostEntityOperationsUpsert(ConnectionInfo* ciP)
 {
-  ciP->httpStatusCode = SccOk;
-
+  //
+  // Prerequisites 1: payload must be an array, and it cannot be empty
+  //
   ARRAY_CHECK(orionldState.requestTree,       "toplevel");
   EMPTY_ARRAY_CHECK(orionldState.requestTree, "toplevel");
+
+  if ((orionldState.uriParamOptions.update == true) && (orionldState.uriParamOptions.replace == true))
+  {
+    orionldErrorResponseCreate(OrionldBadRequestData, "URI Param Error", "options: both /update/ and /replace/ present");
+    ciP->httpStatusCode = SccBadRequest;
+    return false;
+  }
+
+  if (orionldState.uriParamOptions.update == false)
+  {
+    orionldErrorResponseCreate(OrionldOperationNotSupported, "Not Implemented", "Batch Upsert without URI param update");
+    ciP->httpStatusCode = SccNotImplemented;
+    return false;
+  }
+
+  //
+  // Here we treat the "?options=update" mode
+  //
 
   UpdateContextRequest   mongoRequest;
   UpdateContextResponse  mongoResponse;
@@ -242,13 +274,9 @@ bool orionldPostEntityOperationsUpsert(ConnectionInfo* ciP)
   KjNode*                errorsArrayP     = NULL;
   char*                  detail;
 
-  mongoRequest.updateActionType = ActionTypeAppendStrict;
+  ciP->httpStatusCode = SccOk;
 
-  // char* uriParamOption          = orionldState.uriParams.options;
-  // LM_TMP(("UpdateParam -> %s", uriParamOption));
-  //
-  // if (uriParamOption != NULL && strcmp("update", uriParamOption) == 0)
-  // {
+  mongoRequest.updateActionType = ActionTypeAppend;
 
   int ix = 0;
   for (KjNode* entityNodeP = orionldState.requestTree->value.firstChildP; entityNodeP != NULL; entityNodeP = entityNodeP->next)
@@ -417,8 +445,7 @@ bool orionldPostEntityOperationsUpsert(ConnectionInfo* ciP)
   //
   // bool partialUpdate = (orionldState.errorAttributeArrayP[0] == 0)? false : true;
   // bool retValue      = true;
-
-  LM_E(("mongoUpdateContext: HTTP Status Code: %d", ciP->httpStatusCode));
+  //
 
   if (ciP->httpStatusCode == SccOk)
   {
@@ -428,22 +455,6 @@ bool orionldPostEntityOperationsUpsert(ConnectionInfo* ciP)
     for (unsigned int ix = 0; ix < mongoResponse.contextElementResponseVector.vec.size(); ix++)
     {
       const char* entityId = mongoResponse.contextElementResponseVector.vec[ix]->contextElement.entityId.id.c_str();
-      LM_TMP(("Status CODE: %d", mongoResponse.contextElementResponseVector.vec[ix]->statusCode.code));
-      //
-      // FIXME: Here we assume all items in mongoResponse.contextElementResponseVector are SUCCESSFUL
-      //        But, ContextElementResponse has a field called "statusCode" that we could look at ...
-      //
-      //        Something like this:
-      //
-      //          if (mongoResponse.contextElementResponseVector.vec[ix]->statusCode.code == SccOk) { SUCCESS} else { ERROR }
-      //
-      //        The difficult part is ... how to test this?
-      //        How provoke a failure?
-      //        This service Updates if entity exists and creates if not.
-      //        Very difficult to provoke an error ... :(
-      //
-      //        It can be tested with gmock, but I'm not an expert ...
-      //
 
       if (mongoResponse.contextElementResponseVector.vec[ix]->statusCode.code == SccOk)
         entitySuccessPush(&successArrayP, entityId);
@@ -451,6 +462,9 @@ bool orionldPostEntityOperationsUpsert(ConnectionInfo* ciP)
         entityErrorPush(&errorsArrayP, entityId, mongoResponse.contextElementResponseVector.vec[ix]->statusCode.reasonPhrase.c_str());
     }
 
+    //
+    // Only add the success/error arrays if non-empty
+    //
     if (successArrayP != NULL)
       kjChildAdd(orionldState.responseTree, successArrayP);
 
@@ -462,8 +476,8 @@ bool orionldPostEntityOperationsUpsert(ConnectionInfo* ciP)
   else
   {
     LM_E(("mongoUpdateContext flagged an error"));
-    orionldErrorResponseCreate(OrionldBadRequestData, "Bad Request", "ERROR");
-    ciP->httpStatusCode = SccBadRequest;
+    orionldErrorResponseCreate(OrionldBadRequestData, "Internal Error", "Database Error");
+    ciP->httpStatusCode = SccReceiverInternalError;
     return false;
   }
 
