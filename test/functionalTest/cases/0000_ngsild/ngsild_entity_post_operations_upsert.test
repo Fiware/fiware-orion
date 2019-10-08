@@ -223,12 +223,13 @@ echo
 01. POST /ngsi-ld/v1/entityOperations/upsert?options=update - 4 Entities
 ========================================================================
 HTTP/1.1 200 OK
-Content-Length: 125
+Content-Length: 137
 Content-Type: application/json
 Link: <https://uri.etsi.org/ngsi-ld/v1/ngsi-ld-core-context.jsonld>; rel="http://www.w3.org/ns/json-ld#context"; type="application/ld+json"
 Date: REGEX(.*)
 
 {
+    "errors": [],
     "success": [
         "urn:ngsi-ld:Vehicle:00001",
         "urn:ngsi-ld:Vehicle:00002",
@@ -322,15 +323,18 @@ Date: REGEX(.*)
 03. POST /ngsi-ld/v1/entityOperations/upsert?options=update - Change 2 Entities
 ===============================================================================
 HTTP/1.1 200 OK
-Content-Length: 69
+Content-Length: 137
 Content-Type: application/json
 Link: <https://uri.etsi.org/ngsi-ld/v1/ngsi-ld-core-context.jsonld>; rel="http://www.w3.org/ns/json-ld#context"; type="application/ld+json"
 Date: REGEX(.*)
 
 {
+    "errors": [],
     "success": [
         "urn:ngsi-ld:Vehicle:00002",
-        "urn:ngsi-ld:Vehicle:00003"
+        "urn:ngsi-ld:Vehicle:00003",
+        "urn:ngsi-ld:Vehicle:00001",
+        "urn:ngsi-ld:Vehicle:00004"
     ]
 }
 

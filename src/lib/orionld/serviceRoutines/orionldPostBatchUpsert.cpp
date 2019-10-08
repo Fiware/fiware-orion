@@ -222,6 +222,28 @@ static void entityErrorPush(KjNode** errorsArrayPP, const char* entityId, const 
 }
 
 
+// ----------------------------------------------------------------------------
+//
+// kjStringValueLookupInArray -
+//
+static KjNode* kjStringValueLookupInArray(KjNode* stringArrayNodeP, const char* value)
+{
+  if (stringArrayNodeP != NULL)
+  {
+    for (KjNode* nodeP = stringArrayNodeP->value.firstChildP; nodeP != NULL; nodeP = nodeP->next)
+    {
+      if (strcmp(value, nodeP->value.s) == 0)
+      {
+        LM_TMP(("PRESENT"));
+        return nodeP;
+      }
+    }
+  }
+  LM_TMP(("NOT PRESENT"));
+  return NULL;
+}
+
+
 
 // ----------------------------------------------------------------------------
 //
@@ -460,14 +482,31 @@ bool orionldPostBatchUpsert(ConnectionInfo* ciP)
         entityErrorPush(&errorsArrayP, entityId, mongoResponse.contextElementResponseVector.vec[ix]->statusCode.reasonPhrase.c_str());
     }
 
+
+    if (mongoRequest.contextElementVector.vec.size() > 0)
+    {
+      for (unsigned int ix = 0; ix < mongoRequest.contextElementVector.vec.size(); ix++)
+      {
+        const char* entityIdReq = mongoRequest.contextElementVector.vec[ix]->entityId.id.c_str();
+
+        if (kjStringValueLookupInArray(successArrayP, entityIdReq) == NULL)
+          entitySuccessPush(&successArrayP, entityIdReq);
+      }
+      kjChildAdd(orionldState.responseTree, successArrayP);
+    }
+
     //
     // Only add the success/error arrays if non-empty
     //
     if (successArrayP != NULL)
       kjChildAdd(orionldState.responseTree, successArrayP);
+    else
+      kjChildAdd(orionldState.responseTree, kjArray(orionldState.kjsonP, "success"));
 
     if (errorsArrayP != NULL)
       kjChildAdd(orionldState.responseTree, errorsArrayP);
+    else
+      kjChildAdd(orionldState.responseTree, kjArray(orionldState.kjsonP, "errors"));
 
     ciP->httpStatusCode = SccOk;
   }
