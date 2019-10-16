@@ -65,9 +65,9 @@ Content-Type: application/json
 Date: REGEX(.*)
 
 {
-    "details": "must be an integer value >= 1",
+    "detail": "must be an integer value >= 1",
     "title": "Invalid value for URI parameter /limit/",
-    "type": "http://uri.etsi.org/ngsi-ld/errors/BadRequestData"
+    "type": "https://uri.etsi.org/ngsi-ld/errors/BadRequestData"
 }
 
 
@@ -79,9 +79,9 @@ Content-Type: application/json
 Date: REGEX(.*)
 
 {
-    "details": "must be an integer value <= 1000",
+    "detail": "must be an integer value <= 1000",
     "title": "Invalid value for URI parameter /limit/",
-    "type": "http://uri.etsi.org/ngsi-ld/errors/BadRequestData"
+    "type": "https://uri.etsi.org/ngsi-ld/errors/BadRequestData"
 }
 
 
@@ -93,9 +93,9 @@ Content-Type: application/json
 Date: REGEX(.*)
 
 {
-    "details": "must be an integer value >= 1",
+    "detail": "must be an integer value >= 1",
     "title": "Invalid value for URI parameter /limit/",
-    "type": "http://uri.etsi.org/ngsi-ld/errors/BadRequestData"
+    "type": "https://uri.etsi.org/ngsi-ld/errors/BadRequestData"
 }
 
 

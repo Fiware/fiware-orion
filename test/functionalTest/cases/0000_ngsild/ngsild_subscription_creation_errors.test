@@ -400,28 +400,28 @@ echo
 01.1. Attempt to create a subscription with an ID that is not a URI
 ===================================================================
 HTTP/1.1 400 Bad Request
-Content-Length: 155
+Content-Length: 120
 Content-Type: application/json
 Date: REGEX(.*)
 
 {
-    "details": "http://example.org/ngsi-ld/default/sub01.1",
+    "detail": "sub01.1",
     "title": "Subscription::id is not a URI",
-    "type": "http://uri.etsi.org/ngsi-ld/errors/BadRequestData"
+    "type": "https://uri.etsi.org/ngsi-ld/errors/BadRequestData"
 }
 
 
 06.1. Attempt to create a subscription without ENTITIES array nor WATCHEDATTRIBUTES present
 ===========================================================================================
 HTTP/1.1 400 Bad Request
-Content-Length: 160
+Content-Length: 159
 Content-Type: application/json
 Date: REGEX(.*)
 
 {
-    "details": "no details",
+    "detail": "no detail",
     "title": "At least one of 'entities' and 'watchedAttributes' must be present",
-    "type": "http://uri.etsi.org/ngsi-ld/errors/BadRequestData"
+    "type": "https://uri.etsi.org/ngsi-ld/errors/BadRequestData"
 }
 
 
@@ -433,9 +433,9 @@ Content-Type: application/json
 Date: REGEX(.*)
 
 {
-    "details": "Subscription::entities",
+    "detail": "Subscription::entities",
     "title": "Empty Array",
-    "type": "http://uri.etsi.org/ngsi-ld/errors/BadRequestData"
+    "type": "https://uri.etsi.org/ngsi-ld/errors/BadRequestData"
 }
 
 
@@ -447,23 +447,23 @@ Content-Type: application/json
 Date: REGEX(.*)
 
 {
-    "details": "Subscription::watchedAttributes",
+    "detail": "Subscription::watchedAttributes",
     "title": "Empty Array",
-    "type": "http://uri.etsi.org/ngsi-ld/errors/BadRequestData"
+    "type": "https://uri.etsi.org/ngsi-ld/errors/BadRequestData"
 }
 
 
 19.2. Attempt to create a subscription with both TIMEINTERVAL and WATCHEDATTRIBUTES present
 ===========================================================================================
 HTTP/1.1 400 Bad Request
-Content-Length: 145
+Content-Length: 144
 Content-Type: application/json
 Date: REGEX(.*)
 
 {
-    "details": "no details",
+    "detail": "no detail",
     "title": "Both 'timeInterval' and 'watchedAttributes' present",
-    "type": "http://uri.etsi.org/ngsi-ld/errors/BadRequestData"
+    "type": "https://uri.etsi.org/ngsi-ld/errors/BadRequestData"
 }
 
 

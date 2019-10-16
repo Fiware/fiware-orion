@@ -41,9 +41,42 @@ extern "C"
 #include "orionld/context/OrionldContext.h"                    // OrionldContext
 #include "orionld/context/orionldContextLookup.h"              // orionldContextLookup
 #include "orionld/context/orionldAliasLookup.h"                // orionldAliasLookup
-#include "orionld/context/orionldCoreContext.h"                // ORIONLD_DEFAULT_CONTEXT_URL
+#include "orionld/context/orionldCoreContext.h"                // ORIONLD_CORE_CONTEXT_URL
 #include "orionld/kjTree/kjTreeFromContextAttribute.h"         // kjTreeFromContextAttribute
 #include "orionld/kjTree/kjTreeFromNotification.h"             // Own interface
+
+
+
+// -----------------------------------------------------------------------------
+//
+// debugContextElement - FIXME: Remove this function
+//
+void debugContextElement(ContextElement* ceP)
+{
+  LM_TMP(("NOTIF: Entity ID:   %s", ceP->entityId.id.c_str()));
+  LM_TMP(("NOTIF: Entity TYPE: %s", ceP->entityId.type.c_str()));
+
+  for (unsigned int aIx = 0; aIx < ceP->contextAttributeVector.size(); aIx++)
+  {
+    ContextAttribute*  aP       = ceP->contextAttributeVector[aIx];
+    const char*        attrName = aP->name.c_str();
+
+    LM_TMP(("NOTIF: Attribute %d:", aIx, attrName));
+    LM_TMP(("NOTIF:   Name:        %s",   attrName));
+    LM_TMP(("NOTIF:   Type:        %s",   aP->type.c_str()));
+    LM_TMP(("NOTIF:   Value Type:  %s",   valueTypeName(aP->valueType)));
+    LM_TMP(("NOTIF:   Metadatas:   %llu", aP->metadataVector.size()));
+
+    for (unsigned int ix = 0; ix < aP->metadataVector.size(); ix++)
+    {
+      Metadata* mdP = aP->metadataVector[ix];
+
+      LM_TMP(("NOTIF:   Metadata %d:", ix));
+      LM_TMP(("NOTIF:     Name:  %s", mdP->name.c_str()));
+      LM_TMP(("NOTIF:     Type:  %s", mdP->type.c_str()));
+    }
+  }
+}
 
 
 
@@ -60,6 +93,7 @@ KjNode* kjTreeFromNotification(NotifyContextRequest* ncrP, const char* context, 
   char             idBuffer[] = "urn:ngsi-ld:Notification:012345678901234567890123";  // The 012345678901234567890123 will be overwritten
   OrionldContext*  contextP   = orionldContextLookup(context);
 
+  LM_TMP(("NOTIF: In kjTreeFromNotification"));
   // id
   strcpy(&idBuffer[25], id);
   nodeP = kjString(orionldState.kjsonP, "id", idBuffer);
@@ -77,7 +111,7 @@ KjNode* kjTreeFromNotification(NotifyContextRequest* ncrP, const char* context, 
   if (mimeType == JSONLD)
   {
     if (context == NULL)
-      nodeP = kjString(orionldState.kjsonP, "@context", ORIONLD_DEFAULT_CONTEXT_URL);
+      nodeP = kjString(orionldState.kjsonP, "@context", ORIONLD_CORE_CONTEXT_URL);
     else
       nodeP = kjString(orionldState.kjsonP, "@context", context);
 
@@ -111,7 +145,7 @@ KjNode* kjTreeFromNotification(NotifyContextRequest* ncrP, const char* context, 
   //
   // loop over ContextElements in NotifyContextRequest::contextElementResponseVector
   //
-  LM_T(LmtNotifications, ("Adding %d contextElementResponses to the Notification kjTree", (int) ncrP->contextElementResponseVector.size()));
+  LM_TMP(("NOTIF: Adding %d contextElementResponses to the Notification kjTree", (int) ncrP->contextElementResponseVector.size()));
   for (unsigned int ix = 0; ix < ncrP->contextElementResponseVector.size(); ix++)
   {
     ContextElement* ceP     = &ncrP->contextElementResponseVector[ix]->contextElement;
@@ -126,12 +160,16 @@ KjNode* kjTreeFromNotification(NotifyContextRequest* ncrP, const char* context, 
     kjChildAdd(objectP, nodeP);
 
     // entity type - Mandatory URI
-    alias = orionldAliasLookup(contextP, ceP->entityId.type.c_str());
+    alias = orionldAliasLookup(contextP, ceP->entityId.type.c_str(), NULL);
     nodeP = kjString(orionldState.kjsonP, "type", alias);
     kjChildAdd(objectP, nodeP);
 
+    // <DEBUG>
+    debugContextElement(ceP);
+    // </DEBUG>
+
     // Attributes
-    LM_T(LmtNotifications, ("Adding %d attributes to the Notification kjTree", (int) ceP->contextAttributeVector.size()));
+    LM_TMP(("NOTIF: Adding %d attributes to the Notification kjTree", (int) ceP->contextAttributeVector.size()));
     for (unsigned int aIx = 0; aIx < ceP->contextAttributeVector.size(); aIx++)
     {
       ContextAttribute*  aP       = ceP->contextAttributeVector[aIx];
@@ -140,7 +178,7 @@ KjNode* kjTreeFromNotification(NotifyContextRequest* ncrP, const char* context, 
       if (SCOMPARE9(attrName, '@', 'c', 'o', 'n', 't', 'e', 'x', 't', 0))
         continue;
 
-      LM_T(LmtNotifications, ("NOTIF: Adding attribute '%s' to the Notification kjTree", ceP->contextAttributeVector[aIx]->name.c_str()));
+      LM_TMP(("NOTIF: Adding attribute '%s' to the Notification kjTree", ceP->contextAttributeVector[aIx]->name.c_str()));
       nodeP = kjTreeFromContextAttribute(aP, contextP, renderFormat, detailsP);
       kjChildAdd(objectP, nodeP);
     }

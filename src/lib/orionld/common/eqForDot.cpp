@@ -1,9 +1,6 @@
-#ifndef SRC_LIB_ORIONLD_KJTREE_KJTREEFROMQUERYCONTEXTRESPONSEWITHATTRLIST_H_
-#define SRC_LIB_ORIONLD_KJTREE_KJTREEFROMQUERYCONTEXTRESPONSEWITHATTRLIST_H_
-
 /*
 *
-* Copyright 2018 Telefonica Investigacion y Desarrollo, S.A.U
+* Copyright 2019 Telefonica Investigacion y Desarrollo, S.A.U
 *
 * This file is part of Orion Context Broker.
 *
@@ -25,21 +22,20 @@
 *
 * Author: Ken Zangelin
 */
-#include "rest/ConnectionInfo.h"                               // ConnectionInfo
-#include "ngsi10/QueryContextResponse.h"                       // QueryContextResponse
+#include "orionld/common/eqForDot.h"                             // Own Interface
 
 
-// -----------------------------------------------------------------------------
+
+// ----------------------------------------------------------------------------
 //
-// kjTreeFromQueryContextResponseWithAttrList -
+// eqForDot -
 //
-extern KjNode* kjTreeFromQueryContextResponseWithAttrList
-(
-  ConnectionInfo*        ciP,
-  bool                   oneHit,
-  const char*            attrList,
-  bool                   keyValues,
-  QueryContextResponse*  responseP
-);
-
-#endif  // SRC_LIB_ORIONLD_KJTREE_KJTREEFROMQUERYCONTEXTRESPONSEWITHATTRLIST_H_
+void eqForDot(char* nameP)
+{
+  while (*nameP != 0)
+  {
+    if (*nameP == '=')
+      *nameP = '.';
+    ++nameP;
+  }
+}

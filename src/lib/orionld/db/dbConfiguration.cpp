@@ -36,7 +36,8 @@ extern "C"
 //
 // Function pointers for the DB interface
 //
-DbEntityLookupFunction   dbEntityLookup;
-DbEntityUpdateFunction   dbEntityUpdate;
-DbDataToKjTreeFunction   dbDataToKjTree;
-DbDataFromKjTreeFunction dbDataFromKjTree;
+DbEntityLookupFunction                    dbEntityLookup;
+DbEntityUpdateFunction                    dbEntityUpdate;
+DbDataToKjTreeFunction                    dbDataToKjTree;
+DbDataFromKjTreeFunction                  dbDataFromKjTree;
+DbSubscriptionMatchEntityIdAndAttributes  dbSubscriptionMatchEntityIdAndAttributes;

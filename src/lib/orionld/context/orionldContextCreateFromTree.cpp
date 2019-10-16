@@ -33,10 +33,13 @@ extern "C"
 #include "kjson/KjNode.h"                                      // KjNode
 #include "kjson/kjParse.h"                                     // kjParse
 #include "kjson/kjFree.h"                                      // kjFree
+#include "kalloc/kaAlloc.h"                                    // kaAlloc
+#include "kalloc/kaStrdup.h"                                   // kaStrdup
 }
 
 #include "rest/ConnectionInfo.h"                               // ConnectionInfo
-#include "orionld/context/orionldCoreContext.h"                // ORIONLD_CORE_CONTEXT_URL, ORIONLD_DEFAULT_URL_CONTEXT_URL
+#include "orionld/common/orionldState.h"                       // kalloc
+#include "orionld/context/orionldCoreContext.h"                // ORIONLD_CORE_CONTEXT_URL
 #include "orionld/context/orionldContextCreateFromTree.h"      // Own interface
 
 
@@ -47,7 +50,7 @@ extern "C"
 //
 OrionldContext* orionldContextCreateFromTree(KjNode* tree, const char* url, OrionldContextType contextType, char** detailsPP)
 {
-  OrionldContext* contextP = (OrionldContext*) malloc(sizeof(OrionldContext));
+  OrionldContext* contextP = (OrionldContext*) kaAlloc(&kalloc, sizeof(OrionldContext));
 
   LM_T(LmtContext, ("Creating Context '%s'", url));
 
@@ -57,7 +60,7 @@ OrionldContext* orionldContextCreateFromTree(KjNode* tree, const char* url, Orio
     return NULL;
   }
 
-  contextP->url        = strdup(url);
+  contextP->url        = kaStrdup(&kalloc, (char*) url);
   contextP->tree       = tree;
   contextP->type       = contextType;
   contextP->ignore     = false;  // Meaning: Core/Default URL Context inside USER contexts
@@ -70,11 +73,9 @@ OrionldContext* orionldContextCreateFromTree(KjNode* tree, const char* url, Orio
   // Nothing is removed from the total context, so that the context can be retreived intact, but the
   // Core part must not be used in the lookups.
   //
-  // FIXME TPUT: A char-sum would make these comparisons faster
+  // FIXME TPUT: A char-sum would make this comparison faster
   //
-  if ((strcmp(contextP->url, ORIONLD_CORE_CONTEXT_URL)        == 0) ||
-      (strcmp(contextP->url, ORIONLD_DEFAULT_URL_CONTEXT_URL) == 0) ||
-      (strcmp(contextP->url, ORIONLD_DEFAULT_CONTEXT_URL)     == 0))
+  if (strcmp(contextP->url, ORIONLD_CORE_CONTEXT_URL) == 0)
   {
     LM_T(LmtContext, ("Context '%s' is IGNORED", contextP->url));
     contextP->ignore = true;

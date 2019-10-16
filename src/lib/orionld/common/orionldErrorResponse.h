@@ -39,22 +39,11 @@ typedef enum OrionldResponseErrorType
   OrionldAlreadyExists,
   OrionldOperationNotSupported,
   OrionldResourceNotFound,
-  OrionldInternalError
+  OrionldInternalError,
+  OrionldTooComplexQuery,
+  OrionldTooManyResults,
+  OrionldLdContextNotAvailable
 } OrionldResponseErrorType;
-
-
-
-// ----------------------------------------------------------------------------
-//
-// OrionldDetailsType -
-//
-typedef enum OrionldDetailsType
-{
-  OrionldDetailsString,
-  OrionldDetailsAttribute,
-  OrionldDetailsEntity,
-  OrionldDetailsOther
-} OrionldDetailsType;
 
 
 
@@ -66,8 +55,7 @@ extern void orionldErrorResponseCreate
 (
   OrionldResponseErrorType  errorType,
   const char*               title,
-  const char*               details,
-  OrionldDetailsType        detailsType
+  const char*               detail
 );
 
 #endif  // SRC_LIB_ORIONLD_COMMON_ORIONLDERRORRESPONSE_H_

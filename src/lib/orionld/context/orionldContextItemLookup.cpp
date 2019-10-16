@@ -30,10 +30,12 @@ extern "C"
 #include "kjson/KjNode.h"                                      // KjNode
 }
 
+#include "orionld/common/orionldState.h"                       // orionldState
 #include "orionld/context/OrionldContext.h"                    // OrionldContext
 #include "orionld/context/orionldContextList.h"                // orionldContextHead
 #include "orionld/context/orionldContextListPresent.h"         // orionldContextListPresent
 #include "orionld/context/orionldContextLookup.h"              // orionldContextLookup
+#include "orionld/context/orionldContextCreateFromUrl.h"       // orionldContextCreateFromUrl
 #include "orionld/context/orionldContextItemLookup.h"          // Own interface
 
 
@@ -68,9 +70,12 @@ KjNode* orionldContextItemLookup(OrionldContext* contextP, const char* itemName)
     return NULL;
   }
 
+  LM_TMP(("VEX: Looking up '%s' in context '%s'", itemName, contextP->url));
+
   if (contextP->ignore == true)
   {
     LM_T(LmtContextItemLookup, ("The context '%s' is ignored - ContextItem '%s' not found", contextP->url, itemName));
+    LM_TMP(("CTX: context '%s' is ignored", contextP->url));
     return NULL;
   }
 
@@ -104,14 +109,19 @@ KjNode* orionldContextItemLookup(OrionldContext* contextP, const char* itemName)
 
     // Lookup the item
     LM_T(LmtContextItemLookup, ("Found the context '%s' - now we can search for '%s' (in '%s')", contextP->url, itemName, dereferencedContextP->url));
-    return orionldContextItemLookup(dereferencedContextP, itemName);
+    LM_TMP(("CTX: Recursively calling orionldContextItemLookup(%s, %s)", dereferencedContextP->url, itemName));
+    KjNode* nodeP = orionldContextItemLookup(dereferencedContextP, itemName);
+    LM_TMP(("CTX: orionldContextItemLookup returned %p", nodeP));
+    return nodeP;
   }
   else if (contextP->tree->type == KjArray)
   {
+    LM_TMP(("CTX: The context '%s' is of type Array", contextP->url));
     LM_T(LmtContextItemLookup, ("The context '%s' is of type Array", contextP->url));
 
     for (KjNode* contextNodeP = contextP->tree->value.firstChildP; contextNodeP != NULL; contextNodeP = contextNodeP->next)
     {
+      LM_TMP(("CTX: Array Item is of JSON Type '%s'", kjValueType(contextNodeP->type)));
       if (contextNodeP->type != KjString)
       {
         LM_E(("ERROR - the Context Array must only contain JSON Strings"));
@@ -130,20 +140,48 @@ KjNode* orionldContextItemLookup(OrionldContext* contextP, const char* itemName)
 
       // Lookup the item
       LM_T(LmtContextItemLookup, ("Now we can search for '%s' in context '%s'", itemName, dereferencedContextP->url));
+      LM_TMP(("CTX: Recursively calling orionldContextItemLookup for the array item '%s'", dereferencedContextP->url));
       KjNode* kNodeP = orionldContextItemLookup(dereferencedContextP, itemName);
-
+      LM_TMP(("CTX: orionldContextItemLookup returned %p", kNodeP));
       if (kNodeP != NULL)
       {
+        LM_TMP(("CTX: Found longname '%s' for shortname '%s'", kNodeP->value.s, itemName));
         LM_T(LmtContextItemLookup, ("Found '%s' in context '%s'", itemName, dereferencedContextP->url));
         return kNodeP;
       }
     }
 
     LM_T(LmtContextItemLookup, ("Context Item '%s' - NOT FOUND", itemName));
+    LM_TMP(("CTX: Context Item '%s' - NOT FOUND", itemName));
     return NULL;
   }
   else if (contextP->tree->type == KjObject)
   {
+    LM_TMP(("CTX: Context is an object - but ... is @context a member, etc?"));
+
+    for (KjNode* nodeP = contextP->tree->value.firstChildP; nodeP != NULL; nodeP = nodeP->next)
+    {
+      if (strcmp(nodeP->name, "@context") == 0)
+      {
+        LM_TMP(("CTX: Found a @context member - calling recursively ..."));
+        if (nodeP->type == KjString)
+        {
+          KjNode* hitP;
+          if ((hitP = orionldContextItemLookup(nodeP->value.s, itemName)) != NULL)
+            return hitP;
+        }
+        else if (nodeP->type == KjArray)
+        {
+          for (KjNode* itemP = nodeP->value.firstChildP; itemP != NULL; itemP = itemP->next)
+          {
+            KjNode* hitP;
+            if ((hitP = orionldContextItemLookup(itemP->value.s, itemName)) != NULL)
+              return hitP;
+          }
+        }
+      }
+    }
+
     //
     // JSON Object - only check here. Do the lookup later.
     // this way, the default context gets the lookup as well
@@ -173,6 +211,7 @@ KjNode* orionldContextItemLookup(OrionldContext* contextP, const char* itemName)
   //
   // If we reach this point, the context is a JSON Object
   //
+  LM_TMP(("VEX: Time to find the item in the context that is a JSON Object of key-values"));
   LM_T(LmtContextItemLookup, ("Lookup of item '%s' in JSON Object Context '%s'", itemName, contextP->url));
 
   KjNode* atContextP = contextP->tree->value.firstChildP;
@@ -197,8 +236,48 @@ KjNode* orionldContextItemLookup(OrionldContext* contextP, const char* itemName)
   LM_T(LmtContextItemLookup, ("atContextP->type == %s", kjValueType(atContextP->type)));
   if (atContextP->type == KjObject)
   {
-    LM_T(LmtContextItemLookup, ("@context '%s' is an object", atContextP->name));
+    //
+    // Might be an inline context. If so, the atContextP is already an item of the context ...
+    // FIXME: What a mess!
+    //
+    // If inline context, then chances are that the name of the first key DOES NOT start with '@'.
+    // Also, if looked up, we would not find a member called "@context".
+    //
+    if (atContextP->name[0] != '@')
+    {
+      //
+      // Assuming we're in an inline context
+      //
+      while (atContextP != NULL)
+      {
+        if (strcmp(itemName, atContextP->name) == 0)
+        {
+          if (atContextP->type == KjString)
+            LM_TMP(("VEX: Found '%s'. Long name: '%s'", itemName, atContextP->value.s));
+          else
+            LM_TMP(("VEX: Found '%s' in a context item that is an object", itemName));
 
+          return atContextP;
+        }
+
+        atContextP = atContextP->next;
+      }
+
+      LM_TMP(("VEX: '%s' not found in inline context", itemName));
+      return NULL;
+    }
+
+    LM_TMP(("VEX: @context item '%s' is an object", atContextP->name));
+    LM_T(LmtContextItemLookup, ("@context '%s' is an object", atContextP->name));
+    LM_T(LmtContextItemLookup, ("Looking for '%s', atContextP is named '%s'", itemName, atContextP->name));
+
+    if (strcmp(itemName, atContextP->name) == 0)
+    {
+      LM_TMP(("VEX: Found '%s'", itemName));
+      return atContextP;
+    }
+
+    int ix = 0;
     for (KjNode* contextItemP = atContextP->value.firstChildP; contextItemP != NULL; contextItemP = contextItemP->next)
     {
       if ((contextItemP->type != KjString) && (contextItemP->type != KjObject))
@@ -206,17 +285,19 @@ KjNode* orionldContextItemLookup(OrionldContext* contextP, const char* itemName)
         LM_E(("Invalid @context - items of contexts must be JSON Strings or JSON objects - not %s", kjValueType(contextItemP->type)));
         return NULL;
       }
+      LM_T(LmtContextItemLookup, ("@context '%s' item %d: name: '%s'", atContextP->name, ix, contextItemP->name));
 
       //
-      // Skip members whose value is a string that starts with "@" - they are information, not translations
+      // Skip members whose value is a string that starts with "@", except for "@type"
       //
-      if ((contextItemP->type == KjString) && (contextItemP->value.s[0] == '@'))
+      LM_T(LmtContextItemLookup, ("Looking for '%s', current context item is named '%s'", itemName, contextItemP->name));
+      if ((contextItemP->type == KjString) && (contextItemP->value.s[0] == '@') && (strcmp(contextItemP->value.s, "@type") != 0))
       {
         LM_T(LmtContextItemLookup, ("Skipping '%s' with value '%s'", contextItemP->name, contextItemP->value.s));
         continue;
       }
 
-      // LM_T(LmtContextItemLookup, ("looking for '%s', comparing with '%s'", itemName, contextItemP->name));
+      LM_T(LmtContextItemLookup, ("looking for '%s', comparing with '%s'", itemName, contextItemP->name));
       if (strcmp(contextItemP->name, itemName) == 0)
       {
         if (contextItemP->type == KjString)
@@ -238,7 +319,9 @@ KjNode* orionldContextItemLookup(OrionldContext* contextP, const char* itemName)
         return NULL;
       }
 
+      LM_TMP(("CTX: Recursively calling orionldContextItemLookup(context='%s', searchItem='%s')", contextP->value.s, itemName));
       KjNode* nodeP = orionldContextItemLookup(contextP->value.s, itemName);
+      LM_TMP(("CTX: orionldContextItemLookup returned %p for '%s' in context '%s'", nodeP, itemName, contextP->value.s));
 
       if (nodeP != NULL)
         return nodeP;
@@ -273,6 +356,7 @@ KjNode* orionldContextItemLookup(OrionldContext* contextP, const char* itemName)
   }
 
   LM_T(LmtContextItemLookup, ("found no expansion for '%s': returning NULL :(", itemName));
+  LM_TMP(("CTX: found no expansion for '%s': returning NULL :(", itemName));
   return NULL;
 }
 
@@ -285,11 +369,21 @@ KjNode* orionldContextItemLookup(OrionldContext* contextP, const char* itemName)
 //
 KjNode* orionldContextItemLookup(char* contextUrl, const char* itemName)
 {
+  LM_TMP(("CTX: looking up context '%s'", contextUrl));
   OrionldContext* contextP = orionldContextLookup(contextUrl);
 
   if (contextP == NULL)
-    return NULL;
+  {
+    char* details;
 
+    LM_TMP(("CTX: did not find context '%s', while searching for '%s' - downloading it!!!", contextUrl, itemName));
+    contextP = orionldContextCreateFromUrl(orionldState.ciP, contextUrl, OrionldUserContext, &details);
+
+    if (contextP == NULL)
+      return NULL;
+  }
+
+  LM_TMP(("CTX: calling orionldContextItemLookup for context '%s', searching for '%s'", contextUrl, itemName));
   return orionldContextItemLookup(contextP, itemName);
 }
 

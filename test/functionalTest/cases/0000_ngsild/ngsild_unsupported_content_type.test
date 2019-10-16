@@ -55,9 +55,9 @@ Content-Type: application/json
 Date: REGEX(.*)
 
 {
-    "details": "only application/json and application/ld+json are supported",
+    "detail": "only application/json and application/ld+json are supported",
     "title": "unsupported format of payload",
-    "type": "http://uri.etsi.org/ngsi-ld/errors/BadRequestData"
+    "type": "https://uri.etsi.org/ngsi-ld/errors/BadRequestData"
 }
 
 

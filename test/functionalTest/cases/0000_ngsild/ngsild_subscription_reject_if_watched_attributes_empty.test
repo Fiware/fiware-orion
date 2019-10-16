@@ -98,9 +98,9 @@ Content-Type: application/json
 Date: REGEX(.*)
 
 {
-    "details": "Subscription::watchedAttributes",
+    "detail": "Subscription::watchedAttributes",
     "title": "Empty Array",
-    "type": "http://uri.etsi.org/ngsi-ld/errors/BadRequestData"
+    "type": "https://uri.etsi.org/ngsi-ld/errors/BadRequestData"
 }
 
 

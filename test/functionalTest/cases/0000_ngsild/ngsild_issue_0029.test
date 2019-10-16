@@ -73,9 +73,9 @@ Content-Type: application/json
 Date: REGEX(.*)
 
 {
-  "type": "http://uri.etsi.org/ngsi-ld/errors/InvalidRequest",
+  "type": "https://uri.etsi.org/ngsi-ld/errors/InvalidRequest",
   "title": "Empty Object",
-  "details": "{}"
+  "detail": "{}"
 }
 
 
@@ -83,14 +83,14 @@ Date: REGEX(.*)
 02. Attempt to add an attribute using POST and payload, but without payload - see 400 Bad Request
 =================================================================================================
 HTTP/1.1 400 Bad Request
-Content-Length: 123
+Content-Length: 122
 Content-Type: application/json
 Date: REGEX(.*)
 
 {
-  "type": "http://uri.etsi.org/ngsi-ld/errors/InvalidRequest",
+  "type": "https://uri.etsi.org/ngsi-ld/errors/InvalidRequest",
   "title": "payload missing",
-  "details": "no details"
+  "detail": "no detail"
 }
 
 
@@ -98,14 +98,14 @@ Date: REGEX(.*)
 03. Attempt to add an attribute using POST and payload, but with empty payload ("") - see 400 Bad Request
 =========================================================================================================
 HTTP/1.1 400 Bad Request
-Content-Length: 123
+Content-Length: 122
 Content-Type: application/json
 Date: REGEX(.*)
 
 {
-  "type": "http://uri.etsi.org/ngsi-ld/errors/InvalidRequest",
+  "type": "https://uri.etsi.org/ngsi-ld/errors/InvalidRequest",
   "title": "payload missing",
-  "details": "no details"
+  "detail": "no detail"
 }
 
 
@@ -118,9 +118,9 @@ Content-Type: application/json
 Date: REGEX(.*)
 
 {
-  "type": "http://uri.etsi.org/ngsi-ld/errors/InvalidRequest",
+  "type": "https://uri.etsi.org/ngsi-ld/errors/InvalidRequest",
   "title": "Empty Array",
-  "details": "[]"
+  "detail": "[]"
 }
 
 

@@ -35,6 +35,7 @@
 extern "C"
 {
 #include "kalloc/kaBufferReset.h"                                // kaBufferReset
+#include "kjson/kjFree.h"                                        // kjFree
 }
 
 #include "logMsg/logMsg.h"
@@ -61,6 +62,7 @@ extern "C"
 #include "orionld/rest/orionldMhdConnectionPayloadRead.h"
 #include "orionld/rest/orionldMhdConnectionTreat.h"
 #include "orionld/common/orionldErrorResponse.h"                 // orionldErrorResponseCreate
+#include "orionld/serviceRoutines/orionldNotify.h"               // orionldNotify
 #endif
 
 #include "rest/Verb.h"
@@ -170,7 +172,7 @@ int uriArgumentGet(void* cbDataP, MHD_ValueKind kind, const char* ckey, const ch
         ciP->answer         = error.smartRender(ciP->apiVersion);
 
 #ifdef ORIONLD
-        orionldErrorResponseCreate(OrionldBadRequestData, "Invalid value for URI parameter /offset/", "must be an integer value >= 0", OrionldDetailsString);
+        orionldErrorResponseCreate(OrionldBadRequestData, "Invalid value for URI parameter /offset/", "must be an integer value >= 0");
 #endif
         return MHD_YES;
       }
@@ -191,7 +193,7 @@ int uriArgumentGet(void* cbDataP, MHD_ValueKind kind, const char* ckey, const ch
         ciP->answer         = error.smartRender(ciP->apiVersion);
 
 #ifdef ORIONLD
-        orionldErrorResponseCreate(OrionldBadRequestData, "Invalid value for URI parameter /limit/", "must be an integer value >= 1", OrionldDetailsString);
+        orionldErrorResponseCreate(OrionldBadRequestData, "Invalid value for URI parameter /limit/", "must be an integer value >= 1");
 #endif
         return MHD_YES;
       }
@@ -207,7 +209,7 @@ int uriArgumentGet(void* cbDataP, MHD_ValueKind kind, const char* ckey, const ch
       ciP->answer         = error.smartRender(ciP->apiVersion);
 
 #ifdef ORIONLD
-        orionldErrorResponseCreate(OrionldBadRequestData, "Invalid value for URI parameter /limit/", "must be an integer value <= 1000", OrionldDetailsString);
+        orionldErrorResponseCreate(OrionldBadRequestData, "Invalid value for URI parameter /limit/", "must be an integer value <= 1000");
 #endif
       return MHD_YES;
     }
@@ -218,7 +220,7 @@ int uriArgumentGet(void* cbDataP, MHD_ValueKind kind, const char* ckey, const ch
       ciP->answer         = error.smartRender(ciP->apiVersion);
 
 #ifdef ORIONLD
-        orionldErrorResponseCreate(OrionldBadRequestData, "Invalid value for URI parameter /limit/", "must be an integer value >= 1", OrionldDetailsString);
+        orionldErrorResponseCreate(OrionldBadRequestData, "Invalid value for URI parameter /limit/", "must be an integer value >= 1");
 #endif
       return MHD_YES;
     }
@@ -325,6 +327,9 @@ int uriArgumentGet(void* cbDataP, MHD_ValueKind kind, const char* ckey, const ch
     std::string details = std::string("found a forbidden character in URI param '") + key + "'";
     OrionError error(SccBadRequest, "invalid character in URI parameter");
 
+#ifdef ORIONLD
+    orionldErrorResponseCreate(OrionldBadRequestData, "found a forbidden character in URI param", key.c_str());
+#endif
     alarmMgr.badInput(clientIp, details);
     ciP->httpStatusCode = error.code;
     ciP->answer         = error.smartRender(ciP->apiVersion);
@@ -652,6 +657,12 @@ static void requestCompleted
   std::string      spath    = (ciP->servicePathV.size() > 0)? ciP->servicePathV[0] : "";
   struct timespec  reqEndTime;
 
+  if (orionldState.notify == true)
+  {
+    LM_TMP(("NFY: Rest request has finished - now time to send notifications"));
+    orionldNotify();
+  }
+
   if ((ciP->payload != NULL) && (ciP->payload != static_buffer))
   {
     free(ciP->payload);
@@ -740,6 +751,9 @@ static void requestCompleted
 
 #ifdef ORIONLD
   kaBufferReset(&orionldState.kalloc, false);  // 'false': it's reused, but in a different thread ...
+
+  if ((orionldState.responseTree != NULL) && (orionldState.kjsonP == NULL))
+    kjFree(orionldState.responseTree);
 #endif
 
   *con_cls = NULL;
@@ -1239,6 +1253,12 @@ ConnectionInfo* connectionTreatInit
 {
   struct timeval   transactionStart;
   ConnectionInfo*  ciP;
+
+  //
+  // Setting crucial fields of orionldState - those that are used for non-ngsi-ld requests
+  //
+  orionldState.responseTree = NULL;
+  orionldState.notify       = false;
 
   *retValP = MHD_YES;  // Only MHD_NO if allocation of ConnectionInfo fails
 

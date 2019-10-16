@@ -75,9 +75,9 @@ Content-Type: application/json
 Date: REGEX(.*)
 
 {
-  "type": "http://uri.etsi.org/ngsi-ld/errors/BadRequestData",
+  "type": "https://uri.etsi.org/ngsi-ld/errors/BadRequestData",
   "title": "Bad Request",
-  "details": "URI Param /id/ is empty"
+  "detail": "URI Param /id/ is empty"
 }
 
 
@@ -90,9 +90,9 @@ Content-Type: application/json
 Date: REGEX(.*)
 
 {
-  "type": "http://uri.etsi.org/ngsi-ld/errors/BadRequestData",
+  "type": "https://uri.etsi.org/ngsi-ld/errors/BadRequestData",
   "title": "Bad Request",
-  "details": "URI Param /type/ is empty"
+  "detail": "URI Param /type/ is empty"
 }
 
 
@@ -105,9 +105,9 @@ Content-Type: application/json
 Date: REGEX(.*)
 
 {
-  "type": "http://uri.etsi.org/ngsi-ld/errors/BadRequestData",
+  "type": "https://uri.etsi.org/ngsi-ld/errors/BadRequestData",
   "title": "Bad Request",
-  "details": "URI Param /idPattern/ is empty"
+  "detail": "URI Param /idPattern/ is empty"
 }
 
 
@@ -120,9 +120,9 @@ Content-Type: application/json
 Date: REGEX(.*)
 
 {
-  "type": "http://uri.etsi.org/ngsi-ld/errors/BadRequestData",
+  "type": "https://uri.etsi.org/ngsi-ld/errors/BadRequestData",
   "title": "Bad Request",
-  "details": "URI Param /attrs/ is empty"
+  "detail": "URI Param /attrs/ is empty"
 }
 
 

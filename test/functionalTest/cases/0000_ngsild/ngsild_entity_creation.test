@@ -244,9 +244,9 @@ Content-Type: application/json
 Date: REGEX(.*)
 
 {
-    "details": "toplevel",
+    "detail": "toplevel",
     "title": "Not a JSON Object",
-    "type": "http://uri.etsi.org/ngsi-ld/errors/BadRequestData"
+    "type": "https://uri.etsi.org/ngsi-ld/errors/BadRequestData"
 }
 
 
@@ -258,9 +258,9 @@ Content-Type: application/json
 Date: REGEX(.*)
 
 {
-    "details": "entity id",
+    "detail": "entity id",
     "title": "Not a JSON String",
-    "type": "http://uri.etsi.org/ngsi-ld/errors/BadRequestData"
+    "type": "https://uri.etsi.org/ngsi-ld/errors/BadRequestData"
 }
 
 
@@ -272,9 +272,9 @@ Content-Type: application/json
 Date: REGEX(.*)
 
 {
-    "details": "entity type",
+    "detail": "entity type",
     "title": "Not a JSON String",
-    "type": "http://uri.etsi.org/ngsi-ld/errors/BadRequestData"
+    "type": "https://uri.etsi.org/ngsi-ld/errors/BadRequestData"
 }
 
 
@@ -286,9 +286,9 @@ Content-Type: application/json
 Date: REGEX(.*)
 
 {
-    "details": "@context",
+    "detail": "@context",
     "title": "Not a JSON Array nor Object nor a String",
-    "type": "http://uri.etsi.org/ngsi-ld/errors/BadRequestData"
+    "type": "https://uri.etsi.org/ngsi-ld/errors/BadRequestData"
 }
 
 
@@ -305,28 +305,28 @@ Date: REGEX(.*)
 07. POST /ngsi-ld/v1/entities, with invalid URL for a context - see error
 =========================================================================
 HTTP/1.1 400 Bad Request
-Content-Length: 138
+Content-Length: 137
 Content-Type: application/json
 Date: REGEX(.*)
 
 {
-    "details": "no details",
+    "detail": "no detail",
     "title": "Context Array Item is of an unsupported type",
-    "type": "http://uri.etsi.org/ngsi-ld/errors/BadRequestData"
+    "type": "https://uri.etsi.org/ngsi-ld/errors/BadRequestData"
 }
 
 
 08. POST /ngsi-ld/v1/entities, with an attribute without a type - see error
 ===========================================================================
 HTTP/1.1 400 Bad Request
-Content-Length: 169
+Content-Length: 179
 Content-Type: application/json
 Date: REGEX(.*)
 
 {
-    "details": "http://example.org/ngsi-ld/default/name",
+    "detail": "https://uri.etsi.org/ngsi-ld/default-context/name",
     "title": "Attribute found, but the type field is missing",
-    "type": "http://uri.etsi.org/ngsi-ld/errors/BadRequestData"
+    "type": "https://uri.etsi.org/ngsi-ld/errors/BadRequestData"
 }
 
 
@@ -338,9 +338,9 @@ Content-Type: application/json
 Date: REGEX(.*)
 
 {
-    "details": "attribute type",
+    "detail": "attribute type",
     "title": "Not a JSON String",
-    "type": "http://uri.etsi.org/ngsi-ld/errors/BadRequestData"
+    "type": "https://uri.etsi.org/ngsi-ld/errors/BadRequestData"
 }
 
 
@@ -352,51 +352,51 @@ Content-Type: application/json
 Date: REGEX(.*)
 
 {
-    "details": "Propperty",
+    "detail": "Propperty",
     "title": "Invalid type for attribute",
-    "type": "http://uri.etsi.org/ngsi-ld/errors/BadRequestData"
+    "type": "https://uri.etsi.org/ngsi-ld/errors/BadRequestData"
 }
 
 
 11. POST /ngsi-ld/v1/entities, with a Property without a 'value'
 ===============================================================
 HTTP/1.1 400 Bad Request
-Content-Length: 200
+Content-Length: 210
 Content-Type: application/json
 Date: REGEX(.*)
 
 {
-    "details": "http://example.org/ngsi-ld/default/name",
+    "detail": "https://uri.etsi.org/ngsi-ld/default-context/name",
     "title": "Attribute with type Property found, but the associated value field is missing",
-    "type": "http://uri.etsi.org/ngsi-ld/errors/BadRequestData"
+    "type": "https://uri.etsi.org/ngsi-ld/errors/BadRequestData"
 }
 
 
 12. POST /ngsi-ld/v1/entities, with a Relationship without an 'object'
 ======================================================================
 HTTP/1.1 400 Bad Request
-Content-Length: 168
+Content-Length: 133
 Content-Type: application/json
 Date: REGEX(.*)
 
 {
-    "details": "http://example.org/ngsi-ld/default/name",
+    "detail": "name",
     "title": "relationship attribute without 'object' field",
-    "type": "http://uri.etsi.org/ngsi-ld/errors/BadRequestData"
+    "type": "https://uri.etsi.org/ngsi-ld/errors/BadRequestData"
 }
 
 
 13. POST /ngsi-ld/v1/entities, with a GeoProperty without a 'value'
 ===================================================================
 HTTP/1.1 400 Bad Request
-Content-Length: 203
+Content-Length: 213
 Content-Type: application/json
 Date: REGEX(.*)
 
 {
-    "details": "http://example.org/ngsi-ld/default/name",
+    "detail": "https://uri.etsi.org/ngsi-ld/default-context/name",
     "title": "Attribute with type GeoProperty found, but the associated value field is missing",
-    "type": "http://uri.etsi.org/ngsi-ld/errors/BadRequestData"
+    "type": "https://uri.etsi.org/ngsi-ld/errors/BadRequestData"
 }
 
 

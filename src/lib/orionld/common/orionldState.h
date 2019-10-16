@@ -25,18 +25,19 @@
 *
 * Author: Ken Zangelin
 */
-#include "orionld/db/dbDriver.h"                               // database driver header
-#include "orionld/db/dbConfiguration.h"                        // DB_DRIVER_MONGOC
+#include "orionld/db/dbDriver.h"                                 // database driver header
+#include "orionld/db/dbConfiguration.h"                          // DB_DRIVER_MONGOC
 
 extern "C"
 {
-#include "kjson/kjson.h"                                       // Kjson
-#include "kjson/KjNode.h"                                      // KjNode
+#include "kjson/kjson.h"                                         // Kjson
+#include "kjson/KjNode.h"                                        // KjNode
 }
-#include "common/globals.h"                                    // ApiVersion
-#include "orionld/common/QNode.h"                              // QNode
-#include "orionld/types/OrionldGeoJsonType.h"                  // OrionldGeoJsonType
-#include "orionld/context/OrionldContext.h"                    // OrionldContext
+#include "common/globals.h"                                      // ApiVersion
+#include "common/MimeType.h"                                     // MimeType
+#include "orionld/common/QNode.h"                                // QNode
+#include "orionld/types/OrionldGeoJsonType.h"                    // OrionldGeoJsonType
+#include "orionld/context/OrionldContext.h"                      // OrionldContext
 
 
 
@@ -50,9 +51,11 @@ extern "C"
 
 // -----------------------------------------------------------------------------
 //
-// OrionLdRestService -
+// Forward declarations -
 //
 struct OrionLdRestService;
+struct ConnectionInfo;
+
 
 
 // -----------------------------------------------------------------------------
@@ -86,6 +89,23 @@ typedef struct OrionldUriParams
 
 // -----------------------------------------------------------------------------
 //
+// OrionldNotificationInfo -
+//
+typedef struct OrionldNotificationInfo
+{
+  char*     subscriptionId;
+  MimeType  mimeType;
+  KjNode*   attrsForNotification;
+  char*     reference;
+  int       fd;
+  bool      connected;
+  bool      allOK;
+} OrionldNotificationInfo;
+
+
+
+// -----------------------------------------------------------------------------
+//
 // OrionldConnectionState - the state of the connection
 //
 // This struct contains all the state of a connection, like the Kjson pointer, the pointer to
@@ -97,6 +117,7 @@ typedef struct OrionldUriParams
 //
 typedef struct OrionldConnectionState
 {
+  ConnectionInfo*         ciP;
   Kjson                   kjson;
   Kjson*                  kjsonP;
   KAlloc                  kalloc;
@@ -149,6 +170,13 @@ typedef struct OrionldConnectionState
   mongo::BSONObj*         qMongoFilterP;
   char*                   jsonBuf;    // Used by kjTreeFromBsonObj
 
+  KjNode*                 delayedKjFreeVec[50];
+  int                     delayedKjFreeVecIndex;
+  int                     delayedKjFreeVecSize;
+  int                     notificationRecords;
+  OrionldNotificationInfo notificationInfo[100];
+  bool                    notify;
+
 #ifdef DB_DRIVER_MONGOC
   //
   // MongoDB stuff
@@ -174,20 +202,20 @@ extern __thread OrionldConnectionState orionldState;
 // Global state
 //
 extern char      kallocBuffer[32 * 1024];
-extern int       requestNo;  // Never mind protecting with semaphore. Just a debugging help
+extern int       requestNo;                // Never mind protecting with semaphore. Just a debugging help
 extern KAlloc    kalloc;
 extern Kjson     kjson;
 extern Kjson*    kjsonP;
 extern char*     hostname;
 extern uint16_t  portNo;
-extern char      dbName[];            // From orionld.cpp
+extern char      dbName[];                 // From orionld.cpp
 extern int       dbNameLen;
-extern char      dbUser[];            // From orionld.cpp
-extern char      dbPwd[];             // From orionld.cpp
-extern bool      multitenancy;        // From orionld.cpp
-extern char*     tenant;              // From orionld.cpp
-
-
+extern char      dbUser[];                 // From orionld.cpp
+extern char      dbPwd[];                  // From orionld.cpp
+extern bool      multitenancy;             // From orionld.cpp
+extern char*     tenant;                   // From orionld.cpp
+extern int       contextDownloadAttempts;  // From orionld.cpp
+extern int       contextDownloadTimeout;   // From orionld.cpp
 
 #ifdef DB_DRIVER_MONGOC
 //
@@ -219,5 +247,13 @@ extern void orionldStateRelease(void);
 // orionldStateErrorAttributeAdd -
 //
 extern void orionldStateErrorAttributeAdd(const char* attributeName);
+
+
+
+// -----------------------------------------------------------------------------
+//
+// orionldStateDelayedKjFree -
+//
+extern void orionldStateDelayedKjFree(KjNode* tree);
 
 #endif  // SRC_LIB_ORIONLD_COMMON_ORIONLDSTATE_H_

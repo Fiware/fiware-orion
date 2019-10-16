@@ -87,9 +87,9 @@ Content-Type: application/json
 Date: REGEX(.*)
 
 {
-    "details": "geometry with coordinates but without georel",
+    "detail": "geometry with coordinates but without georel",
     "title": "no georel",
-    "type": "http://uri.etsi.org/ngsi-ld/errors/BadRequestData"
+    "type": "https://uri.etsi.org/ngsi-ld/errors/BadRequestData"
 }
 
 
@@ -98,7 +98,7 @@ Date: REGEX(.*)
 HTTP/1.1 200 OK
 Content-Length: 152
 Content-Type: application/json
-Link: <https://forge.etsi.org/gitlab/NGSI-LD/NGSI-LD/raw/master/defaultContext/defaultContext.jsonld>; rel="http://www.w3.org/ns/json-ld#context"; type="application/ld+json"
+Link: <https://uri.etsi.org/ngsi-ld/v1/ngsi-ld-core-context.jsonld>; rel="http://www.w3.org/ns/json-ld#context"; type="application/ld+json"
 Date: REGEX(.*)
 
 [

@@ -22,10 +22,18 @@
 *
 * Author: Ken Zangelin
 */
+extern "C"
+{
+#include "kbase/kMacros.h"                                     // K_FT
+#include "kalloc/kaAlloc.h"                                    // kaAlloc
+#include "kalloc/kaStrdup.h"                                   // kaStrdup
+}
+
 #include "logMsg/logMsg.h"                                     // LM_*
 #include "logMsg/traceLevels.h"                                // Lmt*
 
 #include "orionld/context/orionldUriExpand.h"                  // orionldUriExpand
+#include "orionld/context/orionldValueExpand.h"                // orionldDirectValueExpand
 #include "orionld/common/orionldState.h"                       // orionldState
 #include "orionld/common/QNode.h"                              // QNode
 #include "orionld/common/qLexRender.h"                         // qLexRender - DEBUG
@@ -41,7 +49,9 @@
 // - If attr.b.c, then 'attr' must be extracted, expanded and then '.md.b.c' appended
 // - If attr[b.c], then 'attr' must be extracted, expanded and then '.b.c' appended
 //
-static char* varFix(void* contextP, char* varPath, char* longName, int longNameLen, char** detailsP)
+// After implementing expansion in metadata names, for attr.b.c, 'b' needs expansion also
+//
+static char* varFix(void* contextP, char* varPath, char* longName, int longNameLen, bool* valueMayBeExpandedP, char** detailsP)
 {
   char* cP            = varPath;
   char* attrNameP     = varPath;
@@ -53,6 +63,7 @@ static char* varFix(void* contextP, char* varPath, char* longName, int longNameL
   char* rest          = NULL;
   char  fullPath[512];
 
+  *valueMayBeExpandedP = false;
 
   LM_TMP(("Q: In varFix: Var PATH == '%s'", varPath));
 
@@ -226,7 +237,7 @@ static char* varFix(void* contextP, char* varPath, char* longName, int longNameL
   //
   // All OK - let's compose ...
   //
-  orionldUriExpand(orionldState.contextP, attrNameP, longName, longNameLen, detailsP);
+  orionldUriExpand(orionldState.contextP, attrNameP, longName, longNameLen, valueMayBeExpandedP, detailsP);
 
   // Turn '.' into '=' for longName
   char* sP = longName;
@@ -237,19 +248,39 @@ static char* varFix(void* contextP, char* varPath, char* longName, int longNameL
     ++sP;
   }
 
-  LM_TMP(("Q: longName: %s", longName));
+  LM_TMP(("QVAL: long attribute name: %s (values may be expanded: %s)", longName, K_FT(*valueMayBeExpandedP)));
+
+  //
+  // Expand mdName if present
+  //
+  char* mdLongNameP = mdNameP;
+
+  if ((mdNameP != NULL) && (strcmp(mdNameP, "observedAt") != 0))  // Don't expand "observedAt", nor ...
+  {
+    mdLongNameP  = kaAlloc(&orionldState.kalloc, 512);
+    orionldUriExpand(orionldState.contextP, mdNameP, mdLongNameP, 512, NULL, detailsP);
+
+    // Turn '.' into '=' for longName
+    char* sP = mdLongNameP;
+    while (*sP != 0)
+    {
+      if (*sP == '.')
+        *sP = '=';
+      ++sP;
+    }
+  }
 
   if (caseNo == 1)
     snprintf(fullPath, sizeof(fullPath), "attrs.%s.value", longName);
   else if (caseNo == 2)
     snprintf(fullPath, sizeof(fullPath), "attrs.%s.value.%s", longName, rest);
   else if (caseNo == 3)
-    snprintf(fullPath, sizeof(fullPath), "attrs.%s.md.%s.value", longName, mdNameP);
+    snprintf(fullPath, sizeof(fullPath), "attrs.%s.md.%s.value", longName, mdLongNameP);
   else
-    snprintf(fullPath, sizeof(fullPath), "attrs.%s.md.%s.value.%s", longName, mdNameP, rest);
+    snprintf(fullPath, sizeof(fullPath), "attrs.%s.md.%s.value.%s", longName, mdLongNameP, rest);
 
   LM_TMP(("Q: fullPath: %s", fullPath));
-  return strdup(fullPath);
+  return kaStrdup(&orionldState.kalloc, fullPath);
 }
 
 
@@ -309,6 +340,7 @@ QNode* qParse(QNode* qLexList, char** titleP, char** detailsP)
   QNode*     leftP      = NULL;
   QNode*     expressionStart;
   char       longName[512];
+  bool       valueMayBeExpanded = false;
 
 #ifdef DEBUG
     qLexRender(qLexList, orionldState.qDebugBuffer, sizeof(orionldState.qDebugBuffer));
@@ -364,8 +396,8 @@ QNode* qParse(QNode* qLexList, char** titleP, char** detailsP)
       break;
 
     case QNodeVariable:
-      LM_TMP(("Q: KZ: QNodeVariable"));
-      qLexP->value.v = varFix(orionldState.contextP, qLexP->value.v, longName, sizeof(longName), detailsP);
+      LM_TMP(("QVAL: QNodeVariable"));
+      qLexP->value.v = varFix(orionldState.contextP, qLexP->value.v, longName, sizeof(longName), &valueMayBeExpanded, detailsP);
       if (qLexP->next == NULL)
       {
         if (compOpP == NULL)
@@ -375,12 +407,14 @@ QNode* qParse(QNode* qLexList, char** titleP, char** detailsP)
         break;
       }
       // NO BREAK !!!
+    case QNodeStringValue:
+      if (qLexP->type == QNodeStringValue) LM_TMP(("QVAL: QNodeStringValue. valueMayBeExpanded: %s", K_FT(valueMayBeExpanded)));
     case QNodeIntegerValue:
     case QNodeFloatValue:
-    case QNodeStringValue:
     case QNodeTrueValue:
     case QNodeFalseValue:
     case QNodeRegexpValue:
+      LM_TMP(("QVAL: type == %s", qNodeType(qLexP->type)));
       if (compOpP == NULL)  // Left-Hand side
       {
         LM_TMP(("Q: Saving '%s' as left-hand-side", qNodeType(qLexP->type)));
@@ -391,7 +425,7 @@ QNode* qParse(QNode* qLexList, char** titleP, char** detailsP)
         QNode* rangeP = NULL;
         QNode* commaP = NULL;
 
-        LM_TMP(("Q: ------------------------ Got a value for RHS: %s", qNodeType(qLexP->type)));
+        LM_TMP(("QVAL: ------------------------ Got a value for RHS, the type is %s", qNodeType(qLexP->type)));
         if ((qLexP->next != NULL) && (qLexP->next->type == QNodeRange))
         {
           QNode*    lowerLimit;
@@ -417,7 +451,7 @@ QNode* qParse(QNode* qLexList, char** titleP, char** detailsP)
         {
           QNodeType commaValueType  = qLexP->type;
 
-          LM_TMP(("Q: Peeked and saw a COMMA operator - eating comma-list"));
+          LM_TMP(("QVAL: Peeked and saw a COMMA operator - eating comma-list"));
 
           commaP = qLexP->next;
 
@@ -435,9 +469,30 @@ QNode* qParse(QNode* qLexList, char** titleP, char** detailsP)
               return NULL;
             }
 
+            if ((valueP->type == QNodeStringValue) && (valueMayBeExpanded == true))
+            {
+              LM_TMP(("QVAL: list item is a string, and it may be expanded: short value: '%s'", valueP->value.s));
+              valueP->value.s = orionldDirectValueExpand(valueP->value.s);
+              LM_TMP(("QVAL: expanded list item to: %s", valueP->value.s));
+            }
+
             qNodeAppend(commaP, valueP);  // OK to enlist commaP and valueP as qLexP point to after valueP
+            LM_TMP(("QVAL: Appended node of type %s", qNodeType(valueP->type)));
           }
+
+          //
+          // Appending last list item
+          //
+          LM_TMP(("QVAL: qLexP now points to a %s", qNodeType(qLexP->type)));
           QNode* valueP = qLexP;
+
+          if ((valueP->type == QNodeStringValue) && (valueMayBeExpanded == true))
+          {
+            LM_TMP(("QVAL: list item is a string, and it may be expanded: short value: '%s'", valueP->value.s));
+            valueP->value.s = orionldDirectValueExpand(valueP->value.s);
+            LM_TMP(("QVAL: expanded list item to: %s", valueP->value.s));
+          }
+
           qNodeAppend(commaP, valueP);
         }
 
@@ -454,7 +509,18 @@ QNode* qParse(QNode* qLexList, char** titleP, char** detailsP)
         else if (commaP != NULL)
           qNodeAppend(compOpP, commaP);
         else
+        {
+          LM_TMP(("QVAL: Adding qLexP, that is a '%s'", qNodeType(qLexP->type)));
+
+          if ((qLexP->type == QNodeStringValue) && (valueMayBeExpanded == true))
+          {
+            LM_TMP(("QVAL: Expanding value '%s'", qLexP->value.s));
+            qLexP->value.s = orionldDirectValueExpand(qLexP->value.s);
+            LM_TMP(("QVAL: Expanded value '%s'", qLexP->value.s));
+          }
+
           qNodeAppend(compOpP, qLexP);
+        }
 
         LM_TMP(("Q: Adding part-tree to qNodeV, on index %d", qNodeIx));
         qNodeV[qNodeIx++] = compOpP;

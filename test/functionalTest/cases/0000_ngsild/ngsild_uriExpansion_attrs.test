@@ -98,14 +98,14 @@ MongoDB server version: REGEX(.*)
 {
 	"_id" : {
 		"id" : "http://a.b.c/entity/E1",
-		"type" : "http://example.org/ngsi-ld/default/T",
+		"type" : "https://uri.etsi.org/ngsi-ld/default-context/T",
 		"servicePath" : "/"
 	},
 	"attrNames" : [
-		"http://example.org/ngsi-ld/default/title"
+		"https://uri.etsi.org/ngsi-ld/default-context/title"
 	],
 	"attrs" : {
-		"http://example=org/ngsi-ld/default/title" : {
+		"https://uri=etsi=org/ngsi-ld/default-context/title" : {
 			"type" : "Property",
 			"creDate" : REGEX(.*),
 			"modDate" : REGEX(.*),
@@ -114,14 +114,14 @@ MongoDB server version: REGEX(.*)
 				"unitCode" : {
 					"value" : "123"
 				},
-				"R_R" : {
+				"https://uri=etsi=org/ngsi-ld/default-context/R_R" : {
 					"type" : "Relationship",
 					"value" : "http://a.b.c/R_R"
 				}
 			},
 			"mdNames" : [
 				"unitCode",
-				"R_R"
+				"https://uri.etsi.org/ngsi-ld/default-context/R_R"
 			]
 		}
 	},

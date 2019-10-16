@@ -73,6 +73,7 @@
 extern "C"
 {
 #include "kalloc/kaBufferReset.h"                           // kaBufferReset
+#include "kjson/kjFree.h"                                   // kjFree
 }
 
 #include "parseArgs/parseArgs.h"
@@ -108,12 +109,14 @@ extern "C"
 #include "logSummary/logSummary.h"
 
 #include "orionld/common/OrionldConnection.h"               // kjFree - FIXME: call instead orionldGlobalFree();
+#include "orionld/context/orionldCoreContext.h"             // orionldCoreContext
 #include "orionld/rest/orionldServiceInit.h"                // orionldServiceInit
 #include "orionld/db/dbInit.h"                              // dbInit
 
 #include "orionld/version.h"
 #include "orionld/orionRestServices.h"
 #include "orionld/orionldRestServices.h"
+#include "orionld/context/orionldContextList.h"             // orionldContextHead
 
 using namespace orion;
 
@@ -186,7 +189,8 @@ bool            disableMetrics;
 int             reqTimeout;
 bool            insecureNotif;
 bool            ngsiv1Autocast;
-
+int             contextDownloadAttempts;
+int             contextDownloadTimeout;
 
 
 
@@ -199,6 +203,8 @@ bool            ngsiv1Autocast;
 #define LOCALHOST              _i "localhost"
 #define ONE_MONTH_PERIOD       (3600 * 24 * 31)
 
+#define CTX_TMO_DESC           "Timeout in milliseconds for downloading of contexts"
+#define CTX_ATT_DESC           "Number of attempts for downloading of contexts"
 #define FG_DESC                "don't start as daemon"
 #define LOCALIP_DESC           "IP to receive new connections"
 #define PORT_DESC              "port to receive new connections"
@@ -318,6 +324,9 @@ PaArgument paArgs[] =
   { "-insecureNotif", &insecureNotif, "INSECURE_NOTIF", PaBool, PaOpt, false, false, true, INSECURE_NOTIF },
 
   { "-ngsiv1Autocast", &ngsiv1Autocast, "NGSIV1_AUTOCAST", PaBool, PaOpt, false, false, true, NGSIV1_AUTOCAST },
+
+  { "-ctxTimeout",     &contextDownloadTimeout,  "CONTEXT_DOWNLOAD_TIMEOUT",  PaInt,  PaOpt, 5000, 0, 20000, CTX_TMO_DESC },
+  { "-ctxAttempts",    &contextDownloadAttempts, "CONTEXT_DOWNLOAD_ATTEMPTS", PaInt,  PaOpt,    3, 0,   100, CTX_ATT_DESC },
 
   PA_END_OF_ARGS
 };
@@ -544,6 +553,31 @@ void exitFunc(void)
   curl_context_cleanup();
   curl_global_cleanup();
 
+  //
+  // Free the context cache
+  //
+  OrionldContext* contextP = orionldContextHead;
+  OrionldContext* next;
+  while (contextP != NULL)
+  {
+    if (contextP == &orionldCoreContext)
+    {
+      contextP = contextP->next;
+      continue;
+    }
+
+    next = contextP->next;
+
+    kjFree(contextP->tree);   // Always cloned using kjClone ???
+    // free(contextP);  - the context is allocated using kaAlloc(&kalloc) - to free this, kaBufferReset is used (a few lines down)
+
+    contextP = next;
+  }
+
+
+  //
+  // Free the kalloc buffer
+  //
   kaBufferReset(&kalloc, false);
 
   if (unlink(pidPath) != 0)
@@ -553,8 +587,8 @@ void exitFunc(void)
 
   if ((orionldState.contextP != NULL) && (orionldState.contextP->temporary == true))
   {
-    free(orionldState.contextP->url);
-    free(orionldState.contextP);
+    free(orionldState.contextP->url);  // Always allocated using 'malloc' ???
+    free(orionldState.contextP);       // Always cloned using kjClone ???
     orionldState.contextP = NULL;
   }
 }

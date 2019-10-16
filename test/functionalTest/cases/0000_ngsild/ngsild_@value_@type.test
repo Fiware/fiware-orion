@@ -251,9 +251,9 @@ Content-Type: application/json
 Date: REGEX(.*)
 
 {
-    "details": "@type",
+    "detail": "@type",
     "title": "Not a JSON String",
-    "type": "http://uri.etsi.org/ngsi-ld/errors/BadRequestData"
+    "type": "https://uri.etsi.org/ngsi-ld/errors/BadRequestData"
 }
 
 
@@ -265,9 +265,9 @@ Content-Type: application/json
 Date: REGEX(.*)
 
 {
-    "details": "@type",
+    "detail": "@type",
     "title": "Duplicated field",
-    "type": "http://uri.etsi.org/ngsi-ld/errors/BadRequestData"
+    "type": "https://uri.etsi.org/ngsi-ld/errors/BadRequestData"
 }
 
 
@@ -279,9 +279,9 @@ Content-Type: application/json
 Date: REGEX(.*)
 
 {
-    "details": "@value",
+    "detail": "@value",
     "title": "Duplicated field",
-    "type": "http://uri.etsi.org/ngsi-ld/errors/BadRequestData"
+    "type": "https://uri.etsi.org/ngsi-ld/errors/BadRequestData"
 }
 
 
@@ -293,9 +293,9 @@ Content-Type: application/json
 Date: REGEX(.*)
 
 {
-    "details": "a",
+    "detail": "a",
     "title": "unwanted extra items in @value/@type compound",
-    "type": "http://uri.etsi.org/ngsi-ld/errors/BadRequestData"
+    "type": "https://uri.etsi.org/ngsi-ld/errors/BadRequestData"
 }
 
 
@@ -307,9 +307,9 @@ Content-Type: application/json
 Date: REGEX(.*)
 
 {
-    "details": "@X",
+    "detail": "@X",
     "title": "unwanted extra items in @value/@type compound",
-    "type": "http://uri.etsi.org/ngsi-ld/errors/BadRequestData"
+    "type": "https://uri.etsi.org/ngsi-ld/errors/BadRequestData"
 }
 
 
@@ -321,9 +321,9 @@ Content-Type: application/json
 Date: REGEX(.*)
 
 {
-    "details": "@value is mandatory",
+    "detail": "@value is mandatory",
     "title": "missing @value in @value/@type compound",
-    "type": "http://uri.etsi.org/ngsi-ld/errors/BadRequestData"
+    "type": "https://uri.etsi.org/ngsi-ld/errors/BadRequestData"
 }
 
 
@@ -335,23 +335,23 @@ Content-Type: application/json
 Date: REGEX(.*)
 
 {
-    "details": "@value of DateTime @type",
+    "detail": "@value of DateTime @type",
     "title": "Not a JSON String",
-    "type": "http://uri.etsi.org/ngsi-ld/errors/BadRequestData"
+    "type": "https://uri.etsi.org/ngsi-ld/errors/BadRequestData"
 }
 
 
 08. Attempt to create a @value/@type with DateTime @type and string @value that is not a correct ISO8601 datetime - see error
 =============================================================================================================================
 HTTP/1.1 400 Bad Request
-Content-Length: 187
+Content-Length: 166
 Content-Type: application/json
 Date: REGEX(.*)
 
 {
-    "details": "http://example.org/ngsi-ld/default/value",
+    "detail": "2018-12-04X12:00:00",
     "title": "DateTime value of @value/@type compound must be a valid ISO8601",
-    "type": "http://uri.etsi.org/ngsi-ld/errors/BadRequestData"
+    "type": "https://uri.etsi.org/ngsi-ld/errors/BadRequestData"
 }
 
 
@@ -378,7 +378,7 @@ Date: REGEX(.*)
 HTTP/1.1 200 OK
 Content-Length: 170
 Content-Type: application/json
-Link: <https://forge.etsi.org/gitlab/NGSI-LD/NGSI-LD/raw/master/defaultContext/defaultContext.jsonld>; rel="http://www.w3.org/ns/json-ld#context"; type="application/ld+json"
+Link: <https://uri.etsi.org/ngsi-ld/v1/ngsi-ld-core-context.jsonld>; rel="http://www.w3.org/ns/json-ld#context"; type="application/ld+json"
 Date: REGEX(.*)
 
 {
@@ -400,7 +400,7 @@ Date: REGEX(.*)
 HTTP/1.1 200 OK
 Content-Length: 134
 Content-Type: application/json
-Link: <https://forge.etsi.org/gitlab/NGSI-LD/NGSI-LD/raw/master/defaultContext/defaultContext.jsonld>; rel="http://www.w3.org/ns/json-ld#context"; type="application/ld+json"
+Link: <https://uri.etsi.org/ngsi-ld/v1/ngsi-ld-core-context.jsonld>; rel="http://www.w3.org/ns/json-ld#context"; type="application/ld+json"
 Date: REGEX(.*)
 
 {

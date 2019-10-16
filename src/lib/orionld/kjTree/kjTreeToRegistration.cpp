@@ -20,7 +20,7 @@
 * For those usages not covered by this license please contact with
 * iot_support at tid dot es
 *
-* Author: Jorge Pereira
+* Author: Jorge Pereira amd Ken Zangelin
 */
 #include <string>                                              // std::string
 
@@ -42,7 +42,6 @@ extern "C"
 #include "orionld/common/urlCheck.h"                           // urlCheck
 #include "orionld/common/urnCheck.h"                           // urnCheck
 #include "orionld/context/orionldUriExpand.h"                  // orionldUriExpand
-#include "orionld/context/orionldContextTreat.h"               // orionldContextTreat
 #include "orionld/kjTree/kjTreeToEntIdVector.h"                // kjTreeToEntIdVector
 #include "orionld/kjTree/kjTreeToTimeInterval.h"               // kjTreeToTimeInterval
 #include "orionld/kjTree/kjTreeToStringList.h"                 // kjTreeToStringList
@@ -59,6 +58,29 @@ extern "C"
 //
 static bool kjTreeToRegistrationInformation(ConnectionInfo* ciP, KjNode* regInfoNodeP, ngsiv2::Registration* regP)
 {
+  //
+  // For now, the information vector can only have ONE item.
+  //
+  // FIXME: To support more than one information vector item, we need to modify the data model of Orion.
+  //        When we do that, we can no longer use Orion forwarding but will need to imnplement our own -
+  //        which is not such a bad thing as Orions forwarding has major flaws
+  //
+  int items = 0;
+  for (KjNode* informationItemP = regInfoNodeP->value.firstChildP; informationItemP != NULL; informationItemP = informationItemP->next)
+    ++items;
+
+  if (items == 0)
+  {
+    orionldErrorResponseCreate(OrionldBadRequestData, "Empty 'information' in Registration", NULL);
+    return false;
+  }
+  else if (items > 1)
+  {
+    orionldErrorResponseCreate(OrionldOperationNotSupported, "More than one item in Registration::information vector", "Not Implemented");
+    ciP->httpStatusCode = SccNotImplemented;
+    return false;
+  }
+
   for (KjNode* informationItemP = regInfoNodeP->value.firstChildP; informationItemP != NULL; informationItemP = informationItemP->next)
   {
     //
@@ -90,7 +112,7 @@ static bool kjTreeToRegistrationInformation(ConnectionInfo* ciP, KjNode* regInfo
           char  longName[256];
           char* details;
 
-          if (orionldUriExpand(orionldState.contextP, propP->value.s, longName, sizeof(longName), &details) == false)
+          if (orionldUriExpand(orionldState.contextP, propP->value.s, longName, sizeof(longName), NULL, &details) == false)
             return false;
 
           propP->value.s = longName;
@@ -108,7 +130,7 @@ static bool kjTreeToRegistrationInformation(ConnectionInfo* ciP, KjNode* regInfo
           char  longName[256];
           char* details;
 
-          if (orionldUriExpand(orionldState.contextP, relP->value.s, longName, sizeof(longName), &details) == false)
+          if (orionldUriExpand(orionldState.contextP, relP->value.s, longName, sizeof(longName), NULL, &details) == false)
             return false;
 
           relP->value.s = longName;
@@ -119,8 +141,7 @@ static bool kjTreeToRegistrationInformation(ConnectionInfo* ciP, KjNode* regInfo
       {
         orionldErrorResponseCreate(OrionldBadRequestData,
                                    "Unknown field inside Registration::information",
-                                   infoNodeP->name,
-                                   OrionldDetailsString);
+                                   infoNodeP->name);
         return false;
       }
     }
@@ -129,8 +150,7 @@ static bool kjTreeToRegistrationInformation(ConnectionInfo* ciP, KjNode* regInfo
     {
       orionldErrorResponseCreate(OrionldBadRequestData,
                                  "Empty Registration::information item",
-                                 NULL,
-                                 OrionldDetailsString);
+                                 NULL);
       return false;
     }
   }
@@ -175,7 +195,7 @@ bool kjTreeToRegistration(ConnectionInfo* ciP, ngsiv2::Registration* regP, char*
   if ((urlCheck((char*) regP->id.c_str(), NULL) == false) && (urnCheck((char*) regP->id.c_str(), NULL) == false))
   {
     LM_W(("Bad Input (Registration::id is not a URI)"));
-    orionldErrorResponseCreate(OrionldBadRequestData, "Registration::id is not a URI", regP->id.c_str(), OrionldDetailsString);
+    orionldErrorResponseCreate(OrionldBadRequestData, "Registration::id is not a URI", regP->id.c_str());
     ciP->httpStatusCode = SccBadRequest;
     return false;
   }
@@ -196,7 +216,7 @@ bool kjTreeToRegistration(ConnectionInfo* ciP, ngsiv2::Registration* regP, char*
   if (orionldState.payloadTypeNode == NULL)
   {
     LM_W(("Bad Input (Mandatory field missing: Registration::type)"));
-    orionldErrorResponseCreate(OrionldBadRequestData, "Mandatory field missing", "Registration::type", OrionldDetailsString);
+    orionldErrorResponseCreate(OrionldBadRequestData, "Mandatory field missing", "Registration::type");
     ciP->httpStatusCode = SccBadRequest;
     return false;
   }
@@ -206,8 +226,7 @@ bool kjTreeToRegistration(ConnectionInfo* ciP, ngsiv2::Registration* regP, char*
     LM_W(("Bad Input (Registration type must have the value /Registration/)"));
     orionldErrorResponseCreate(OrionldBadRequestData,
                                "Registration::type must have a value of /ContextSourceRegistration/",
-                               orionldState.payloadTypeNode->value.s,
-                               OrionldDetailsString);
+                               orionldState.payloadTypeNode->value.s);
     ciP->httpStatusCode = SccBadRequest;
     return false;
   }
@@ -324,7 +343,7 @@ bool kjTreeToRegistration(ConnectionInfo* ciP, ngsiv2::Registration* regP, char*
       char* longName = (char*) kaAlloc(&orionldState.kalloc, 256);
       char* details;
 
-      if (orionldUriExpand(orionldState.contextP, kNodeP->name, longName, 256, &details) == false)
+      if (orionldUriExpand(orionldState.contextP, kNodeP->name, longName, 256, NULL, &details) == false)
         return false;
 
       kNodeP->name = longName;

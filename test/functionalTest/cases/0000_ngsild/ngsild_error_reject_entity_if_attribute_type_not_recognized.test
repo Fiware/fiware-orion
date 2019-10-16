@@ -58,9 +58,9 @@ Content-Type: application/json
 Date: REGEX(.*)
 
 {
-    "details": "abcdef",
+    "detail": "abcdef",
     "title": "Invalid type for attribute",
-    "type": "http://uri.etsi.org/ngsi-ld/errors/BadRequestData"
+    "type": "https://uri.etsi.org/ngsi-ld/errors/BadRequestData"
 }
 
 

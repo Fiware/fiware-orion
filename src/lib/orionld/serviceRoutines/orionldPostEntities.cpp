@@ -27,6 +27,7 @@
 
 extern "C"
 {
+#include "kalloc/kaAlloc.h"                                      // kaAlloc
 #include "kjson/KjNode.h"                                        // KjNode
 #include "kjson/kjBuilder.h"                                     // kjString, kjObject, ...
 #include "kjson/kjRender.h"                                      // kjRender
@@ -135,13 +136,13 @@ static bool payloadCheck
   //
   if (orionldState.payloadIdNode == NULL)
   {
-    orionldErrorResponseCreate(OrionldBadRequestData, "Entity id is missing", "The 'id' field is mandatory", OrionldDetailsString);
+    orionldErrorResponseCreate(OrionldBadRequestData, "Entity id is missing", "The 'id' field is mandatory");
     return false;
   }
 
   if (orionldState.payloadTypeNode == NULL)
   {
-    orionldErrorResponseCreate(OrionldBadRequestData, "Entity type is missing", "The type field is mandatory", OrionldDetailsString);
+    orionldErrorResponseCreate(OrionldBadRequestData, "Entity type is missing", "The type field is mandatory");
     return false;
   }
 
@@ -183,7 +184,7 @@ static bool payloadCheck
       // FIXME: Make sure the type is either Property or Relationship
       if (orionldValidName(kNodeP->name, &detailsP) == false)
       {
-        orionldErrorResponseCreate(OrionldBadRequestData, "Invalid Property/Relationship name", detailsP, OrionldDetailsString);
+        orionldErrorResponseCreate(OrionldBadRequestData, "Invalid Property/Relationship name", detailsP);
         return false;
       }
     }
@@ -215,7 +216,7 @@ bool orionldPostEntities(ConnectionInfo* ciP)
 {
   OBJECT_CHECK(orionldState.requestTree, "toplevel");
 
-  char*    details;
+  char*    detail;
   KjNode*  locationP          = NULL;
   KjNode*  observationSpaceP  = NULL;
   KjNode*  operationSpaceP    = NULL;
@@ -228,9 +229,13 @@ bool orionldPostEntities(ConnectionInfo* ciP)
   char*    entityId           = orionldState.payloadIdNode->value.s;
   char*    entityType         = orionldState.payloadTypeNode->value.s;
 
-  if ((urlCheck(entityId, &details) == false) && (urnCheck(entityId, &details) == false))
+
+  //
+  // Entity ID
+  //
+  if ((urlCheck(entityId, &detail) == false) && (urnCheck(entityId, &detail) == false))
   {
-    orionldErrorResponseCreate(OrionldBadRequestData, "Invalid Entity id", "The id specified cannot be resolved to a URL or URN", OrionldDetailsString);
+    orionldErrorResponseCreate(OrionldBadRequestData, "Invalid Entity id", "The id specified cannot be resolved to a URL or URN");
     return false;
   }
 
@@ -240,7 +245,7 @@ bool orionldPostEntities(ConnectionInfo* ciP)
   //
   if (mongoEntityExists(entityId, orionldState.tenant) == true)
   {
-    orionldErrorResponseCreate(OrionldAlreadyExists, "Entity already exists", entityId, OrionldDetailsString);
+    orionldErrorResponseCreate(OrionldAlreadyExists, "Entity already exists", entityId);
     ciP->httpStatusCode = SccConflict;
     return false;
   }
@@ -262,6 +267,7 @@ bool orionldPostEntities(ConnectionInfo* ciP)
   entityIdP->creDate   = getCurrentTime();
   entityIdP->modDate   = getCurrentTime();
 
+
   //
   // Entity TYPE
   //
@@ -270,133 +276,51 @@ bool orionldPostEntities(ConnectionInfo* ciP)
   LM_T(LmtUriExpansion, ("Looking up uri expansion for the entity type '%s'", entityType));
   LM_T(LmtUriExpansion, ("------------- uriExpansion for Entity Type starts here ------------------------------"));
 
-  char*  expandedName;
-  char*  expandedType;
+  char* expandedType = kaAlloc(&orionldState.kalloc, 512);
 
-  // FIXME: Call orionldUriExpand() - this here is a "copy" of what orionldUriExpand does
-  extern int uriExpansion(OrionldContext* contextP, const char* name, char** expandedNameP, char** expandedTypeP, char** detailsPP);
-  int    expansions = uriExpansion(orionldState.contextP, entityType, &expandedName, &expandedType, &details);
-  LM_T(LmtUriExpansion, ("URI Expansion for type '%s': '%s'", entityType, expandedName));
-  LM_T(LmtUriExpansion, ("Got %d expansions", expansions));
-
-  if (expansions == 0)
+  if (orionldUriExpand(orionldState.contextP, entityType, expandedType, 512, NULL, &detail) == false)
   {
-    // Expansion found in Core Context - perform no expansion
-  }
-  else if (expansions == 1)
-  {
-    // Take the long name, just ... NOT expandedType but expandedName. All good
-    entityIdP->type = expandedName;
-  }
-  else if (expansions == -2)
-  {
-    // No expansion found in Core Context, and in no other contexts either - use default URL
-    LM_T(LmtUriExpansion, ("EXPANSION: use default URL for entity type '%s'", entityType));
-    entityIdP->type = orionldDefaultUrl;
-    entityIdP->type += entityType;
-  }
-  else if (expansions == -1)
-  {
-    orionldErrorResponseCreate(OrionldBadRequestData, "Invalid context item for 'entity type'", details, OrionldDetailsString);
+    orionldErrorResponseCreate(OrionldBadRequestData, "Error expanding 'entity type'", detail);
     mongoRequest.release();
     return false;
   }
-  else  // expansions == 2 ... may be an incorrect context
-  {
-    orionldErrorResponseCreate(OrionldBadRequestData, "Invalid value of context item 'entity type'", orionldState.contextP->url, OrionldDetailsString);
-    mongoRequest.release();
-    return false;
-  }
+  entityIdP->type = expandedType;
 
 
-
-  // Treat the entire payload
+  //
+  // Attributes
+  //
   for (KjNode* kNodeP = orionldState.requestTree->value.firstChildP; kNodeP != NULL; kNodeP = kNodeP->next)
   {
     LM_T(LmtUriExpansion, ("treating entity node '%s'", kNodeP->name));
 
-    if (kNodeP == createdAtP)
-    {
-      // FIXME: Make sure the value is a valid timestamp?
+    if ((kNodeP == createdAtP) || (kNodeP == modifiedAtP))
+      continue;
 
-      // Ignore the 'createdAt' - See issue #43 (orionld)
-#if 0
-      // 2. Save it for future use (when creating the entity)
-      if ((orionldState.overriddenCreationDate = parse8601Time(createdAtP->value.s)) == -1)
-      {
-        orionldErrorResponseCreate(OrionldBadRequestData, "Invalid value for 'createdAt' attribute", createdAtP->value.s, OrionldDetailsString);
-        mongoRequest.release();
-        return false;
-      }
-#endif
+    ContextAttribute* caP            = new ContextAttribute();
+    KjNode*           attrTypeNodeP  = NULL;
+
+    LM_TMP(("VEX: Treating attribute '%s'", kNodeP->name));
+    if (orionldAttributeTreat(ciP, kNodeP, caP, &attrTypeNodeP) == false)
+    {
+      LM_TMP(("EXPAND: orionldAttributeTreat failed"));
+      LM_E(("orionldAttributeTreat failed"));
+      delete caP;
+      mongoRequest.release();
+      return false;
     }
-    else if (kNodeP == modifiedAtP)
-    {
-      // FIXME: Make sure the value is a valid timestamp?
-
-      // Ignore the 'createdAt' - See issue #43 (orionld)
-#if 0
-      // 2. Save it for future use (when creating the entity)
-      if ((orionldState.overriddenModificationDate = parse8601Time(modifiedAtP->value.s)) == -1)
-      {
-        orionldErrorResponseCreate(OrionldBadRequestData, "Invalid value for 'modifiedAt' attribute", modifiedAtP->value.s, OrionldDetailsString);
-        mongoRequest.release();
-        return false;
-      }
-#endif
-    }
-    else  // Must be an attribute
-    {
-      LM_T(LmtPayloadCheck, ("Not createdAt/modifiedAt: '%s' - treating as ordinary attribute", kNodeP->name));
-
-      ContextAttribute* caP            = new ContextAttribute();
-      KjNode*           attrTypeNodeP  = NULL;
-
-      if (orionldAttributeTreat(ciP, kNodeP, caP, &attrTypeNodeP) == false)
-      {
-        LM_E(("orionldAttributeTreat failed"));
-        delete caP;
-        mongoRequest.release();
-        return false;
-      }
-
-
-      //
-      // URI Expansion for Attribute NAME - except if its name is one of the following three:
-      // 1. location
-      // 2. observationSpace
-      // 3. operationSpace
-      //
-      if ((strcmp(kNodeP->name, "location") == 0) || (strcmp(kNodeP->name, "observationSpace") == 0) || (strcmp(kNodeP->name, "operationSpace") == 0))
-      {
-        caP->name = kNodeP->name;
-      }
-      else
-      {
-        char longName[256];
-
-        if (orionldUriExpand(orionldState.contextP, kNodeP->name, longName, sizeof(longName), &details) == false)
-        {
-          LM_E(("orionldUriExpand failed"));
-          delete caP;
-          mongoRequest.release();
-          orionldErrorResponseCreate(OrionldBadRequestData, details, kNodeP->name, OrionldDetailsAttribute);
-          return false;
-        }
-
-        caP->name = longName;
-      }
-
-
-      //
-      // NO URI Expansion for Attribute TYPE
-      //
-      caP->type = attrTypeNodeP->value.s;
-
+    LM_TMP(("EXPAND: Treated attribute '%s'", caP->name.c_str()));
+    if (attrTypeNodeP != NULL)
       ceP->contextAttributeVector.push_back(caP);
-    }
+    else
+      delete caP;
   }
 
+
+  //
+  // Mongo
+  //
+  LM_TMP(("VEX: Calling mongoUpdateContext"));
   ciP->httpStatusCode = mongoUpdateContext(&mongoRequest,
                                            &mongoResponse,
                                            orionldState.tenant,
@@ -414,7 +338,7 @@ bool orionldPostEntities(ConnectionInfo* ciP)
   if (ciP->httpStatusCode != SccOk)
   {
     LM_E(("mongoUpdateContext: HTTP Status Code: %d", ciP->httpStatusCode));
-    orionldErrorResponseCreate(OrionldBadRequestData, "Internal Error", "Error from Mongo-DB backend", OrionldDetailsString);
+    orionldErrorResponseCreate(OrionldBadRequestData, "Internal Error", "Error from Mongo-DB backend");
     return false;
   }
 

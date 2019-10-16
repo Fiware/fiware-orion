@@ -39,6 +39,16 @@
 
 #include "ngsi/ContextElement.h"                                 // ContextElement
 
+#include "mongoBackend/mongoQueryContext.h"                    // mongoQueryContext
+
+#include "orionld/common/urlCheck.h"                           // urlCheck
+#include "orionld/common/urnCheck.h"                           // urnCheck
+#include "orionld/common/OrionldConnection.h"                  // orionldState
+#include "orionld/context/orionldContextAdd.h"                 // Add a context to the context list
+#include "orionld/kjTree/kjTreeFromQueryContextResponse.h"     // kjTreeFromQueryContextResponse
+#include "orionld/common/orionldErrorResponse.h"               // orionldErrorResponseCreate
+#include "orionld/context/orionldUriExpand.h"                  // orionldUriExpand
+
 
 
 // ----------------------------------------------------------------------------
@@ -54,7 +64,7 @@ bool orionldPatchAttribute(ConnectionInfo* ciP)
   if (mongoEntityExists(entityId, orionldState.tenant) == false)
   {
     ciP->httpStatusCode = SccNotFound;
-    orionldErrorResponseCreate(OrionldBadRequestData, "Entity does not exist", orionldState.wildcard[0], OrionldDetailsString);
+    orionldErrorResponseCreate(OrionldBadRequestData, "Entity does not exist", orionldState.wildcard[0]);
     return false;
   }
 
@@ -62,7 +72,7 @@ bool orionldPatchAttribute(ConnectionInfo* ciP)
   if (orionldState.requestTree == NULL)
   {
     ciP->httpStatusCode = SccBadRequest;
-    orionldErrorResponseCreate(OrionldBadRequestData, "Payload is missing", NULL, OrionldDetailsString);
+    orionldErrorResponseCreate(OrionldBadRequestData, "Payload is missing", NULL);
     return false;
   }
 
@@ -70,7 +80,7 @@ bool orionldPatchAttribute(ConnectionInfo* ciP)
   if  (orionldState.requestTree->type != KjObject)
   {
     ciP->httpStatusCode = SccBadRequest;
-    orionldErrorResponseCreate(OrionldBadRequestData, "Payload not a JSON object", kjValueType(orionldState.requestTree->type), OrionldDetailsString);
+    orionldErrorResponseCreate(OrionldBadRequestData, "Payload not a JSON object", kjValueType(orionldState.requestTree->type));
     return false;
   }
 
@@ -78,10 +88,37 @@ bool orionldPatchAttribute(ConnectionInfo* ciP)
   if  (orionldState.requestTree->value.firstChildP == NULL)
   {
     ciP->httpStatusCode = SccBadRequest;
-    orionldErrorResponseCreate(OrionldBadRequestData, "Payload is an empty JSON object", NULL, OrionldDetailsString);
+    orionldErrorResponseCreate(OrionldBadRequestData, "Payload is an empty JSON object", NULL);
     return false;
   }
 
+  // validate the payload content informed by user e get the attribute value
+  KjValue        attrValue;
+  KjValueType    atrrValueType;
+
+   for (KjNode* userPayloadNodeP = orionldState.requestTree->value.firstChildP; userPayloadNodeP != NULL; userPayloadNodeP = userPayloadNodeP->next)
+   {
+
+     if(SCOMPARE9(userPayloadNodeP->name, '@', 'c', 'o', 'n', 't', 'e', 'x', 't', 0))
+     {
+       // Do Nothing
+     }
+     else if(SCOMPARE6(userPayloadNodeP->name, 'v', 'a', 'l', 'u', 'e', 0))
+     {
+       // Get the attribute value and the attrbibue value type
+       attrValue = userPayloadNodeP->value;
+       atrrValueType = userPayloadNodeP->type;
+
+     }
+     else{
+       // Invalid key in payload
+       ciP->httpStatusCode = SccBadRequest;
+       orionldErrorResponseCreate(OrionldBadRequestData, "Invalid key in the payload:", userPayloadNodeP->name);
+       return false;
+
+     }
+
+   }
 
   //
   // URI Expansion for the attribute name, except if "location", "observationSpace", or "operationSpace"
@@ -96,69 +133,130 @@ bool orionldPatchAttribute(ConnectionInfo* ciP)
     attrName = orionldState.wildcard[1];
   else
   {
-      
     char  attrLongName[256];
     char* details;
+    
 
-    if (orionldUriExpand(orionldState.contextP, orionldState.wildcard[1] , attrLongName, sizeof(attrLongName), &details) == true)
+    if (orionldUriExpand(orionldState.contextP, orionldState.wildcard[1] , attrLongName, sizeof(attrLongName),  NULL, &details) == true)
       attrName = attrLongName;
     else
     {
-     orionldErrorResponseCreate(OrionldBadRequestData, details, orionldState.wildcard[1] , OrionldDetailsAttribute);
+     orionldErrorResponseCreate(OrionldBadRequestData, details, orionldState.wildcard[1] );
      return false;
     }
   }
    
-  LM_T(LmtServiceRoutine, ("jorge-log: nome do atributo: %s", attrName));
 
   // Make sure the attribute to be patched exists
   if (mongoAttributeExists(entityId, attrName, orionldState.tenant) == false)
   {
     ciP->httpStatusCode = SccNotFound;
-    orionldErrorResponseCreate(OrionldBadRequestData, "Attribute does not exist", orionldState.wildcard[1], OrionldDetailsString);
+    orionldErrorResponseCreate(OrionldBadRequestData, "Attribute does not exist", orionldState.wildcard[1]);
     return false;
   }
+
+
   
-  //if(SCOMPARE6(orionldState.requestTree->value.firstChildP->name, 'v', 'a', 'l', 'u', 'e', 0))
-  //{
-    //
-    // mongo ...
-    // - fill in the UpdateContextRequest from the KjTree
-    // - call the mongo routine 'mongoUpdateContext'
-    //
-    UpdateContextRequest   mongoRequest;
-    UpdateContextResponse  mongoResponse;
-    ContextElement*        ceP       = new ContextElement();  // FIXME: Any way I can avoid to allocate ?
-    EntityId*              entityIdP;
-    
-    mongoRequest.contextElementVector.push_back(ceP);
+  bool                  keyValues = false;
+  QueryContextRequest   request;
+  QueryContextResponse  response;
+  EntityId              updatedEntityId(orionldState.wildcard[0], "", "false", false);
+  char*                 details;
+  
+  request.entityIdVector.push_back(&updatedEntityId);
 
-    entityIdP     = &mongoRequest.contextElementVector[0]->entityId;
-    entityIdP->id = entityId;
-    mongoRequest.updateActionType = ActionTypeAppendStrict;
-
-    KjNode*            attrTypeNodeP = NULL;
-    ContextAttribute*  caP           = new ContextAttribute();
-    
+  //
+  // Make sure the ID (orionldState.wildcard[0]) is a valid URI
+  //
+  if ((urlCheck(orionldState.wildcard[0], &details) == false) && (urnCheck(orionldState.wildcard[0], &details) == false))
+  {
+    LM_W(("Bad Input (Invalid Entity ID - Not a URL nor a URN)"));
+    orionldErrorResponseCreate(OrionldBadRequestData, "Invalid Entity ID", "Not a URL nor a URN");
+    return false;
+  }
 
 
-    KjNode* kNodeP = orionldState.requestTree->value.firstChildP;
+// retrieve the updated entity from database
+    ciP->httpStatusCode = mongoQueryContext(&request,
+                                          &response,
+                                          orionldState.tenant,
+                                          ciP->servicePathV,
+                                          ciP->uriParam,
+                                          ciP->uriParamOptions,
+                                          NULL,
+                                          ciP->apiVersion);
+
+  if (response.errorCode.code == SccBadRequest)
+  {
+    orionldErrorResponseCreate(OrionldBadRequestData, "Bad Request", NULL);
+    return false;
+  }
+
+  
+   KjNode* myEntity = kjTreeFromQueryContextResponse(ciP, true, NULL , keyValues, &response);
+
    
-     if (orionldAttributeTreat(ciP, kNodeP, caP, &attrTypeNodeP) == false)
+   KjNode*            updatedAtrrP   = NULL;
+
+  if (myEntity == NULL)
+    ciP->httpStatusCode = SccContextElementNotFound;
+  else{
+
+
+    
+      // update the attribute value based in content informed by user  
+      for (KjNode* kNodeP = myEntity->value.firstChildP; kNodeP != NULL; kNodeP = kNodeP->next)
+      {
+
+        if(strcmp(kNodeP->name, orionldState.wildcard[1]) == 0){
+          
+          updatedAtrrP = kNodeP;
+
+          for (KjNode* attrP = updatedAtrrP->value.firstChildP; attrP != NULL; attrP = attrP->next)
+          {
+            if(SCOMPARE6(attrP->name, 'v',  'a', 'l', 'u', 'e', 0))
+            {
+              attrP->value = attrValue;
+              attrP->type = atrrValueType;
+
+              break;
+            }
+          }
+
+          break;
+        }
+      }
+  }
+
+    // Store the new attribute value in the database
+     KjNode*            attrTypeNodeP = NULL;
+
+     UpdateContextRequest   mongoRequest;
+     UpdateContextResponse  mongoResponse;
+     ContextElement*        ceP       = new ContextElement();  // FIXME: Any way I can avoid to allocate ?
+     EntityId*              entityIdP;
+    
+     mongoRequest.contextElementVector.push_back(ceP);
+
+     entityIdP                     = &mongoRequest.contextElementVector[0]->entityId;
+     entityIdP->id                 = entityId;
+     mongoRequest.updateActionType = ActionTypeAppendStrict;
+
+     
+    ContextAttribute*  caP           = new ContextAttribute();    
+     
+
+     if (orionldAttributeTreat(ciP, updatedAtrrP, caP, &attrTypeNodeP) == false)
     {
       mongoRequest.release();
-      LM_E(("orionldAttributeTreat failed"));
       delete caP;
       return false;
     } 
-    
-     LM_T(LmtServiceRoutine, ("jorge-log: type do atributo: %s", attrTypeNodeP->value.s));
 
-     // NO URI Expansion for Attribute TYPE
-    caP->type = attrTypeNodeP->value.s;
-
-    // Add the attribute to the attr vector
-    ceP->contextAttributeVector.push_back(caP);
+    if (attrTypeNodeP != NULL)
+      ceP->contextAttributeVector.push_back(caP);
+    else
+      delete caP;
 
      //
     // Call mongoBackend - FIXME: call postUpdateContext, not mongoUpdateContext
@@ -178,23 +276,10 @@ bool orionldPatchAttribute(ConnectionInfo* ciP)
     else
     {
       LM_E(("mongoUpdateContext: HTTP Status Code: %d", ciP->httpStatusCode));
-      orionldErrorResponseCreate(OrionldBadRequestData, "Internal Error", "Error from Mongo-DB backend", OrionldDetailsString);
+      orionldErrorResponseCreate(OrionldBadRequestData, "Internal Error", "Error from Mongo-DB backend");
       return false;
     }
+  
 
-  /* }
-  else
-  {
-   ciP->httpStatusCode = SccBadRequest;
-   orionldErrorResponseCreate(OrionldBadRequestData, "Invalid content in the payload.", orionldState.requestTree->value.firstChildP->name , OrionldDetailsString);
-
-   return false;
-  } */
-  
-  //ciP->httpStatusCode = SccNotImplemented;
-  //orionldErrorResponseCreate(OrionldBadRequestData, "Not implemented - PATCH /ngsi-ld/v1/entities/*/attrs", orionldState.wildcard[0], OrionldDetailsString);
-  
-   LM_T(LmtServiceRoutine, ("jorge-log: valor do atributo: %s", orionldState.requestTree->value.firstChildP->value));
-  
   return true;
 }

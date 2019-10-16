@@ -87,7 +87,7 @@ MongoDB server version: REGEX(.*)
 {
 	"_id" : {
 		"id" : "urn:ngsi-ld:entity:E1",
-		"type" : "http://example.org/ngsi-ld/default/T1",
+		"type" : "https://uri.etsi.org/ngsi-ld/default-context/T1",
 		"servicePath" : "/"
 	},
 	"attrNames" : [ ],
@@ -106,7 +106,7 @@ bye
 HTTP/1.1 200 OK
 Content-Length: 42
 Content-Type: application/json
-Link: <https://forge.etsi.org/gitlab/NGSI-LD/NGSI-LD/raw/master/defaultContext/defaultContext.jsonld>; rel="http://www.w3.org/ns/json-ld#context"; type="application/ld+json"
+Link: <https://uri.etsi.org/ngsi-ld/v1/ngsi-ld-core-context.jsonld>; rel="http://www.w3.org/ns/json-ld#context"; type="application/ld+json"
 Date: REGEX(.*)
 
 {
@@ -118,14 +118,14 @@ Date: REGEX(.*)
 04. Attempt to get the entity in the default tenant - no match
 ==============================================================
 HTTP/1.1 404 Not Found
-Content-Length: 120
+Content-Length: 119
 Content-Type: application/json
 Date: REGEX(.*)
 
 {
-    "details": "no details",
+    "detail": "no detail",
     "title": "No context element found",
-    "type": "http://uri.etsi.org/ngsi-ld/errors/ResourceNotFound"
+    "type": "https://uri.etsi.org/ngsi-ld/errors/ResourceNotFound"
 }
 
 

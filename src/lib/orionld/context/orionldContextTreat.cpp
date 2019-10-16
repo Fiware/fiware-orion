@@ -58,7 +58,7 @@ static OrionldContext* contextItemNodeTreat(ConnectionInfo* ciP, char* url)
   {
     LM_E(("Invalid context '%s': %s", url, details));
     orionldState.contextP = NULL;  // Leak?
-    orionldErrorResponseCreate(OrionldBadRequestData, "Invalid context", details, OrionldDetailsString);
+    orionldErrorResponseCreate(OrionldBadRequestData, "Invalid context", details);
     ciP->httpStatusCode = SccBadRequest;
     return NULL;
   }
@@ -127,8 +127,15 @@ bool orionldContextTreat
     if ((orionldState.contextP = orionldContextCreateFromUrl(ciP, contextNodeP->value.s, OrionldUserContext, &details)) == NULL)
     {
       LM_E(("Failed to create context from URL: %s", details));
-      orionldErrorResponseCreate(OrionldBadRequestData, "Failure to create context from URL", details, OrionldDetailsString);
-      ciP->httpStatusCode = SccBadRequest;
+
+      // orionldContextCreateFromUrl sets ciP->httpStatusCode
+      if (ciP->httpStatusCode == SccServiceUnavailable)
+      {
+        LM_TMP(("Setting error response to 'Unable to download context' + '%s'", contextNodeP->value.s));
+        orionldErrorResponseCreate(OrionldLdContextNotAvailable, "Unable to download context", contextNodeP->value.s);
+      }
+      else
+        orionldErrorResponseCreate(OrionldBadRequestData, "Failure to create context from URL", details);
       return false;
     }
 
@@ -143,7 +150,7 @@ bool orionldContextTreat
     if (orionldState.contextP == NULL)
     {
       LM_E(("Failed to create context from Tree : %s", details));
-      orionldErrorResponseCreate(OrionldBadRequestData, "Failure to create context from tree", details, OrionldDetailsString);
+      orionldErrorResponseCreate(OrionldBadRequestData, "Failure to create context from tree", details);
       ciP->httpStatusCode = SccBadRequest;
       return false;
     }
@@ -162,7 +169,6 @@ bool orionldContextTreat
         {
           LM_E(("contextItemNodeTreat failed"));
           // Error payload set by contextItemNodeTreat
-          free(orionldState.contextP);
           orionldState.contextP = NULL;  // Leak?
           return false;
         }
@@ -172,9 +178,8 @@ bool orionldContextTreat
         if (orionldContextTreat(ciP, contextArrayItemP) == false)
         {
           LM_E(("Error treating context object inside array"));
-          free(orionldState.contextP);
           orionldState.contextP = NULL;  // Leak?
-          orionldErrorResponseCreate(OrionldBadRequestData, "Error treating context object inside array", NULL, OrionldDetailsString);
+          orionldErrorResponseCreate(OrionldBadRequestData, "Error treating context object inside array", NULL);
           ciP->httpStatusCode = SccBadRequest;
           return false;
         }
@@ -182,9 +187,8 @@ bool orionldContextTreat
       else
       {
         LM_E(("Context Array Item is not a String nor an Object, but of type '%s'", kjValueType(contextArrayItemP->type)));
-        free(orionldState.contextP);
         orionldState.contextP = NULL;  // Leak?
-        orionldErrorResponseCreate(OrionldBadRequestData, "Context Array Item is of an unsupported type", NULL, OrionldDetailsString);
+        orionldErrorResponseCreate(OrionldBadRequestData, "Context Array Item is of an unsupported type", NULL);
         ciP->httpStatusCode = SccBadRequest;
         return false;
       }
@@ -196,7 +200,7 @@ bool orionldContextTreat
     {
       // orionldContextInlineCheck sets the error response
       LM_E(("Invalid inline context"));
-      orionldState.contextP = NULL;  // Leak?
+      orionldState.contextP = NULL;
       return false;
     }
 
@@ -216,7 +220,7 @@ bool orionldContextTreat
   {
     LM_E(("invalid JSON type of @context member"));
     orionldState.contextP = NULL;  // Leak?
-    orionldErrorResponseCreate(OrionldBadRequestData, "Invalid context", "invalid JSON type of @context member", OrionldDetailsString);
+    orionldErrorResponseCreate(OrionldBadRequestData, "Invalid context", "invalid JSON type of @context member");
     ciP->httpStatusCode = SccBadRequest;
     return false;
   }
@@ -237,7 +241,7 @@ bool orionldContextTreat
 
   if (orionldUserContextKeyValuesCheck(orionldState.contextP->tree, orionldState.contextP->url, &details) == false)
   {
-    orionldErrorResponseCreate(OrionldBadRequestData, "Invalid context", details, OrionldDetailsString);
+    orionldErrorResponseCreate(OrionldBadRequestData, "Invalid context", details);
     ciP->httpStatusCode = SccBadRequest;
     return false;
   }

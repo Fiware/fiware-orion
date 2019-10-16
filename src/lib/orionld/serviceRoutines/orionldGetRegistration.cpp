@@ -29,10 +29,6 @@
 #include "rest/httpHeaderAdd.h"                                // httpHeaderAdd
 #include "mongoBackend/mongoRegistrationGet.h"                 // mongoLdRegistrationGet
 #include "orionld/common/orionldState.h"                       // orionldState
-
-#include "orionld/common/OrionldConnection.h"                    // orionldState
-#include "orionld/context/orionldCoreContext.h"                  // orionldDefaultContext
-
 #include "orionld/common/orionldErrorResponse.h"               // orionldErrorResponseCreate
 #include "orionld/serviceRoutines/orionldGetRegistration.h"    // Own Interface
 #include "orionld/kjTree/kjTreeFromRegistration.h"             // kjTreeFromRegistration
@@ -54,7 +50,7 @@ bool orionldGetRegistration(ConnectionInfo* ciP)
   if (mongoLdRegistrationGet(&registration, orionldState.wildcard[0], orionldState.tenant, &ciP->httpStatusCode, &details) != true)
   {
     LM_E(("mongoLdRegistrationGet error: %s", details));
-    orionldErrorResponseCreate(OrionldResourceNotFound, details, orionldState.wildcard[0], OrionldDetailsString);
+    orionldErrorResponseCreate(OrionldResourceNotFound, details, orionldState.wildcard[0]);
     return false;
   }
 
