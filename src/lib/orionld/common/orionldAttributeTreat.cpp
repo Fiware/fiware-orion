@@ -499,7 +499,7 @@ bool orionldAttributeTreat(ConnectionInfo* ciP, KjNode* kNodeP, ContextAttribute
     LM_TMP(("VEX: Calling orionldUriExpand for node '%s' is of type '%s'", kNodeP->name, kjValueType(kNodeP->type)));
     if (orionldUriExpand(orionldState.contextP, kNodeP->name, longName, 512, &valueMayBeExpanded, &detail) == false)
     {
-      LM_E(("VEX: orionldUriExpand failed for '%s': %s", kNodeP->name, detail));
+      LM_E(("orionldUriExpand failed for '%s': %s", kNodeP->name, detail));
       *detailP = (char*) "orionldUriExpand failed";
       orionldErrorResponseCreate(OrionldBadRequestData, detail, kNodeP->name);
       return false;
