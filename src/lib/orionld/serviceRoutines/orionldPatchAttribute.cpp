@@ -110,6 +110,13 @@ bool orionldPatchAttribute(ConnectionInfo* ciP)
        atrrValueType = userPayloadNodeP->type;
 
      }
+     else if(SCOMPARE7(userPayloadNodeP->name, 'o', 'b', 'j', 'e', 'c', 't', 0))
+     {
+       // Get the attribute object and the attrbibue value type
+       attrValue = userPayloadNodeP->value;
+       atrrValueType = userPayloadNodeP->type;
+
+     }
      else{
        // Invalid key in payload
        ciP->httpStatusCode = SccBadRequest;
@@ -215,6 +222,12 @@ bool orionldPatchAttribute(ConnectionInfo* ciP)
           for (KjNode* attrP = updatedAtrrP->value.firstChildP; attrP != NULL; attrP = attrP->next)
           {
             if(SCOMPARE6(attrP->name, 'v',  'a', 'l', 'u', 'e', 0))
+            {
+              attrP->value = attrValue;
+              attrP->type = atrrValueType;
+
+              break;
+            }else if(SCOMPARE7(attrP->name, 'o',  'b', 'j', 'e', 'c', 't', 0))
             {
               attrP->value = attrValue;
               attrP->type = atrrValueType;
