@@ -34,6 +34,7 @@ extern "C"
 #include "orionld/context/OrionldContext.h"                    // OrionldContext
 #include "orionld/context/orionldContextList.h"                // orionldContextHead
 #include "orionld/context/orionldContextLookup.h"              // orionldContextLookup
+#include "orionld/context/orionldCoreContext.h"                // orionldCoreContext
 #include "orionld/context/orionldContextValueLookup.h"         // Own interface
 
 
@@ -173,7 +174,7 @@ static KjNode* orionldContextValueLookupInArray(KjNode* contextVector, const cha
 KjNode* orionldContextValueLookup(OrionldContext* contextP, const char* value)
 {
   if (contextP == NULL)
-    return NULL;
+    contextP = &orionldCoreContext;
 
   LM_T(LmtContextValueLookup, ("Looking up '%s' in context '%s' (which is of type '%s')", value, contextP->url, kjValueType(contextP->tree->type)));
 
