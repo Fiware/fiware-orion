@@ -98,24 +98,22 @@ bool orionldPatchAttribute(ConnectionInfo* ciP)
 
    for (KjNode* userPayloadNodeP = orionldState.requestTree->value.firstChildP; userPayloadNodeP != NULL; userPayloadNodeP = userPayloadNodeP->next)
    {
-
+     
      if(SCOMPARE9(userPayloadNodeP->name, '@', 'c', 'o', 'n', 't', 'e', 'x', 't', 0))
      {
        // Do Nothing
      }
-     else if(SCOMPARE6(userPayloadNodeP->name, 'v', 'a', 'l', 'u', 'e', 0))
+     else if(SCOMPARE6(userPayloadNodeP->name, 'v', 'a', 'l', 'u', 'e', 0)) // the updated attr is a property or geoproperty
      {
-       // Get the attribute value and the attrbibue value type
+       // Get the attribute value and the attribute value type
        attrValue = userPayloadNodeP->value;
        atrrValueType = userPayloadNodeP->type;
-
      }
-     else if(SCOMPARE7(userPayloadNodeP->name, 'o', 'b', 'j', 'e', 'c', 't', 0))
+     else if(SCOMPARE7(userPayloadNodeP->name, 'o', 'b', 'j', 'e', 'c', 't', 0)) //the updated atrr is a relationship
      {
        // Get the attribute object and the attrbibue value type
        attrValue = userPayloadNodeP->value;
        atrrValueType = userPayloadNodeP->type;
-
      }
      else{
        // Invalid key in payload
@@ -214,24 +212,20 @@ bool orionldPatchAttribute(ConnectionInfo* ciP)
       // update the attribute value based in content informed by user  
       for (KjNode* kNodeP = myEntity->value.firstChildP; kNodeP != NULL; kNodeP = kNodeP->next)
       {
-
         if(strcmp(kNodeP->name, orionldState.wildcard[1]) == 0){
-          
           updatedAtrrP = kNodeP;
 
           for (KjNode* attrP = updatedAtrrP->value.firstChildP; attrP != NULL; attrP = attrP->next)
           {
-            if(SCOMPARE6(attrP->name, 'v',  'a', 'l', 'u', 'e', 0))
+            if(SCOMPARE6(attrP->name, 'v',  'a', 'l', 'u', 'e', 0)) // update the property or geoproperty value
             {
               attrP->value = attrValue;
               attrP->type = atrrValueType;
-
               break;
-            }else if(SCOMPARE7(attrP->name, 'o',  'b', 'j', 'e', 'c', 't', 0))
+            }else if(SCOMPARE7(attrP->name, 'o',  'b', 'j', 'e', 'c', 't', 0)) //update the relationship value
             {
               attrP->value = attrValue;
               attrP->type = atrrValueType;
-
               break;
             }
           }
@@ -256,8 +250,7 @@ bool orionldPatchAttribute(ConnectionInfo* ciP)
      mongoRequest.updateActionType = ActionTypeAppendStrict;
 
      
-    ContextAttribute*  caP           = new ContextAttribute();    
-     
+    ContextAttribute*  caP           = new ContextAttribute(); 
 
      if (orionldAttributeTreat(ciP, updatedAtrrP, caP, &attrTypeNodeP) == false)
     {
