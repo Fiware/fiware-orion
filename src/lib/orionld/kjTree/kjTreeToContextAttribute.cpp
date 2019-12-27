@@ -436,6 +436,18 @@ static bool atValueCheck(KjNode* atTypeNodeP, KjNode* atValueNodeP, char** title
 //
 // kjTreeToContextAttribute -
 //
+// NOTE
+//   Make sure that this function is not called for attributes called "createdAt" or "modifiedAt"
+//
+// FIXME: typeNodePP is currently used in orionldPatchEntity, orionldPostEntities, and orionldPostEntity as a means
+//        to decide whether or not add the attribute to the attribute vector - "bool* ignoreP" would be better
+//
+//        Current fix is that the three callers of this function make sure that the function is NOT CALLED if the
+//        name of the attribute is either "createdAt" or "modifiedAt" - that's why I could out-deff the initial part
+//        that checks for those two names - faster solution.
+//
+// FIXME: This function is TOO LONG - try to split up
+//
 bool kjTreeToContextAttribute(ConnectionInfo* ciP, KjNode* kNodeP, ContextAttribute* caP, KjNode** typeNodePP, char** detailP)
 {
   char* caName = kNodeP->name;
@@ -459,9 +471,7 @@ bool kjTreeToContextAttribute(ConnectionInfo* ciP, KjNode* kNodeP, ContextAttrib
   //
   // Expand name of attribute
   //
-  if ((strcmp(kNodeP->name, "location")         != 0) &&
-      (strcmp(kNodeP->name, "observationSpace") != 0) &&
-      (strcmp(kNodeP->name, "operationSpace")   != 0))
+  if ((strcmp(kNodeP->name, "location") != 0) && (strcmp(kNodeP->name, "observationSpace") != 0) && (strcmp(kNodeP->name, "operationSpace") != 0))
   {
     char*  longName;
     bool   valueMayBeExpanded  = false;
@@ -479,19 +489,7 @@ bool kjTreeToContextAttribute(ConnectionInfo* ciP, KjNode* kNodeP, ContextAttrib
 
   //
   // For performance issues, all predefined names should have their char-sum precalculated
-  //
-  // E.g.:
-  // const int TYPE_CHARSUM = 't' + 'y' + 'p' + 'e'
-  //
-  // int nodeNameCharsum = 0;
-  // for (char* nodeNameP = nodeP->name; *nodeNameP != 0; ++nodeNameP)
-  //   nodeNameCharsum += *nodeNameP;
-  //
-  // if ((nodeNameCharsum == TYPE_CHARSUM) && (SCOMPARE5(nodeP->name, 't', 'y', 'p', 'e', 0)))
-  // { ... }
-  //
-  // ADVANTAGE:
-  //   Just a simple integer comparison before we do the complete string-comparisom
+  // Advantage: just a simple integer comparison before we do the complete string-comparisom
   //
   KjNode*  typeP                  = NULL;  // For ALL:            Mandatory
   KjNode*  valueP                 = NULL;  // For 'Property':     Mandatory
@@ -565,7 +563,7 @@ bool kjTreeToContextAttribute(ConnectionInfo* ciP, KjNode* kNodeP, ContextAttrib
       {
         isProperty         = true;
         isTemporalProperty = true;
-        // FIXME: Give error - users can't create TemporalProperties
+        // FIXME: Give error - users can't create TemporalProperties (unless it's "observedAt")
       }
       else
       {
@@ -576,7 +574,7 @@ bool kjTreeToContextAttribute(ConnectionInfo* ciP, KjNode* kNodeP, ContextAttrib
       }
 
       *typeNodePP = typeP;
-      caP->type = typeP->value.s;
+      caP->type   = typeP->value.s;
     }
     else if (SCOMPARE6(nodeP->name, 'v', 'a', 'l', 'u', 'e', 0))
     {
