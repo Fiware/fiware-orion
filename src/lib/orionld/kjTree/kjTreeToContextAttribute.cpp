@@ -24,31 +24,26 @@
 */
 extern "C"
 {
-#include "kbase/kTime.h"                                         // kTimeGet, kTimeDiff
-#include "kbase/kMacros.h"                                       // K_FT
 #include "kjson/KjNode.h"                                        // KjNode
-#include "kalloc/kaAlloc.h"                                      // kaAlloc
 }
 
 #include "logMsg/logMsg.h"                                       // LM_*
 #include "logMsg/traceLevels.h"                                  // Lmt*
 
-#include "ngsi/ContextAttribute.h"                               // ContextAttribute
 #include "rest/ConnectionInfo.h"                                 // ConnectionInfo
-#include "common/string.h"                                       // FT
-
-#include "orionld/common/geoJsonCheck.h"                         // geoJsonCheck
-#include "orionld/common/orionldState.h"                         // orionldState
+#include "ngsi/ContextAttribute.h"                               // ContextAttribute
 #include "orionld/common/orionldErrorResponse.h"                 // orionldErrorResponseCreate
 #include "orionld/common/SCOMPARE.h"                             // SCOMPAREx
 #include "orionld/common/CHECK.h"                                // CHECK
+#include "orionld/common/orionldState.h"                         // orionldState
+#include "orionld/common/geoJsonCheck.h"                         // geoJsonCheck
 #include "orionld/common/urlCheck.h"                             // urlCheck
 #include "orionld/common/urnCheck.h"                             // urnCheck
 #include "orionld/context/orionldCoreContext.h"                  // orionldCoreContextP
 #include "orionld/context/orionldContextItemExpand.h"            // orionldContextItemExpand
 #include "orionld/context/orionldContextValueExpand.h"           // orionldContextValueExpand
 #include "orionld/kjTree/kjTreeToMetadata.h"                     // kjTreeToMetadata
-#include "orionld/common/orionldAttributeTreat.h"                // Own interface  - FIXME: Move to kjTree/kjTreeTocontextAttribute.h/cpp
+#include "orionld/kjTree/kjTreeToContextAttribute.h"             // Own interface
 
 
 
@@ -439,19 +434,9 @@ static bool atValueCheck(KjNode* atTypeNodeP, KjNode* atValueNodeP, char** title
 
 // -----------------------------------------------------------------------------
 //
-// orionldAttributeTreat -
+// kjTreeToContextAttribute -
 //
-// NOTE
-//   Make sure that this function is not called for attributes called "createdAt" or "modifiedAt"
-//
-// FIXME: typeNodePP is currently used in orionldPatchEntity, orionldPostEntities, and orionldPostEntity as a means
-//        to decide whether or not add the attribute to the attribute vector - "bool* ignoreP" would be better
-//
-//        Current fix is that the three callers of this function make sure that the function is NOT CALLED if the
-//        name of the attribute is either "createdAt" or "modifiedAt" - that's why I could out-deff the initial part
-//        that checks for those two names - faster solution.
-//
-bool orionldAttributeTreat(ConnectionInfo* ciP, KjNode* kNodeP, ContextAttribute* caP, KjNode** typeNodePP, char** detailP)
+bool kjTreeToContextAttribute(ConnectionInfo* ciP, KjNode* kNodeP, ContextAttribute* caP, KjNode** typeNodePP, char** detailP)
 {
   char* caName = kNodeP->name;
 
