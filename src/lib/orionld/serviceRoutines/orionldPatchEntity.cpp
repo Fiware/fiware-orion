@@ -61,7 +61,7 @@ extern "C"
 //   For each of the Attributes included in the Fragment, if the target Entity includes a matching one (considering
 //   term expansion rules as mandated by clause 5.5.7), then replace it by the one included by the Fragment. If the
 //   Attribute includes a datasetId, only an Attribute instance with the same datasetId is replaced.
-//   In all other cases, the Attribute shall be ignored. 
+//   In all other cases, the Attribute shall be ignored.
 //
 bool orionldPatchEntity(ConnectionInfo* ciP)
 {
