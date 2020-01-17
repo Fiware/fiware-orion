@@ -81,14 +81,10 @@ bool attributeCheck(ConnectionInfo* ciP, KjNode* attrNodeP, char** titleP, char*
       DUPLICATE_CHECK(typeP, "type", nodeP);
       STRING_CHECK(typeP, "type");
 
-      if (strcmp(typeP->value.s, "Property") == 0)
-        attrType = 1;
-      else if (strcmp(typeP->value.s, "Relationship") == 0)
-        attrType = 2;
-      else if (strcmp(typeP->value.s, "GeoProperty") == 0)
-        attrType = 3;
-      else if (strcmp(typeP->value.s, "TemporalProperty") == 0)
-        attrType = 4;
+      if      (strcmp(typeP->value.s, "Property")         == 0)  attrType = 1;
+      else if (strcmp(typeP->value.s, "Relationship")     == 0)  attrType = 2;
+      else if (strcmp(typeP->value.s, "GeoProperty")      == 0)  attrType = 3;
+      else if (strcmp(typeP->value.s, "TemporalProperty") == 0)  attrType = 4;
       else
       {
         *titleP  = (char*) "Invalid Value of Attribute Type";
@@ -115,21 +111,27 @@ bool attributeCheck(ConnectionInfo* ciP, KjNode* attrNodeP, char** titleP, char*
     return false;
   }
 
-  if (attrType == 2)
+  if (attrType == 2)  // 2 == Relationship
   {
     // Relationships MUST have an "object"
-    *titleP  = (char*) "Mandatory field missing";
-    *detailP = (char*) "Relationship object";
+    if (objectP == NULL)
+    {
+      *titleP  = (char*) "Mandatory field missing";
+      *detailP = (char*) "Relationship object";
 
-    return false;
+      return false;
+    }
   }
   else
   {
     // Properties MUST have a "value"
-    *titleP  = (char*) "Mandatory field missing";
-    *detailP = (char*) "Property value";
+    if (valueP == NULL)
+    {
+      *titleP  = (char*) "Mandatory field missing";
+      *detailP = (char*) "Property value";
 
-    return false;
+      return false;
+    }
   }
 
   return true;
