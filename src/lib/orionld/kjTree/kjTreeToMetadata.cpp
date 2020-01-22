@@ -64,7 +64,7 @@ bool kjTreeToMetadata(ConnectionInfo* ciP, ContextAttribute* caP, KjNode* nodeP,
     orionldErrorResponseCreate(OrionldBadRequestData, *detailP, nodeP->name);
     return false;
   }
-  
+
 
   //
   // Expand sub-attribute name
