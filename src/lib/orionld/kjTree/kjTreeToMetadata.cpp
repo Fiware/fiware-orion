@@ -74,9 +74,9 @@ bool kjTreeToMetadata(ConnectionInfo* ciP, ContextAttribute* caP, KjNode* nodeP,
 
   if (metadataAdd(ciP, caP, nodeP, caName) == false)
   {
+    // metadataAdd calls orionldErrorResponseCreate
     LM_E(("Error adding metadata '%s' to attribute", nodeP->name));
-    *detailP = (char*) "Error adding metadata to attribute";
-    orionldErrorResponseCreate(OrionldBadRequestData, "Error adding metadata to an attribute", nodeP->name);
+    *detailP = (char*) "Error adding sub-attribute to attribute";
     return false;
   }
 
