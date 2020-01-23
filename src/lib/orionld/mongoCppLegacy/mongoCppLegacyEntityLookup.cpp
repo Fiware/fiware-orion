@@ -1,24 +1,24 @@
 /*
 *
-* Copyright 2019 Telefonica Investigacion y Desarrollo, S.A.U
+* Copyright 2019 FIWARE Foundation e.V.
 *
-* This file is part of Orion Context Broker.
+* This file is part of Orion-LD Context Broker.
 *
-* Orion Context Broker is free software: you can redistribute it and/or
+* Orion-LD Context Broker is free software: you can redistribute it and/or
 * modify it under the terms of the GNU Affero General Public License as
 * published by the Free Software Foundation, either version 3 of the
 * License, or (at your option) any later version.
 *
-* Orion Context Broker is distributed in the hope that it will be useful,
+* Orion-LD Context Broker is distributed in the hope that it will be useful,
 * but WITHOUT ANY WARRANTY; without even the implied warranty of
 * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero
 * General Public License for more details.
 *
 * You should have received a copy of the GNU Affero General Public License
-* along with Orion Context Broker. If not, see http://www.gnu.org/licenses/.
+* along with Orion-LD Context Broker. If not, see http://www.gnu.org/licenses/.
 *
 * For those usages not covered by this license please contact with
-* iot_support at tid dot es
+* orionld at fiware dot org
 *
 * Author: Ken Zangelin
 */
@@ -27,14 +27,14 @@
 extern "C"
 {
 #include "kjson/KjNode.h"                                        // KjNode
-#include "kjson/kjRender.h"                                      // kjRender - TMP
+#include "kjson/kjLookup.h"                                      // kjLookup
 }
 
 #include "logMsg/logMsg.h"                                       // LM_*
 #include "logMsg/traceLevels.h"                                  // Lmt*
 
 #include "mongoBackend/MongoGlobal.h"                            // getMongoConnection, releaseMongoConnection, ...
-#include "orionld/common/orionldState.h"                         // orionldState, dbName, mongoEntitiesCollectionP
+#include "orionld/common/eqForDot.h"                             // eqForDot
 #include "orionld/db/dbCollectionPathGet.h"                      // dbCollectionPathGet
 #include "orionld/db/dbConfiguration.h"                          // dbDataToKjTree
 #include "orionld/mongoCppLegacy/mongoCppLegacyEntityLookup.h"   // Own interface
@@ -51,7 +51,6 @@ KjNode* mongoCppLegacyEntityLookup(const char* entityId)
   KjNode* kjTree = NULL;
 
   dbCollectionPathGet(collectionPath, sizeof(collectionPath), "entities");
-  LM_TMP(("DB: Collection Path: %s", collectionPath));
 
 
   //
@@ -68,27 +67,61 @@ KjNode* mongoCppLegacyEntityLookup(const char* entityId)
 
   cursorP = connectionP->query(collectionPath, query);
 
+  //
+  // FIXME: Should not be a while-loop! Only ONE entity!!
+  //
   while (cursorP->more())
   {
-    mongo::BSONObj  bsonObj;
+    mongo::BSONObj  bsonObj = cursorP->nextSafe();
     char*           title;
     char*           details;
 
-    bsonObj = cursorP->nextSafe();
-
-    LM_TMP(("MERGE: Creating a kjTree from BSONObj '%s'", bsonObj.toString().c_str()));
     kjTree = dbDataToKjTree(&bsonObj, &title, &details);
     if (kjTree == NULL)
       LM_E(("%s: %s", title, details));
-
-#if 0
-    char tmpBuffer[2048];
-    kjRender(orionldState.kjsonP, kjTree, tmpBuffer, sizeof(tmpBuffer));
-    LM_TMP(("MERGE: json III: %s", tmpBuffer));
-#endif
   }
 
   releaseMongoConnection(connectionP);
+
   // semGive()
+
+  //
+  // Change "value" to "object" for all attributes that are "Relationship".
+  // Note that the "object" field of a Relationship is stored in the database under the field "value".
+  // That fact is fixed here, by renaming the "value" to "object" for attr with type == Relationship.
+  // This depends on the database model and thus should be fixed in the database layer.
+  //
+  if (kjTree != NULL)
+  {
+    KjNode* attrArrayP = kjLookup(kjTree, "attrs");
+    if (attrArrayP != NULL)
+    {
+      for (KjNode* attrP = attrArrayP->value.firstChildP; attrP != NULL; attrP = attrP->next)
+      {
+        KjNode* typeP = kjLookup(attrP, "type");
+        KjNode* mdsP  = kjLookup(attrP, "md");
+
+        if ((typeP != NULL) && (strcmp(typeP->value.s, "Relationship") == 0))
+        {
+          KjNode* valueP = kjLookup(attrP, "value");
+
+          valueP->name = (char*) "object";
+        }
+
+        if (mdsP != NULL)
+        {
+          for (KjNode* mdP = mdsP->value.firstChildP; mdP != NULL; mdP = mdP->next)
+          {
+            KjNode* typeP = kjLookup(mdP, "type");
+            if ((typeP != NULL) && (strcmp(typeP->value.s, "Relationship") == 0))
+            {
+              KjNode* valueP = kjLookup(mdP, "value");
+              valueP->name = (char*) "object";
+            }
+          }
+        }
+      }
+    }
+  }
   return  kjTree;
 }

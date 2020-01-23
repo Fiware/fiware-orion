@@ -89,7 +89,7 @@ void httpHeaderLinkAdd(ConnectionInfo* ciP, const char* _url)
     {
       url = &url[1];
 
-      // Find closing '>' anbd terminate the string
+      // Find closing '>' and terminate the string
       char* cP = url;
 
       while ((*cP != 0) && (*cP != '>'))

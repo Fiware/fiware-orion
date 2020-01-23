@@ -184,6 +184,7 @@ SET (ORION_LIBS
 #    orionld_mongoc
     orionld_mongoCppLegacy
     orionld_db
+    orionld_mongoBackend
 
     serviceRoutines
     serviceRoutinesV2
@@ -199,8 +200,9 @@ SET (ORION_LIBS
     ngsi
     cache
     mongoBackend
-    orionld_common      # mongoBackend calls geoJsonCreate from orionld_common
-    orionld_context     # Should not be necessary ... kjTreeFromNotification gets undefined reference to 'orionldAliasLookup' without this ...
+    orionld_common       # mongoBackend calls geoJsonCreate from orionld_common
+    orionld_context      # Should not be necessary ... kjTreeFromNotification gets undefined reference to 'orionldAliasLookup' without this ...
+    orionld_mongoBackend # mongoBackend uses functions in orionld_mongoBackend
     parse
     apiTypesV2
     orionTypes
@@ -233,6 +235,7 @@ SET (COMMON_STATIC_LIBS
 #    mongoc-static-1.0.a
 #    bson-static-1.0.a
     kjson.a
+    khash.a
     kalloc.a
     kbase.a
 )
@@ -247,10 +250,10 @@ SET (DYNAMIC_LIBS
     uuid
     crypto
     sasl2
-#    icuuc
-#    icudata
-#    z
-#    resolv
+    icuuc
+    icudata
+    z
+    resolv
 )
 
 #
@@ -269,7 +272,7 @@ endif (UNIT_TEST)
 # Common include
 #
 include_directories("/usr/include")
-#include_directories("/usr/local/include/libbson-1.0")
+include_directories("/usr/local/include/libbson-1.0")
 #include_directories("/usr/local/include/libmongoc-1.0")
 include_directories("${PROJECT_SOURCE_DIR}/..")
 
@@ -287,6 +290,7 @@ link_directories("/usr/lib/x86_64-linux-gnu")
 link_directories("${PROJECT_SOURCE_DIR}/../kjson")
 link_directories("${PROJECT_SOURCE_DIR}/../kalloc")
 link_directories("${PROJECT_SOURCE_DIR}/../kbase")
+link_directories("${PROJECT_SOURCE_DIR}/../khash")
 
 #
 # Enabling test harness
@@ -326,6 +330,7 @@ if (error EQUAL 0)
   ADD_SUBDIRECTORY(src/lib/orionld/context)
   ADD_SUBDIRECTORY(src/lib/orionld/kjTree)
   ADD_SUBDIRECTORY(src/lib/orionld/db)
+  ADD_SUBDIRECTORY(src/lib/orionld/mongoBackend)
   ADD_SUBDIRECTORY(src/lib/orionld/mongoCppLegacy)
 #  ADD_SUBDIRECTORY(src/lib/orionld/mongoc)
   ADD_SUBDIRECTORY(src/lib/mongoBackend)

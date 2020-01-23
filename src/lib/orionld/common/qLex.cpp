@@ -1,24 +1,24 @@
 /*
 *
-* Copyright 2019 Telefonica Investigacion y Desarrollo, S.A.U
+* Copyright 2019 FIWARE Foundation e.V.
 *
-* This file is part of Orion Context Broker.
+* This file is part of Orion-LD Context Broker.
 *
-* Orion Context Broker is free software: you can redistribute it and/or
+* Orion-LD Context Broker is free software: you can redistribute it and/or
 * modify it under the terms of the GNU Affero General Public License as
 * published by the Free Software Foundation, either version 3 of the
 * License, or (at your option) any later version.
 *
-* Orion Context Broker is distributed in the hope that it will be useful,
+* Orion-LD Context Broker is distributed in the hope that it will be useful,
 * but WITHOUT ANY WARRANTY; without even the implied warranty of
 * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero
 * General Public License for more details.
 *
 * You should have received a copy of the GNU Affero General Public License
-* along with Orion Context Broker. If not, see http://www.gnu.org/licenses/.
+* along with Orion-LD Context Broker. If not, see http://www.gnu.org/licenses/.
 *
 * For those usages not covered by this license please contact with
-* iot_support at tid dot es
+* orionld at fiware dot org
 *
 * Author: Ken Zangelin
 */
@@ -52,7 +52,7 @@ static QNode* qStringPush(QNode* prev, char* stringValue)
 //
 // qDateTimePush -
 //
-static QNode* qDateTimePush(QNode* prev, long long dateTime)
+static QNode* qDateTimePush(QNode* prev, int64_t dateTime)
 {
   QNode* qNodeP = qNode(QNodeIntegerValue);
 
@@ -73,7 +73,6 @@ static QNode* qRegexpPush(QNode* prev, char* regexpValue)
 {
   QNode* qNodeP = qNode(QNodeRegexpValue);
 
-  LM_TMP(("Q: Pushing REGEX: %s", regexpValue));
   qNodeP->value.re = regexpValue;
 
   prev->next = qNodeP;
@@ -89,8 +88,6 @@ static QNode* qRegexpPush(QNode* prev, char* regexpValue)
 //
 static QNode* qTermPush(QNode* prev, char* term, char** titleP, char** detailsP)
 {
-  LM_TMP(("Q: TERM: '%s'", term));
-
   //
   // Trim the term
   //
@@ -162,30 +159,19 @@ static QNode* qTermPush(QNode* prev, char* term, char** titleP, char** detailsP)
         type = QNodeVariable;
     }
 
-    LM_TMP(("Q: Pushing term: '%s' of type %s", term, qNodeType(type)));
     QNode* qNodeP = qNode(type);
 
     if (type == QNodeIntegerValue)
     {
-      long long dTime;
+      int64_t dTime;
 
-      if (dateTime == true)
-      {
-        if ((dTime = parse8601Time(term)) == -1)
-        {
-          LM_TMP(("Q: Seemed like a DateTime but parse8601Time said NO"));
-          dateTime = false;
-        }
-      }
+      if ((dateTime == true) && ((dTime = parse8601Time(term)) == -1))
+        dateTime = false;
+
       if (dateTime == false)
-      {
         qNodeP->value.i = strtoul(term, NULL, 10);
-      }
       else
-      {
-        LM_TMP(("Q: Pushing term '%s': the type is finally a DateTime", term));
         qNodeP->value.i = dTime;
-      }
     }
     else if (type == QNodeFloatValue)
       qNodeP->value.f = strtod(term, NULL);
@@ -207,9 +193,8 @@ static QNode* qTermPush(QNode* prev, char* term, char** titleP, char** detailsP)
 //
 static QNode* qOpPush(QNode* prev, QNodeType type)
 {
-  LM_TMP(("Q: Pushing OP %s", qNodeType(type)));
-
   QNode* qNodeP = qNode(type);
+
   prev->next = qNodeP;
   return qNodeP;
 }
@@ -228,26 +213,17 @@ QNode* qLex(char* s, char** titleP, char** detailsP)
   char*  stringStart = s;
   int    level       = 0;
 
-  LM_TMP(("Q: Lexing '%s'", sP));
-
   *titleP = NULL;
 
   while (1)
   {
     QNodeType type;
 
-    if (*sP != 0)
-      LM_TMP(("Q: Current character: '%c'", *sP));
-    else
-      LM_TMP(("Q: Current character: ZERO!!! - end of string"));
-
     if (*sP == ' ')
     {
       ++sP;
     }
-    else
-
-    if ((*sP == '<') || (*sP == '>'))
+    else if ((*sP == '<') || (*sP == '>'))
     {
       if (sP[1] == '=')
       {
@@ -337,7 +313,7 @@ QNode* qLex(char* s, char** titleP, char** detailsP)
 
       *sP = 0;
       ++sP;
-      LM_TMP(("Q: KZ: type: %s", qNodeType(type)));
+
       current = qTermPush(current, stringStart, titleP, detailsP);
       current = qOpPush(current, type);
       stringStart = sP;
@@ -361,7 +337,6 @@ QNode* qLex(char* s, char** titleP, char** detailsP)
       current->value.level = level;
       ++level;
       stringStart = sP;
-      // LM_TMP(("Q: stringStart set to '%s'", stringStart));
     }
     else if (*sP == ')')
     {
@@ -373,7 +348,6 @@ QNode* qLex(char* s, char** titleP, char** detailsP)
       --level;
       current->value.level = level;
       stringStart = sP;
-      // LM_TMP(("Q: stringStart set to '%s'", stringStart));
     }
     else if (*sP == 0)
     {
@@ -400,8 +374,8 @@ QNode* qLex(char* s, char** titleP, char** detailsP)
 
       *sP = 0;
       ++sP;
-      long long           dateTime;
-      unsigned long long  sLen = (unsigned long long) (sP - start - 2);
+      int64_t   dateTime;
+      uint64_t  sLen = (uint64_t) (sP - start - 2);
 
       if ((sLen > 4) && (start[4] == '-') && ((dateTime = parse8601Time(start)) != -1))
         current = qDateTimePush(current, dateTime);
@@ -418,9 +392,6 @@ QNode* qLex(char* s, char** titleP, char** detailsP)
 
       sP = &sP[3];  // step over RE(
 
-      // LM_TMP(("Q: RE:Init: *sP  == %c (%d)", *sP, *sP));
-      // LM_TMP(("Q: RE:Init: prev == %c (%d)", prev, prev));
-
       //
       // Find closing ')', counting all '(', ')'
       // Skipping of course escaped parenthesis - "\(", "\)"
@@ -431,27 +402,16 @@ QNode* qLex(char* s, char** titleP, char** detailsP)
         if (prev != '\\')
         {
           if (*sP == ')')
-          {
             --level;
-            // LM_TMP(("Q: RE:Loop: found ')': new level: %d", level));
-          }
           else if (*sP == '(')
-          {
             ++level;
-            // LM_TMP(("Q: RE:Loop: found '(': new level: %d", level));
-          }
         }
 
         if (level == 0)
           break;
         prev = *sP;
         ++sP;
-
-        // LM_TMP(("Q: RE:Loop: *sP=%c, prev=%c: level == %d", *sP, prev, level));
       }
-
-      // LM_TMP(("Q: RE:Found: *sP  == %c (%d)", *sP, *sP));
-      // LM_TMP(("Q: RE:Found: prev == %c (%d)", prev, prev));
 
       if (*sP == 0)
       {
@@ -487,6 +447,8 @@ QNode* qLex(char* s, char** titleP, char** detailsP)
       else if (*sP == '.')
       {}
       else if (*sP == '-')
+      {}
+      else if (*sP == ':')
       {}
       else
       {

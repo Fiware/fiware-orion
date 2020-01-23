@@ -1,82 +1,49 @@
 /*
 *
-* Copyright 2018 Telefonica Investigacion y Desarrollo, S.A.U
+* Copyright 2018 FIWARE Foundation e.V.
 *
-* This file is part of Orion Context Broker.
+* This file is part of Orion-LD Context Broker.
 *
-* Orion Context Broker is free software: you can redistribute it and/or
+* Orion-LD Context Broker is free software: you can redistribute it and/or
 * modify it under the terms of the GNU Affero General Public License as
 * published by the Free Software Foundation, either version 3 of the
 * License, or (at your option) any later version.
 *
-* Orion Context Broker is distributed in the hope that it will be useful,
+* Orion-LD Context Broker is distributed in the hope that it will be useful,
 * but WITHOUT ANY WARRANTY; without even the implied warranty of
 * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero
 * General Public License for more details.
 *
 * You should have received a copy of the GNU Affero General Public License
-* along with Orion Context Broker. If not, see http://www.gnu.org/licenses/.
+* along with Orion-LD Context Broker. If not, see http://www.gnu.org/licenses/.
 *
 * For those usages not covered by this license please contact with
-* iot_support at tid dot es
+* orionld at fiware dot org
 *
 * Author: Ken Zangelin
 */
 extern "C"
 {
-#include "kjson/KjNode.h"                                      // KjNode
-#include "kjson/kjBuilder.h"                                   // kjObject, kjString, kjBoolean, ...
+#include "kjson/KjNode.h"                                        // KjNode
+#include "kjson/kjBuilder.h"                                     // kjObject, kjString, kjBoolean, ...
 }
 
-#include "logMsg/logMsg.h"                                     // LM_*
-#include "logMsg/traceLevels.h"                                // Lmt*
+#include "logMsg/logMsg.h"                                       // LM_*
+#include "logMsg/traceLevels.h"                                  // Lmt*
 
-#include "ngsi10/NotifyContextRequest.h"                       // NotifyContextRequest
-#include "mongoBackend/MongoGlobal.h"                          // mongoIdentifier
+#include "ngsi10/NotifyContextRequest.h"                         // NotifyContextRequest
+#include "mongoBackend/MongoGlobal.h"                            // mongoIdentifier
 
-#include "common/RenderFormat.h"                               // RenderFormat
-#include "orionld/common/OrionldConnection.h"                  // orionldState
-#include "orionld/common/numberToDate.h"                       // numberToDate
-#include "orionld/common/SCOMPARE.h"                           // SCOMPAREx
-#include "orionld/context/OrionldContext.h"                    // OrionldContext
-#include "orionld/context/orionldContextLookup.h"              // orionldContextLookup
-#include "orionld/context/orionldAliasLookup.h"                // orionldAliasLookup
-#include "orionld/context/orionldCoreContext.h"                // ORIONLD_CORE_CONTEXT_URL
-#include "orionld/kjTree/kjTreeFromContextAttribute.h"         // kjTreeFromContextAttribute
-#include "orionld/kjTree/kjTreeFromNotification.h"             // Own interface
-
-
-
-// -----------------------------------------------------------------------------
-//
-// debugContextElement - FIXME: Remove this function
-//
-void debugContextElement(ContextElement* ceP)
-{
-  LM_TMP(("NOTIF: Entity ID:   %s", ceP->entityId.id.c_str()));
-  LM_TMP(("NOTIF: Entity TYPE: %s", ceP->entityId.type.c_str()));
-
-  for (unsigned int aIx = 0; aIx < ceP->contextAttributeVector.size(); aIx++)
-  {
-    ContextAttribute*  aP       = ceP->contextAttributeVector[aIx];
-    const char*        attrName = aP->name.c_str();
-
-    LM_TMP(("NOTIF: Attribute %d:", aIx, attrName));
-    LM_TMP(("NOTIF:   Name:        %s",   attrName));
-    LM_TMP(("NOTIF:   Type:        %s",   aP->type.c_str()));
-    LM_TMP(("NOTIF:   Value Type:  %s",   valueTypeName(aP->valueType)));
-    LM_TMP(("NOTIF:   Metadatas:   %llu", aP->metadataVector.size()));
-
-    for (unsigned int ix = 0; ix < aP->metadataVector.size(); ix++)
-    {
-      Metadata* mdP = aP->metadataVector[ix];
-
-      LM_TMP(("NOTIF:   Metadata %d:", ix));
-      LM_TMP(("NOTIF:     Name:  %s", mdP->name.c_str()));
-      LM_TMP(("NOTIF:     Type:  %s", mdP->type.c_str()));
-    }
-  }
-}
+#include "common/RenderFormat.h"                                 // RenderFormat
+#include "orionld/common/OrionldConnection.h"                    // orionldState
+#include "orionld/common/numberToDate.h"                         // numberToDate
+#include "orionld/common/SCOMPARE.h"                             // SCOMPAREx
+#include "orionld/context/OrionldContext.h"                      // OrionldContext
+#include "orionld/context/orionldCoreContext.h"                  // ORIONLD_CORE_CONTEXT_URL
+#include "orionld/context/orionldContextItemAliasLookup.h"       // orionldContextItemAliasLookup
+#include "orionld/context/orionldContextCacheLookup.h"           // orionldContextCacheLookup
+#include "orionld/kjTree/kjTreeFromContextAttribute.h"           // kjTreeFromContextAttribute
+#include "orionld/kjTree/kjTreeFromNotification.h"               // Own interface
 
 
 
@@ -91,9 +58,8 @@ KjNode* kjTreeFromNotification(NotifyContextRequest* ncrP, const char* context, 
   KjNode*          rootP      = kjObject(orionldState.kjsonP, NULL);
   char*            id         = mongoIdentifier(buf);
   char             idBuffer[] = "urn:ngsi-ld:Notification:012345678901234567890123";  // The 012345678901234567890123 will be overwritten
-  OrionldContext*  contextP   = orionldContextLookup(context);
+  OrionldContext*  contextP   = orionldContextCacheLookup(context);
 
-  LM_TMP(("NOTIF: In kjTreeFromNotification"));
   // id
   strcpy(&idBuffer[25], id);
   nodeP = kjString(orionldState.kjsonP, "id", idBuffer);
@@ -145,7 +111,6 @@ KjNode* kjTreeFromNotification(NotifyContextRequest* ncrP, const char* context, 
   //
   // loop over ContextElements in NotifyContextRequest::contextElementResponseVector
   //
-  LM_TMP(("NOTIF: Adding %d contextElementResponses to the Notification kjTree", (int) ncrP->contextElementResponseVector.size()));
   for (unsigned int ix = 0; ix < ncrP->contextElementResponseVector.size(); ix++)
   {
     ContextElement* ceP     = &ncrP->contextElementResponseVector[ix]->contextElement;
@@ -160,16 +125,11 @@ KjNode* kjTreeFromNotification(NotifyContextRequest* ncrP, const char* context, 
     kjChildAdd(objectP, nodeP);
 
     // entity type - Mandatory URI
-    alias = orionldAliasLookup(contextP, ceP->entityId.type.c_str(), NULL);
+    alias = orionldContextItemAliasLookup(contextP, ceP->entityId.type.c_str(), NULL, NULL);
     nodeP = kjString(orionldState.kjsonP, "type", alias);
     kjChildAdd(objectP, nodeP);
 
-    // <DEBUG>
-    debugContextElement(ceP);
-    // </DEBUG>
-
     // Attributes
-    LM_TMP(("NOTIF: Adding %d attributes to the Notification kjTree", (int) ceP->contextAttributeVector.size()));
     for (unsigned int aIx = 0; aIx < ceP->contextAttributeVector.size(); aIx++)
     {
       ContextAttribute*  aP       = ceP->contextAttributeVector[aIx];
@@ -178,7 +138,6 @@ KjNode* kjTreeFromNotification(NotifyContextRequest* ncrP, const char* context, 
       if (SCOMPARE9(attrName, '@', 'c', 'o', 'n', 't', 'e', 'x', 't', 0))
         continue;
 
-      LM_TMP(("NOTIF: Adding attribute '%s' to the Notification kjTree", ceP->contextAttributeVector[aIx]->name.c_str()));
       nodeP = kjTreeFromContextAttribute(aP, contextP, renderFormat, detailsP);
       kjChildAdd(objectP, nodeP);
     }

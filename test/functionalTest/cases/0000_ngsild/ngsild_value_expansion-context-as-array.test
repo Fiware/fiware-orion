@@ -1,22 +1,22 @@
-# Copyright 2019 Telefonica Investigacion y Desarrollo, S.A.U
+# Copyright 2019 FIWARE Foundation e.V.
 #
-# This file is part of Orion Context Broker.
+# This file is part of Orion-LD Context Broker.
 #
-# Orion Context Broker is free software: you can redistribute it and/or
+# Orion-LD Context Broker is free software: you can redistribute it and/or
 # modify it under the terms of the GNU Affero General Public License as
 # published by the Free Software Foundation, either version 3 of the
 # License, or (at your option) any later version.
 #
-# Orion Context Broker is distributed in the hope that it will be useful,
+# Orion-LD Context Broker is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero
 # General Public License for more details.
 #
 # You should have received a copy of the GNU Affero General Public License
-# along with Orion Context Broker. If not, see http://www.gnu.org/licenses/.
+# along with Orion-LD Context Broker. If not, see http://www.gnu.org/licenses/.
 #
 # For those usages not covered by this license please contact with
-# iot_support at tid dot es
+# orionld at fiware dot org
 
 # VALGRIND_READY - to mark the test ready for valgrindTestSuite.sh
 
@@ -89,7 +89,7 @@ echo
 =========================================================================
 HTTP/1.1 201 Created
 Content-Length: 0
-Link: REGEX(.*)
+Link: <https://fiware.github.io/tutorials.Step-by-Step/tutorials-context.jsonld>; rel="http://www.w3.org/ns/json-ld#context"; type="application/ld+json"
 Location: /ngsi-ld/v1/entities/urn:ngsi-ld:Building:store007
 Date: REGEX(.*)
 
@@ -103,23 +103,21 @@ MongoDB server version: REGEX(.*)
 {
 	"_id" : {
 		"id" : "urn:ngsi-ld:Building:store007",
-		"type" : "https://uri.fiware.org/ns/datamodels#Building",
+		"type" : "https://uri.fiware.org/ns/data-models#Building",
 		"servicePath" : "/"
 	},
 	"attrNames" : [
-		"https://uri.fiware.org/ns/datamodels#category",
+		"https://uri.fiware.org/ns/data-models#category",
 		"https://schema.org/address",
 		"location",
-		"https://uri.etsi.org/ngsi-ld/default-context/name"
+		"https://uri.etsi.org/ngsi-ld/name"
 	],
 	"attrs" : {
-		"https://uri=fiware=org/ns/datamodels#category" : {
+		"https://uri=fiware=org/ns/data-models#category" : {
 			"type" : "Property",
 			"creDate" : REGEX(.*),
 			"modDate" : REGEX(.*),
-			"value" : [
-				"https://uri.fiware.org/ns/datamodels#commercial"
-			],
+			"value" : "https://uri.fiware.org/ns/data-models#commercial",
 			"mdNames" : [ ]
 		},
 		"https://schema=org/address" : {
@@ -155,7 +153,7 @@ MongoDB server version: REGEX(.*)
 			},
 			"mdNames" : [ ]
 		},
-		"https://uri=etsi=org/ngsi-ld/default-context/name" : {
+		"https://uri=etsi=org/ngsi-ld/name" : {
 			"type" : "Property",
 			"creDate" : REGEX(.*),
 			"modDate" : REGEX(.*),
@@ -183,7 +181,7 @@ bye
 03. GET the entity and see the values	contracted again
 ======================================================
 HTTP/1.1 200 OK
-Content-Length: 463
+Content-Length: 461
 Content-Type: application/json
 Link: <https://fiware.github.io/tutorials.Step-by-Step/tutorials-context.jsonld>; rel="http://www.w3.org/ns/json-ld#context"; type="application/ld+json"
 Date: REGEX(.*)
@@ -204,9 +202,7 @@ Date: REGEX(.*)
     },
     "category": {
         "type": "Property",
-        "value": [
-            "commercial"
-        ]
+        "value": "commercial"
     },
     "id": "urn:ngsi-ld:Building:store007",
     "location": {

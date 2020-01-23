@@ -1,24 +1,24 @@
 /*
 *
-* Copyright 2019 Telefonica Investigacion y Desarrollo, S.A.U
+* Copyright 2019 FIWARE Foundation e.V.
 *
-* This file is part of Orion Context Broker.
+* This file is part of Orion-LD Context Broker.
 *
-* Orion Context Broker is free software: you can redistribute it and/or
+* Orion-LD Context Broker is free software: you can redistribute it and/or
 * modify it under the terms of the GNU Affero General Public License as
 * published by the Free Software Foundation, either version 3 of the
 * License, or (at your option) any later version.
 *
-* Orion Context Broker is distributed in the hope that it will be useful,
+* Orion-LD Context Broker is distributed in the hope that it will be useful,
 * but WITHOUT ANY WARRANTY; without even the implied warranty of
 * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero
 * General Public License for more details.
 *
 * You should have received a copy of the GNU Affero General Public License
-* along with Orion Context Broker. If not, see http://www.gnu.org/licenses/.
+* along with Orion-LD Context Broker. If not, see http://www.gnu.org/licenses/.
 *
 * For those usages not covered by this license please contact with
-* iot_support at tid dot es
+* orionld at fiware dot org
 *
 * Author: Ken Zangelin
 */
@@ -35,9 +35,17 @@ extern "C"
 #include "logMsg/traceLevels.h"                                // Lmt*
 
 #include "orionld/db/dbConfiguration.h"                        // DB_DRIVER_MONGOC
-#include "orionld/context/orionldContextFree.h"                // orionldContextFree
+#include "orionld/context/orionldCoreContext.h"                // orionldCoreContext
 #include "orionld/common/QNode.h"                              // QNode
 #include "orionld/common/orionldState.h"                       // Own interface
+
+
+
+// -----------------------------------------------------------------------------
+//
+// orionldVersion -
+//
+const char* orionldVersion = ORIONLD_VERSION;
 
 
 
@@ -68,16 +76,19 @@ KAlloc          kalloc;
 Kjson           kjson;
 Kjson*          kjsonP;
 uint16_t        portNo                   = 0;
-char*           hostname                 = (char*) "localhost";
 int             dbNameLen;
+char            orionldHostName[128];
+int             orionldHostNameLen       = -1;
 
-#ifdef DB_DRIVER_MONGOC
+
 //
 // Variables for Mongo C Driver
 //
+#ifdef DB_DRIVER_MONGOC
 mongoc_collection_t*  mongoEntitiesCollectionP      = NULL;
 mongoc_collection_t*  mongoRegistrationsCollectionP = NULL;
 #endif
+
 
 
 // -----------------------------------------------------------------------------
@@ -98,7 +109,7 @@ void orionldStateInit(void)
   // Creating kjson environment for KJson parse and render
   //
   bzero(orionldState.kallocBuffer, sizeof(orionldState.kallocBuffer));
-  kaBufferInit(&orionldState.kalloc, orionldState.kallocBuffer, sizeof(orionldState.kallocBuffer), 2 * 1024, NULL, "Thread KAlloc buffer");
+  kaBufferInit(&orionldState.kalloc, orionldState.kallocBuffer, sizeof(orionldState.kallocBuffer), 16 * 1024, NULL, "Thread KAlloc buffer");
 
   orionldState.ciP                         = NULL;
   orionldState.requestNo                   = requestNo;
@@ -106,20 +117,20 @@ void orionldStateInit(void)
   orionldState.kjsonP                      = kjBufferCreate(&orionldState.kjson, &orionldState.kalloc);
   orionldState.linkHttpHeaderPresent       = false;
   orionldState.link                        = NULL;
-  orionldState.useLinkHeader               = true;  // Service routines can set this value to 'false' to avoid having the Link HTTP Header in its output
+  orionldState.noLinkHeader                = false;  // Service routines can set this value to 'true' to avoid having the Link HTTP Header in its output
   orionldState.entityCreated               = false;
   orionldState.entityId                    = NULL;
   orionldState.linkHeaderAdded             = false;
-  orionldState.httpReqBuffer               = NULL;
   orionldState.errorAttributeArrayP        = orionldState.errorAttributeArray;
   orionldState.errorAttributeArraySize     = sizeof(orionldState.errorAttributeArray);
   orionldState.errorAttributeArrayUsed     = 0;
-  orionldState.contextToBeFreed            = false;
   orionldState.uriParamOptions.noOverwrite = false;
+  orionldState.uriParamOptions.update      = false;
+  orionldState.uriParamOptions.replace     = false;
   orionldState.prettyPrintSpaces           = 2;
   orionldState.prettyPrint                 = false;
   orionldState.locationAttributeP          = NULL;
-  orionldState.contextP                    = NULL;
+  orionldState.contextP                    = orionldCoreContextP;
   orionldState.payloadContextNode          = NULL;
   orionldState.payloadIdNode               = NULL;
   orionldState.payloadTypeNode             = NULL;
@@ -134,15 +145,26 @@ void orionldStateInit(void)
   //            bzero(orionldState.qNodeV, sizeof(orionldState.qNodeV));
   //
   bzero(orionldState.qNodeV, sizeof(orionldState.qNodeV));
-  orionldState.qNodeIx       = 0;
-  orionldState.jsonBuf       = NULL;
+  orionldState.qNodeIx               = 0;
+  orionldState.jsonBuf               = NULL;
 
   bzero(orionldState.delayedKjFreeVec, sizeof(orionldState.delayedKjFreeVec));
   orionldState.delayedKjFreeVecIndex = 0;
   orionldState.delayedKjFreeVecSize  = sizeof(orionldState.delayedKjFreeVec) / sizeof(orionldState.delayedKjFreeVec[0]);
 
-  orionldState.notify              = false;
-  orionldState.notificationRecords = 0;
+  bzero(orionldState.delayedFreeVec, sizeof(orionldState.delayedFreeVec));
+  orionldState.delayedFreeVecIndex   = 0;
+  orionldState.delayedFreeVecSize    = sizeof(orionldState.delayedFreeVec) / sizeof(orionldState.delayedFreeVec[0]);
+
+  orionldState.delayedFreePointer    = NULL;
+
+  orionldState.notify                = false;
+  orionldState.notificationRecords   = 0;
+
+  orionldState.prefixCache.index     = 0;
+  orionldState.prefixCache.items     = 0;
+
+  orionldState.creDatesP             = NULL;
 }
 
 
@@ -153,23 +175,11 @@ void orionldStateInit(void)
 //
 void orionldStateRelease(void)
 {
-  if (orionldState.httpReqBuffer != NULL)
-  {
-    free(orionldState.httpReqBuffer);
-    orionldState.httpReqBuffer = NULL;
-  }
-
   if (orionldState.errorAttributeArrayP != orionldState.errorAttributeArray)
   {
     free(orionldState.errorAttributeArrayP);
     orionldState.errorAttributeArrayP = NULL;
   }
-
-#if 0
-  // This part crashes the broker in a few functests ...
-  if ((orionldState.contextP != NULL) && (orionldState.contextToBeFreed == true))
-    orionldContextFree(orionldState.contextP);
-#endif
 
   //
   // This was added to fix a leak in contextToPayload(), orionldMhdConnectionTreat.cpp, calling kjClone(). a number of times
@@ -177,7 +187,32 @@ void orionldStateRelease(void)
   // Each item in the entity array needs a cloned context
   //
   for  (int ix = 0; ix < orionldState.delayedKjFreeVecIndex; ix++)
-    kjFree(orionldState.delayedKjFreeVec[ix]);
+  {
+    if (orionldState.delayedKjFreeVec[ix] != NULL)
+    {
+      kjFree(orionldState.delayedKjFreeVec[ix]);
+      orionldState.delayedKjFreeVec[ix] = NULL;
+    }
+  }
+
+
+  //
+  // Not only KjNode trees may need delayed calls to free - normal allocated buffers may need it as well
+  //
+  for  (int ix = 0; ix < orionldState.delayedFreeVecIndex; ix++)
+  {
+    if (orionldState.delayedFreeVec[ix] != NULL)
+    {
+      free(orionldState.delayedFreeVec[ix]);
+      orionldState.delayedFreeVec[ix] = NULL;
+    }
+  }
+
+  if (orionldState.delayedFreePointer != NULL)
+  {
+    free(orionldState.delayedFreePointer);
+    orionldState.delayedFreePointer = NULL;
+  }
 
   if (orionldState.qMongoFilterP != NULL)
     delete orionldState.qMongoFilterP;
@@ -241,13 +276,49 @@ void orionldStateErrorAttributeAdd(const char* attributeName)
 
 // -----------------------------------------------------------------------------
 //
-// orionldStateDelayedKjFree -
+// orionldStateDelayedKjFreeEnqueue -
 //
-void orionldStateDelayedKjFree(KjNode* tree)
+void orionldStateDelayedKjFreeEnqueue(KjNode* tree)
 {
   if (orionldState.delayedKjFreeVecIndex >= orionldState.delayedKjFreeVecSize - 1)
-    LM_X(1, ("Internal Error (the size of orionldState.delayedKjFreeVec needs to be aumented)"));
+    LM_X(1, ("Internal Error (the size of orionldState.delayedKjFreeVec needs to be augmented)"));
 
   orionldState.delayedKjFreeVec[orionldState.delayedKjFreeVecIndex] = tree;
   ++orionldState.delayedKjFreeVecIndex;
+}
+
+
+
+// -----------------------------------------------------------------------------
+//
+// orionldStateDelayedFreeEnqueue -
+//
+void orionldStateDelayedFreeEnqueue(void* allocatedBuffer)
+{
+  if (orionldState.delayedFreeVecIndex >= orionldState.delayedFreeVecSize - 1)
+    LM_X(1, ("DFREE: Internal Error (the size of orionldState.delayedFreeVec needs to be augmented (delayedFreeVecIndex=%d, delayedFreeVecSize=%d))",
+             orionldState.delayedFreeVecIndex, orionldState.delayedFreeVecSize));
+
+  orionldState.delayedFreeVec[orionldState.delayedFreeVecIndex] = allocatedBuffer;
+  ++orionldState.delayedFreeVecIndex;
+}
+
+
+
+// -----------------------------------------------------------------------------
+//
+// orionldStateDelayedFreeCancel -
+//
+void orionldStateDelayedFreeCancel(void* allocatedBuffer)
+{
+  for (int ix = 0; ix < orionldState.delayedFreeVecIndex; ix++)
+  {
+    if (orionldState.delayedFreeVec[orionldState.delayedFreeVecIndex] == allocatedBuffer)
+    {
+      orionldState.delayedFreeVec[orionldState.delayedFreeVecIndex] = NULL;
+      return;
+    }
+  }
+
+  LM_E(("DFREE: Internal Error (buffer programmed for delayed free not found (%p))", allocatedBuffer));
 }

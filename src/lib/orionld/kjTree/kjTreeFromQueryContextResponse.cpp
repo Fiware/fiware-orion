@@ -1,24 +1,24 @@
 /*
 *
-* Copyright 2018 Telefonica Investigacion y Desarrollo, S.A.U
+* Copyright 2018 FIWARE Foundation e.V.
 *
-* This file is part of Orion Context Broker.
+* This file is part of Orion-LD Context Broker.
 *
-* Orion Context Broker is free software: you can redistribute it and/or
+* Orion-LD Context Broker is free software: you can redistribute it and/or
 * modify it under the terms of the GNU Affero General Public License as
 * published by the Free Software Foundation, either version 3 of the
 * License, or (at your option) any later version.
 *
-* Orion Context Broker is distributed in the hope that it will be useful,
+* Orion-LD Context Broker is distributed in the hope that it will be useful,
 * but WITHOUT ANY WARRANTY; without even the implied warranty of
 * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero
 * General Public License for more details.
 *
 * You should have received a copy of the GNU Affero General Public License
-* along with Orion Context Broker. If not, see http://www.gnu.org/licenses/.
+* along with Orion-LD Context Broker. If not, see http://www.gnu.org/licenses/.
 *
 * For those usages not covered by this license please contact with
-* iot_support at tid dot es
+* orionld at fiware dot org
 *
 * Author: Ken Zangelin
 */
@@ -42,16 +42,10 @@ extern "C"
 #include "orionld/common/numberToDate.h"                       // numberToDate
 #include "orionld/common/httpStatusCodeToOrionldErrorType.h"   // httpStatusCodeToOrionldErrorType
 #include "orionld/common/SCOMPARE.h"                           // SCOMPAREx
-#include "orionld/common/OrionldConnection.h"                  // orionldState
-#include "orionld/context/OrionldContext.h"                    // OrionldContext
+#include "orionld/common/orionldState.h"                       // orionldState
 #include "orionld/context/orionldCoreContext.h"                // orionldCoreContext
-#include "orionld/context/orionldContextLookup.h"              // orionldContextLookup
-#include "orionld/context/orionldContextValueLookup.h"         // orionldContextValueLookup
-#include "orionld/context/orionldContextCreateFromTree.h"      // orionldContextCreateFromTree
-#include "orionld/context/orionldContextListInsert.h"          // orionldContextListInsert
-#include "orionld/context/orionldContextListPresent.h"         // orionldContextListPresent
-#include "orionld/context/orionldAliasLookup.h"                // orionldAliasLookup
-#include "orionld/context/orionldUriExpand.h"                  // orionldUriExpand
+#include "orionld/context/orionldContextItemExpand.h"          // orionldContextItemExpand
+#include "orionld/context/orionldContextItemAliasLookup.h"     // orionldContextItemAliasLookup
 #include "orionld/kjTree/kjTreeFromContextAttribute.h"         // kjTreeFromContextAttribute
 #include "orionld/kjTree/kjTreeFromContextContextAttribute.h"  // kjTreeFromContextContextAttribute
 #include "orionld/kjTree/kjTreeFromCompoundValue.h"            // kjTreeFromCompoundValue
@@ -65,17 +59,12 @@ extern "C"
 //
 static bool inAttrList(const char* attrName, char** attrListExpanded, int attrsInAttrList)
 {
-  LM_TMP(("ATTRS: Checking attribute '%s'", attrName));
   for (int ix = 0; ix < attrsInAttrList; ix++)
   {
     if (strcmp(attrName, attrListExpanded[ix]) == 0)
-    {
-      LM_TMP(("ATTRS: '%s' is in the attrs list, so, must be included in the response", attrName));
       return true;
-    }
   }
 
-  LM_TMP(("ATTRS: '%s' is NOT in the attrs list, so, must NOT be included in the response", attrName));
   return false;
 }
 
@@ -89,8 +78,6 @@ static void attrListParseAndExpand(int* attrsInAttrListP, char*** attrListExpand
 {
   int   attrs = 0;
   char* cP;
-
-  LM_TMP(("ATTRS: incoming attrList: %s", attrList));
 
   //
   // attrList is a comma-separated list.
@@ -147,35 +134,16 @@ static void attrListParseAndExpand(int* attrsInAttrListP, char*** attrListExpand
   }
 
 
-#if 0
-  // <DEBUG>
-  LM_TMP(("ATTRS: Got %d attributes in the attrs URI Param", aIx));
-  for (int ix = 0; ix < attrs; ix++)
-    LM_TMP(("ATTRS: attr %d: %s", ix, expandedV[ix]));
-  // </DEBUG>
-#endif
-
   //
-  // Expand attribute names
+  // Expand attribute names, overwriting the shortnames
   //
   for (int ix = 0; ix < attrs; ix++)
   {
-    char  longName[256];
-    char* detail;
-
-    if (orionldUriExpand(orionldState.contextP, expandedV[ix], longName, 256, NULL, &detail) == true)
-    {
-      LM_TMP(("ATTRS: Expanded: %s => %s", expandedV[ix], longName));
-      expandedV[ix] = kaStrdup(&orionldState.kalloc, longName);
-    }
-    else
-      LM_TMP(("ATTRS: Not expanded: %s", expandedV[ix]));
+    expandedV[ix] = orionldContextItemExpand(orionldState.contextP, expandedV[ix], NULL, true, NULL);
   }
 
   *attrListExpandedVecP = expandedV;
   *attrsInAttrListP     = attrs;
-
-  LM_TMP(("ATTRS: Expanded Array created (%d items)", attrs));
 }
 
 
@@ -339,9 +307,8 @@ KjNode* kjTreeFromQueryContextResponse(ConnectionInfo* ciP, bool oneHit, char* a
     // type
     if (ceP->entityId.type != "")
     {
-      char* alias;
+      char* alias = orionldContextItemAliasLookup(orionldState.contextP, ceP->entityId.type.c_str(), NULL, NULL);
 
-      alias = orionldAliasLookup(orionldState.contextP, ceP->entityId.type.c_str(), NULL);
       nodeP = kjString(orionldState.kjsonP, "type", alias);
       if (nodeP == NULL)
       {
@@ -377,11 +344,9 @@ KjNode* kjTreeFromQueryContextResponse(ConnectionInfo* ciP, bool oneHit, char* a
       const char*       attrShortName        = aP->name.c_str();
       char*             attrName;              // Attribute Long Name
       char*             valueFieldName;
-      bool              valueMayBeContracted = false;
+      bool              valueMayBeCompacted  = false;
 
-      LM_TMP(("VAL: Treating attribute '%s'", attrShortName));
-
-      attrName = orionldAliasLookup(orionldState.contextP, attrShortName, &valueMayBeContracted);
+      attrName = orionldContextItemAliasLookup(orionldState.contextP, attrShortName, &valueMayBeCompacted, NULL);
 
       //
       // If URI param attrList has been used, only matching attributes should be included in the response
@@ -389,21 +354,19 @@ KjNode* kjTreeFromQueryContextResponse(ConnectionInfo* ciP, bool oneHit, char* a
       if ((attrListExpanded != NULL) && (inAttrList(attrShortName, attrListExpanded, attrsInAttrList) == false))
         continue;
 
-      LM_TMP(("VAL: Value of %s may be contracted? - %s", attrShortName, FT(valueMayBeContracted)));
       if (keyValues)
       {
-        LM_TMP(("VAL: keyValues"));
         // If keyValues, then just the value of the attribute is to be rendered (built)
         switch (aP->valueType)
         {
         case orion::ValueTypeNumber:    aTop = kjFloat(orionldState.kjsonP, attrName,   aP->numberValue);          break;
         case orion::ValueTypeBoolean:   aTop = kjBoolean(orionldState.kjsonP, attrName, aP->boolValue);            break;
         case orion::ValueTypeString:
-          if (valueMayBeContracted == true)
+          if (valueMayBeCompacted == true)
           {
-            char* contractedValue = orionldAliasLookup(orionldState.contextP, aP->stringValue.c_str(), NULL);
-            if (contractedValue == NULL)
-              aTop = kjString(orionldState.kjsonP, attrName, contractedValue);
+            char* compactedValue = orionldContextItemAliasLookup(orionldState.contextP, aP->stringValue.c_str(), NULL, NULL);
+            if (compactedValue == NULL)
+              aTop = kjString(orionldState.kjsonP, attrName, compactedValue);
             else
               aTop = kjString(orionldState.kjsonP, attrName, aP->stringValue.c_str());
           }
@@ -418,7 +381,7 @@ KjNode* kjTreeFromQueryContextResponse(ConnectionInfo* ciP, bool oneHit, char* a
 
           if (aTop != NULL)
           {
-            if (kjTreeFromCompoundValue(aP->compoundValueP, aTop, valueMayBeContracted, &details) == NULL)
+            if (kjTreeFromCompoundValue(aP->compoundValueP, aTop, valueMayBeCompacted, &details) == NULL)
             {
               LM_E(("kjTreeFromCompoundValue: %s", details));
               orionldErrorResponseCreate(OrionldInternalError, "Unable to create tree node from a compound value", details);
@@ -446,7 +409,6 @@ KjNode* kjTreeFromQueryContextResponse(ConnectionInfo* ciP, bool oneHit, char* a
         //
         // NOT keyValues - create entire attribute tree
         //
-        LM_TMP(("VAL: Not keyValues"));
         aTop = kjObject(orionldState.kjsonP, attrName);
         if (aTop == NULL)
         {
@@ -471,7 +433,7 @@ KjNode* kjTreeFromQueryContextResponse(ConnectionInfo* ciP, bool oneHit, char* a
 
         // value
         valueFieldName = (char*) ((aP->type == "Relationship")? "object" : "value");
-        LM_TMP(("VAL: value type: %s", valueTypeName(aP->valueType)));
+
         switch (aP->valueType)
         {
         case orion::ValueTypeNumber:
@@ -494,29 +456,17 @@ KjNode* kjTreeFromQueryContextResponse(ConnectionInfo* ciP, bool oneHit, char* a
           break;
 
         case orion::ValueTypeString:
-          LM_TMP(("VAL: It's a string ..."));
-
-          if (valueMayBeContracted == true)
+          if (valueMayBeCompacted == true)
           {
-            LM_TMP(("VAL: ... and it may be contracted"));
-            char* contractedValue = orionldAliasLookup(orionldState.contextP, aP->stringValue.c_str(), NULL);
+            char* compactedValue = orionldContextItemAliasLookup(orionldState.contextP, aP->stringValue.c_str(), NULL, NULL);
 
-            if (contractedValue != NULL)
-            {
-              LM_TMP(("VAL: contracted value is: %s", contractedValue));
-              nodeP = kjString(orionldState.kjsonP, valueFieldName, contractedValue);
-            }
+            if (compactedValue != NULL)
+              nodeP = kjString(orionldState.kjsonP, valueFieldName, compactedValue);
             else
-            {
-              LM_TMP(("VAL: contracted value - not found"));
               nodeP = kjString(orionldState.kjsonP, valueFieldName, aP->stringValue.c_str());
-            }
           }
           else
-          {
-            LM_TMP(("VAL: ... and it may NOT be contracted"));
             nodeP = kjString(orionldState.kjsonP, valueFieldName, aP->stringValue.c_str());
-          }
           break;
 
         case orion::ValueTypeBoolean:   nodeP = kjBoolean(orionldState.kjsonP, valueFieldName, (KBool) aP->boolValue);       break;
@@ -524,9 +474,7 @@ KjNode* kjTreeFromQueryContextResponse(ConnectionInfo* ciP, bool oneHit, char* a
         case orion::ValueTypeNotGiven:  nodeP = kjString(orionldState.kjsonP, valueFieldName, "UNKNOWN TYPE");               break;
 
         case orion::ValueTypeVector:
-          LM_TMP(("VAL: Compound value, of Array type"));
         case orion::ValueTypeObject:
-          LM_TMP(("VAL: Compound value"));
           nodeP = (aP->compoundValueP->valueType == orion::ValueTypeVector)? kjArray(orionldState.kjsonP, valueFieldName) : kjObject(orionldState.kjsonP, valueFieldName);
           if (nodeP == NULL)
           {
@@ -535,7 +483,7 @@ KjNode* kjTreeFromQueryContextResponse(ConnectionInfo* ciP, bool oneHit, char* a
             return NULL;
           }
 
-          if (kjTreeFromCompoundValue(aP->compoundValueP, nodeP, valueMayBeContracted, &details) == NULL)
+          if (kjTreeFromCompoundValue(aP->compoundValueP, nodeP, valueMayBeCompacted, &details) == NULL)
           {
             LM_E(("kjTreeFromCompoundValue: %s", details));
             orionldErrorResponseCreate(OrionldInternalError, "Unable to create tree node from compound value", details);
@@ -565,7 +513,7 @@ KjNode* kjTreeFromQueryContextResponse(ConnectionInfo* ciP, bool oneHit, char* a
           //
           Metadata* mdP                  = aP->metadataVector[ix];
           char*     mdName               = (char*) mdP->name.c_str();
-          bool      valueMayBeContracted = false;
+          bool      valueMayBeCompacted  = false;
 
           if ((strcmp(mdName, "observedAt") != 0) &&
               (strcmp(mdName, "createdAt")  != 0) &&
@@ -574,7 +522,7 @@ KjNode* kjTreeFromQueryContextResponse(ConnectionInfo* ciP, bool oneHit, char* a
             //
             // Looking up short name for the sub-attribute
             //
-            mdName = orionldAliasLookup(orionldState.contextP, mdName, &valueMayBeContracted);
+            mdName = orionldContextItemAliasLookup(orionldState.contextP, mdName, &valueMayBeCompacted, NULL);
           }
 
           if (mdP->type != "")
@@ -611,12 +559,12 @@ KjNode* kjTreeFromQueryContextResponse(ConnectionInfo* ciP, bool oneHit, char* a
               break;
 
             case orion::ValueTypeString:
-              if (valueMayBeContracted == true)
+              if (valueMayBeCompacted == true)
               {
-                char* contractedValue = orionldAliasLookup(orionldState.contextP, mdP->stringValue.c_str(), NULL);
+                char* compactedValue = orionldContextItemAliasLookup(orionldState.contextP, mdP->stringValue.c_str(), NULL, NULL);
 
-                if (contractedValue != NULL)
-                  valueP = kjString(orionldState.kjsonP, valueFieldName, contractedValue);
+                if (compactedValue != NULL)
+                  valueP = kjString(orionldState.kjsonP, valueFieldName, compactedValue);
                 else
                   valueP = kjString(orionldState.kjsonP, valueFieldName, mdP->stringValue.c_str());
               }
@@ -628,8 +576,8 @@ KjNode* kjTreeFromQueryContextResponse(ConnectionInfo* ciP, bool oneHit, char* a
             case orion::ValueTypeNull:     valueP = kjNull(orionldState.kjsonP, valueFieldName);                                 break;
             case orion::ValueTypeNotGiven: valueP = kjString(orionldState.kjsonP, valueFieldName, "UNKNOWN TYPE IN MONGODB 1");  break;
 
-            case orion::ValueTypeObject:   valueP = kjTreeFromCompoundValue(mdP->compoundValueP, NULL, valueMayBeContracted, &details); valueP->name = (char*) "value"; break;
-            case orion::ValueTypeVector:   valueP = kjTreeFromCompoundValue(mdP->compoundValueP, NULL, valueMayBeContracted, &details); valueP->name = (char*) "value"; break;
+            case orion::ValueTypeObject:   valueP = kjTreeFromCompoundValue(mdP->compoundValueP, NULL, valueMayBeCompacted, &details); valueP->name = (char*) "value"; break;
+            case orion::ValueTypeVector:   valueP = kjTreeFromCompoundValue(mdP->compoundValueP, NULL, valueMayBeCompacted, &details); valueP->name = (char*) "value"; break;
             }
 
             kjChildAdd(nodeP, valueP);
@@ -659,12 +607,12 @@ KjNode* kjTreeFromQueryContextResponse(ConnectionInfo* ciP, bool oneHit, char* a
               break;
 
             case orion::ValueTypeString:
-              if (valueMayBeContracted == true)
+              if (valueMayBeCompacted == true)
               {
-                char* contractedValue = orionldAliasLookup(orionldState.contextP, mdP->stringValue.c_str(), NULL);
+                char* compactedValue = orionldContextItemAliasLookup(orionldState.contextP, mdP->stringValue.c_str(), NULL, NULL);
 
-                if (contractedValue != NULL)
-                  nodeP = kjString(orionldState.kjsonP, mdName, contractedValue);
+                if (compactedValue != NULL)
+                  nodeP = kjString(orionldState.kjsonP, mdName, compactedValue);
                 else
                   nodeP = kjString(orionldState.kjsonP, mdName, mdP->stringValue.c_str());
              }
@@ -676,8 +624,8 @@ KjNode* kjTreeFromQueryContextResponse(ConnectionInfo* ciP, bool oneHit, char* a
             case orion::ValueTypeNull:     nodeP = kjNull(orionldState.kjsonP, mdName);                                        break;
             case orion::ValueTypeNotGiven: nodeP = kjString(orionldState.kjsonP, mdName, "UNKNOWN TYPE IN MONGODB 2");         break;
 
-            case orion::ValueTypeObject:   nodeP = kjTreeFromCompoundValue(mdP->compoundValueP, NULL, valueMayBeContracted, &details);  nodeP->name = (char*) "value"; break;
-            case orion::ValueTypeVector:   nodeP = kjTreeFromCompoundValue(mdP->compoundValueP, NULL, valueMayBeContracted, &details);  nodeP->name = (char*) "value"; break;
+            case orion::ValueTypeObject:   nodeP = kjTreeFromCompoundValue(mdP->compoundValueP, NULL, valueMayBeCompacted, &details);  nodeP->name = (char*) "value"; break;
+            case orion::ValueTypeVector:   nodeP = kjTreeFromCompoundValue(mdP->compoundValueP, NULL, valueMayBeCompacted, &details);  nodeP->name = (char*) "value"; break;
             }
           }
 

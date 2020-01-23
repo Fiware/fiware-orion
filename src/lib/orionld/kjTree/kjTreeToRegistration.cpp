@@ -1,24 +1,24 @@
 /*
 *
-* Copyright 2019 Telefonica Investigacion y Desarrollo, S.A.U
+* Copyright 2019 FIWARE Foundation e.V.
 *
-* This file is part of Orion Context Broker.
+* This file is part of Orion-LD Context Broker.
 *
-* Orion Context Broker is free software: you can redistribute it and/or
+* Orion-LD Context Broker is free software: you can redistribute it and/or
 * modify it under the terms of the GNU Affero General Public License as
 * published by the Free Software Foundation, either version 3 of the
 * License, or (at your option) any later version.
 *
-* Orion Context Broker is distributed in the hope that it will be useful,
+* Orion-LD Context Broker is distributed in the hope that it will be useful,
 * but WITHOUT ANY WARRANTY; without even the implied warranty of
 * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero
 * General Public License for more details.
 *
 * You should have received a copy of the GNU Affero General Public License
-* along with Orion Context Broker. If not, see http://www.gnu.org/licenses/.
+* along with Orion-LD Context Broker. If not, see http://www.gnu.org/licenses/.
 *
 * For those usages not covered by this license please contact with
-* iot_support at tid dot es
+* orionld at fiware dot org
 *
 * Author: Jorge Pereira amd Ken Zangelin
 */
@@ -41,7 +41,7 @@ extern "C"
 #include "orionld/common/orionldErrorResponse.h"               // orionldErrorResponseCreate
 #include "orionld/common/urlCheck.h"                           // urlCheck
 #include "orionld/common/urnCheck.h"                           // urnCheck
-#include "orionld/context/orionldUriExpand.h"                  // orionldUriExpand
+#include "orionld/context/orionldContextItemExpand.h"          // orionldContextItemExpand
 #include "orionld/kjTree/kjTreeToEntIdVector.h"                // kjTreeToEntIdVector
 #include "orionld/kjTree/kjTreeToTimeInterval.h"               // kjTreeToTimeInterval
 #include "orionld/kjTree/kjTreeToStringList.h"                 // kjTreeToStringList
@@ -109,13 +109,7 @@ static bool kjTreeToRegistrationInformation(ConnectionInfo* ciP, KjNode* regInfo
         {
           STRING_CHECK(propP, "PropertyInfo::name");
 
-          char  longName[256];
-          char* details;
-
-          if (orionldUriExpand(orionldState.contextP, propP->value.s, longName, sizeof(longName), NULL, &details) == false)
-            return false;
-
-          propP->value.s = longName;
+          propP->value.s = orionldContextItemExpand(orionldState.contextP, propP->value.s, NULL, true, NULL);
           regP->dataProvided.propertyV.push_back(propP->value.s);
         }
       }
@@ -127,13 +121,7 @@ static bool kjTreeToRegistrationInformation(ConnectionInfo* ciP, KjNode* regInfo
         {
           STRING_CHECK(relP, "RelationInfo::name");
 
-          char  longName[256];
-          char* details;
-
-          if (orionldUriExpand(orionldState.contextP, relP->value.s, longName, sizeof(longName), NULL, &details) == false)
-            return false;
-
-          relP->value.s = longName;
+          relP->value.s = orionldContextItemExpand(orionldState.contextP, relP->value.s, NULL, true, NULL);
           regP->dataProvided.relationshipV.push_back(relP->value.s);
         }
       }
@@ -325,9 +313,6 @@ bool kjTreeToRegistration(ConnectionInfo* ciP, ngsiv2::Registration* regP, char*
       if (regP->properties == NULL)
         regP->properties = kjObject(orionldState.kjsonP, "properties");
 
-      LM_TMP(("RPROP: Removing property '%s' from request tree", kNodeP->name));
-      LM_TMP(("RPROP: Adding property '%s' to Registration::properties", kNodeP->name));
-
       // Here, where I remove 'kNodeP' from its tree, the current loop wiould end if I used kNodeP->next (which is set to NULL
       // when kNodeP is removed
       // Instead I must save the kNodeP->next pointer (in the variable 'next') and use that variable instead.
@@ -340,13 +325,7 @@ bool kjTreeToRegistration(ConnectionInfo* ciP, ngsiv2::Registration* regP, char*
       //
       // Expand the name of the property
       //
-      char* longName = (char*) kaAlloc(&orionldState.kalloc, 256);
-      char* details;
-
-      if (orionldUriExpand(orionldState.contextP, kNodeP->name, longName, 256, NULL, &details) == false)
-        return false;
-
-      kNodeP->name = longName;
+      kNodeP->name = orionldContextItemExpand(orionldState.contextP, kNodeP->name, NULL, true, NULL);
     }
 
     kNodeP = next;

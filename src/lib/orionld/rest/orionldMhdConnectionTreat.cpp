@@ -1,24 +1,24 @@
 /*
 *
-* Copyright 2018 Telefonica Investigacion y Desarrollo, S.A.U
+* Copyright 2018 FIWARE Foundation e.V.
 *
-* This file is part of Orion Context Broker.
+* This file is part of Orion-LD Context Broker.
 *
-* Orion Context Broker is free software: you can redistribute it and/or
+* Orion-LD Context Broker is free software: you can redistribute it and/or
 * modify it under the terms of the GNU Affero General Public License as
 * published by the Free Software Foundation, either version 3 of the
 * License, or (at your option) any later version.
 *
-* Orion Context Broker is distributed in the hope that it will be useful,
+* Orion-LD Context Broker is distributed in the hope that it will be useful,
 * but WITHOUT ANY WARRANTY; without even the implied warranty of
 * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero
 * General Public License for more details.
 *
 * You should have received a copy of the GNU Affero General Public License
-* along with Orion Context Broker. If not, see http://www.gnu.org/licenses/.
+* along with Orion-LD Context Broker. If not, see http://www.gnu.org/licenses/.
 *
 * For those usages not covered by this license please contact with
-* iot_support at tid dot es
+* orionld at fiware dot org
 *
 * Author: Ken Zangelin
 */
@@ -44,16 +44,16 @@ extern "C"
 #include "rest/restReply.h"                                      // restReply
 
 #include "orionld/common/orionldErrorResponse.h"                 // orionldErrorResponseCreate
+#include "orionld/common/OrionldProblemDetails.h"                // OrionldProblemDetails
 #include "orionld/common/linkCheck.h"                            // linkCheck
 #include "orionld/common/SCOMPARE.h"                             // SCOMPARE
 #include "orionld/common/CHECK.h"                                // CHECK
-#include "orionld/common/orionldState.h"                         // orionldState
+#include "orionld/common/orionldState.h"                         // orionldState, orionldHostName
 #include "orionld/common/uuidGenerate.h"                         // uuidGenerate
+#include "orionld/common/orionldEntityPayloadCheck.h"            // orionldValidName  - FIXME: Own file for "orionldValidName()"!
 #include "orionld/context/orionldCoreContext.h"                  // ORIONLD_CORE_CONTEXT_URL
-#include "orionld/context/orionldContextCreateFromUrl.h"         // orionldContextCreateFromUrl
-#include "orionld/context/orionldContextAppend.h"                // orionldContextAppend
-#include "orionld/context/orionldContextTreat.h"                 // orionldContextTreat
-#include "orionld/context/orionldContextListInsert.h"            // orionldContextListInsert
+#include "orionld/context/orionldContextFromUrl.h"               // orionldContextFromUrl
+#include "orionld/context/orionldContextFromTree.h"              // orionldContextFromTree
 #include "orionld/serviceRoutines/orionldBadVerb.h"              // orionldBadVerb
 #include "orionld/rest/orionldServiceInit.h"                     // orionldRestServiceV
 #include "orionld/rest/orionldServiceLookup.h"                   // orionldServiceLookup
@@ -155,18 +155,12 @@ static bool acceptHeaderExtractAndCheck(ConnectionInfo* ciP)
   float weight_application_json     = 0;
   float weight_application_jsonld   = 0;
 
-  LM_T(LmtAccept, ("ciP->httpHeaders.accept == %s", ciP->httpHeaders.accept.c_str()));
-  LM_T(LmtAccept, ("ciP->httpHeaders.acceptHeaderV.size() == %d", ciP->httpHeaders.acceptHeaderV.size()));
-
   if (ciP->httpHeaders.acceptHeaderV.size() == 0)
   {
     orionldState.acceptJson   = true;   // Default Accepted MIME-type is application/json
     orionldState.acceptJsonld = false;
     ciP->outMimeType          = JSON;
   }
-
-  // LM_TMP(("LINK: Before: acceptJsonld: %s", FT(orionldState.acceptJsonld)));
-  // LM_TMP(("LINK: Before: acceptJson:   %s", FT(orionldState.acceptJson)));
 
   for (unsigned int ix = 0; ix < ciP->httpHeaders.acceptHeaderV.size(); ix++)
   {
@@ -197,9 +191,6 @@ static bool acceptHeaderExtractAndCheck(ConnectionInfo* ciP)
         orionldState.acceptJsonld = true;
         orionldState.acceptJson   = true;
       }
-
-      // LM_TMP(("LINK: acceptJsonld: %s", FT(orionldState.acceptJsonld)));
-      // LM_TMP(("LINK: acceptJson:   %s", FT(orionldState.acceptJson)));
     }
     else if (SCOMPARE4(mediaRange, '*', '/', '*', 0))
     {
@@ -208,9 +199,6 @@ static bool acceptHeaderExtractAndCheck(ConnectionInfo* ciP)
       LM_T(LmtAccept, ("*/* - both json and jsonld OK"));
     }
   }
-
-  // LM_TMP(("LINK: acceptJsonld: %s", FT(orionldState.acceptJsonld)));
-  // LM_TMP(("LINK: acceptJson:   %s", FT(orionldState.acceptJson)));
 
   if ((orionldState.acceptJsonld == false) && (orionldState.acceptJson == false))
   {
@@ -293,31 +281,6 @@ static bool payloadEmptyCheck(ConnectionInfo* ciP)
 
   return true;
 }
-
-
-#if 0
-// -----------------------------------------------------------------------------
-//
-// kjTreeFirstLevelPresent
-//
-static void kjTreeFirstLevelPresent(const char* what, KjNode* tree)
-{
-  // LM_TMP(("--------------- %s ----------------", what));
-
-  if (tree == NULL)
-  {
-    // LM_TMP(("Empty tree"));
-    return;
-  }
-
-  int ix = 0;
-  for (KjNode* nodeP = tree->value.firstChildP; nodeP != NULL; nodeP = nodeP->next)
-  {
-    // LM_TMP(("node %d: %s", ix, nodeP->name));
-    ++ix;
-  }
-}
-#endif
 
 
 
@@ -413,7 +376,6 @@ static bool payloadParseAndExtractSpecialFields(ConnectionInfo* ciP, bool* conte
           return false;
         }
         orionldState.payloadContextNode = attrNodeP;
-        // LM_TMP(("CTX: Found @context in payload: %p, orionldState.payloadContextNode"));
         LM_T(LmtContext, ("Found @context in the payload (%p)", orionldState.payloadContextNode));
 
         attrNodeP = orionldState.payloadContextNode->next;
@@ -447,11 +409,11 @@ static bool payloadParseAndExtractSpecialFields(ConnectionInfo* ciP, bool* conte
         orionldState.payloadTypeNode = attrNodeP;
 
         STRING_CHECK(orionldState.payloadTypeNode, "entity type");
-        extern bool orionldValidName(char* name, char** detailsPP);
-        char* details;
-        if (orionldValidName(orionldState.payloadTypeNode->value.s, &details) == false)
+
+        char* detail;
+        if (orionldValidName(orionldState.payloadTypeNode->value.s, &detail) == false)
         {
-          orionldErrorResponseCreate(OrionldBadRequestData, "Invalid entity type name", details);
+          orionldErrorResponseCreate(OrionldBadRequestData, "Invalid entity type name", detail);
           return false;
         }
         LM_T(LmtContext, ("Found Entity::type in the payload (%p)", orionldState.payloadTypeNode));
@@ -506,34 +468,18 @@ static bool payloadParseAndExtractSpecialFields(ConnectionInfo* ciP, bool* conte
     }
   }
 
-  //
-  // If Content-Type is application/ld+json (@context is in the payload) and Accept does not include application/ld+json,
-  // then the context cannot be returned in the response, only a reference to it.
-  // We have to create the context in the "context server" (orionld acts as context server) to be able to return the context in the response.
-  //
-  // All of this only applies if:
-  //   o Content-Type == application/ld+json
-  //   o The @context in the payload is not a simple JSON String (a URI)
-  //   o The HTTP Accept header does not include application/ld+json => context must be returned as an HTTP header (Link)
-  //
-  if ((orionldState.payloadContextNode != NULL) && (orionldState.acceptJsonld == false) && (orionldState.payloadContextNode->type != KjString))
-  {
-    *contextToBeCashedP = true;
-
-    //
-    // Create the name of the context to be cached - a uuid
-    //
-    // FIXME: This needs to be discussed in the Bindings document.
-    // FIXME: What about creation of Subscriptions? Should be treated the same. Context name == sub id
-    //
-    char uuid[37];
-
-    uuidGenerate(uuid);
-    snprintf(orionldState.linkBuffer, sizeof(orionldState.linkBuffer), "http://%s:%d/ngsi-ld/contexts/%s", hostname, portNo, uuid);
-    orionldState.link = orionldState.linkBuffer;
-  }
-
   return true;
+}
+
+
+
+// -----------------------------------------------------------------------------
+//
+// orionldErrorResponseFromProblemDetails
+//
+void orionldErrorResponseFromProblemDetails(OrionldProblemDetails* pdP)
+{
+  orionldErrorResponseCreate(pdP->type, pdP->title, pdP->detail);
 }
 
 
@@ -563,68 +509,25 @@ static bool linkHeaderCheck(ConnectionInfo* ciP)
     return false;
   }
 
-  if ((orionldState.contextP = orionldContextCreateFromUrl(ciP, orionldState.link, OrionldUserContext, &details)) == NULL)
+  //
+  // The HTTP headers live in the thread. Once the thread dies, the mempry is freed.
+  // When calling orionldContextFromUrl, the URL must be properly allocated.
+  // As it will be inserted in the Context Cache, that must survive requests, it must be
+  // allocated in the global allocation buffer 'kalloc', not the thread-local 'orionldState.kalloc'.
+  //
+  char*                  url = kaStrdup(&kalloc, orionldState.link);
+  OrionldProblemDetails  pd;
+
+  orionldState.contextP = orionldContextFromUrl(url, &pd);
+  if (orionldState.contextP == NULL)
   {
-    orionldErrorResponseCreate(OrionldBadRequestData, "Failure to create context from URL", details);
-    ciP->httpStatusCode = SccBadRequest;
+    LM_W(("Bad Input? (%s: %s)", pd.title, pd.detail));
+    orionldErrorResponseFromProblemDetails(&pd);
+    ciP->httpStatusCode = (HttpStatusCode) pd.status;  // FIXME: Stop using ciP->httpStatusCode!!!
     return false;
   }
 
-  return true;
-}
-
-
-
-// -----------------------------------------------------------------------------
-//
-// contextNameLookup -
-//
-static char* contextNameLookup(char* url)
-{
-  const char*  needle       = "/ngsi-ld/contexts/";
-  char*        needleStart  = strstr(url, needle);
-
-  if (needleStart == NULL)
-    return NULL;
-
-  return &needleStart[strlen(needle)];
-}
-
-
-
-// -----------------------------------------------------------------------------
-//
-// contextToCache -
-//
-static bool contextToCache(ConnectionInfo* ciP)
-{
-  //
-  // Creating the context in Context Server
-  //
-
-  // The Context tree must be cloned, as it is created inside the thread's kjson
-  KjNode* clonedTree = kjClone(orionldState.payloadContextNode);
-
-  if (clonedTree == NULL)
-  {
-    orionldState.contextP = NULL;  // FIXME: Memleak?
-    orionldErrorResponseCreate(OrionldInternalError, "Unable to clone context tree - out of memory?", NULL);
-    ciP->httpStatusCode = SccReceiverInternalError;
-
-    return false;
-  }
-
-  OrionldContext* contextP = (OrionldContext*) kaAlloc(&kalloc, sizeof(OrionldContext));
-
-  contextP->url       = kaStrdup(&kalloc, orionldState.contextP->url);
-  contextP->tree      = clonedTree;
-  contextP->type      = orionldState.contextP->type;
-  contextP->ignore    = orionldState.contextP->ignore;
-  contextP->temporary = false;
-
-  orionldContextListInsert(contextP, false);
-
-  contextP->name      = contextNameLookup(contextP->url);
+  orionldState.link = orionldState.contextP->url;
 
   return true;
 }
@@ -637,12 +540,10 @@ static bool contextToCache(ConnectionInfo* ciP)
 //
 static void contextToPayload(void)
 {
-  // LM_TMP(("CTX: Accepts JSON-LD, Service Routine OK - adding context to payload"));
   // If no contest node exists, create it with the default context
 
   if (orionldState.payloadContextNode == NULL)
   {
-    // LM_TMP(("CTX: payloadContextNode == NULL, using Incoming Link header: '%s'", orionldState.link));
     if (orionldState.link == NULL)
       orionldState.payloadContextNode = kjString(orionldState.kjsonP, "@context", ORIONLD_CORE_CONTEXT_URL);
     else
@@ -662,7 +563,6 @@ static void contextToPayload(void)
   //
   if (orionldState.responseTree->type == KjObject)
   {
-    // LM_TMP(("CTX: Adding orionldState.payloadContextNode to payload"));
     orionldState.payloadContextNode->next = orionldState.responseTree->value.firstChildP;
     orionldState.responseTree->value.firstChildP = orionldState.payloadContextNode;
   }
@@ -683,7 +583,7 @@ static void contextToPayload(void)
       {
         contextNode = kjClone(orionldState.payloadContextNode);
 
-        orionldStateDelayedKjFree(contextNode);
+        orionldStateDelayedKjFreeEnqueue(contextNode);
       }
 
       if (contextNode == NULL)
@@ -735,8 +635,8 @@ static void contextToPayload(void)
 //   10. Check the Accept header and decide output MIME-type
 //   11. Make sure the HTTP Header "Link" is valid
 //   12. Check the @context in HTTP Header
-//   13. if (Link):     orionldState.contextP = orionldContextCreateFromUrl()
-//   14. if (@context): orionldState.contextP orionldContextCreateFromTree()
+//   13. if (Link):     orionldState.contextP = orionldContextFromUrl()
+//   14. if (@context): orionldState.contextP orionldContextFromTree()
 //   15. if (@context != SimpleString): Create OrionldContext with 13|14
 //   16. if (@context != SimpleString): Insert context in context cache
 //   17. Call the SERVICE ROUTINE
@@ -758,7 +658,6 @@ int orionldMhdConnectionTreat(ConnectionInfo* ciP)
   bool     serviceRoutineResult = false;
 
   LM_T(LmtMhd, ("Read all the payload - treating the request!"));
-  LM_TMP(("----------------------- Treating NGSI-LD request %03d: %s %s: %s --------------------------", requestNo, orionldState.verbString, orionldState.urlPath, ciP->payload));
 
   //
   // 01. Predetected Error?
@@ -773,7 +672,6 @@ int orionldMhdConnectionTreat(ConnectionInfo* ciP)
   //
   if ((orionldState.serviceP = serviceLookup(ciP)) == NULL)
     goto respond;
-
 
   //
   // 03. Check for empty payload for POST/PATCH/PUT
@@ -802,7 +700,6 @@ int orionldMhdConnectionTreat(ConnectionInfo* ciP)
   if (acceptHeaderExtractAndCheck(ciP) == false)
     goto respond;
 
-
   //
   // 07. Check the @context in HTTP Header, if present
   //
@@ -811,19 +708,39 @@ int orionldMhdConnectionTreat(ConnectionInfo* ciP)
   if ((orionldState.linkHttpHeaderPresent == true) && (linkHeaderCheck(ciP) == false))
     goto respond;
 
-  // LM_TMP(("orionldState.payloadContextNode at %p", orionldState.payloadContextNode));
   //
-  // Treat the context from the payload, if any
+  // Treat inline context
   //
-  if ((orionldState.payloadContextNode != NULL) && (orionldContextTreat(ciP, orionldState.payloadContextNode) == false))
-    goto respond;
+  if (orionldState.payloadContextNode != NULL)
+  {
+    OrionldProblemDetails pd = { OrionldBadRequestData, (char*) "naught", (char*) "naught", 0 };
 
+    orionldState.contextP = orionldContextFromTree(NULL, true, orionldState.payloadContextNode, &pd);
+
+    if (pd.status == 200)  // got an array with only Core Context
+      orionldState.contextP = orionldCoreContextP;
+
+    if (orionldState.contextP == NULL)
+    {
+      LM_W(("Bad Input? (%s: %s (type == %d, status = %d))", pd.title, pd.detail, pd.type, pd.status));
+      orionldErrorResponseFromProblemDetails(&pd);
+      ciP->httpStatusCode = (HttpStatusCode) pd.status;  // FIXME: Stop using ciP->httpStatusCode!!!
+
+      goto respond;
+    }
+  }
+
+  if (orionldState.contextP == NULL)
+    orionldState.contextP = orionldCoreContextP;
+
+  orionldState.link = orionldState.contextP->url;
 
   // ********************************************************************************************
   //
   // Call the SERVICE ROUTINE
   //
-  LM_T(LmtServiceRoutine, ("Calling Service Routine %s", orionldState.serviceP->url));
+  LM_T(LmtServiceRoutine, ("Calling Service Routine %s (context at %p)", orionldState.serviceP->url, orionldState.contextP));
+
   serviceRoutineResult = orionldState.serviceP->serviceRoutine(ciP);
   LM_T(LmtServiceRoutine, ("service routine '%s %s' done", orionldState.verbString, orionldState.serviceP->url));
 
@@ -836,8 +753,6 @@ int orionldMhdConnectionTreat(ConnectionInfo* ciP)
     if (ciP->httpStatusCode < 400)
       ciP->httpStatusCode = SccBadRequest;
   }
-  else if ((contextToBeCashed == true) && (contextToCache(ciP) == false))
-    goto respond;  // Yes, I know, the label 'respond' comes right after this statement ...
 
 
  respond:
@@ -855,34 +770,32 @@ int orionldMhdConnectionTreat(ConnectionInfo* ciP)
   //
   if (ciP->httpStatusCode >= 400)
   {
-    orionldState.useLinkHeader = false;
+    orionldState.noLinkHeader  = true;   // We don't want the Link header for erroneous requests
     serviceRoutineResult       = false;  // Just in case ...
     // MimeType handled in restReply()
   }
 
   //
-  // Context in Link HTTP header?
-  //    YES - if payloadParseAndExtractSpecialFields() says so (setting contextToBeCashed to true)
-  //     NO - if service routine resulted in error
-  // OR
-  //    YES - if JSONLD is accepted
-  //    NO  - if there isn't any payload!
-  //    NO  - if the service routine explicitly has asked to not include the Link HTTP header in the response
+  // Normally, the @context is returned in the HTTP Link header if:
+  // * Accept: appplication/json
+  // * No Error
   //
+  // Need to discuss any exceptions with NEC.
+  // E.g.
+  //   What if "Accept: appplication/ld+json" in a creation request?
+  //   Creation requests have no payload data so the context can't be put in the payload ...
+  //
+  // What is clear is that no @context is to be returned for error reponses
+  // Also, GET /.../contexts/{context-id} should NOT give back the link header
+  //
+  if ((serviceRoutineResult == true) && (orionldState.noLinkHeader == false))
+  {
+    if (orionldState.acceptJsonld == false)
+      httpHeaderLinkAdd(ciP, orionldState.link);
+    else if (orionldState.responseTree == NULL)
+      httpHeaderLinkAdd(ciP, orionldState.link);
+  }
 
-#if 0
-  LM_TMP(("LINK: Add Link to HTTP Header?"));
-  LM_TMP(("LINK: contextToBeCashed:          %s", FT(contextToBeCashed)));
-  LM_TMP(("LINK: serviceRoutineResult:       %s", FT(serviceRoutineResult)));
-  LM_TMP(("LINK: orionldState.acceptJsonld:  %s", FT(orionldState.acceptJsonld)));
-  LM_TMP(("LINK: orionldState.responseTree:  %p", orionldState.responseTree));
-  LM_TMP(("LINK: orionldState.useLinkHeader: %s", FT(orionldState.useLinkHeader)));
-#endif
-
-  if ((contextToBeCashed == true) && (serviceRoutineResult == true))
-    httpHeaderLinkAdd(ciP, orionldState.link);
-  else if ((orionldState.acceptJsonld == false) && (orionldState.responseTree != NULL) && (orionldState.useLinkHeader == true))
-    httpHeaderLinkAdd(ciP, orionldState.link);
 
   //
   // Is there a KJSON response tree to render?

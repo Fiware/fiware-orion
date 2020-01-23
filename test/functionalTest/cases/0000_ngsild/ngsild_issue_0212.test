@@ -1,22 +1,22 @@
-# Copyright 2019 Telefonica Investigacion y Desarrollo, S.A.U
+# Copyright 2019 FIWARE Foundation e.V.
 #
-# This file is part of Orion Context Broker.
+# This file is part of Orion-LD Context Broker.
 #
-# Orion Context Broker is free software: you can redistribute it and/or
+# Orion-LD Context Broker is free software: you can redistribute it and/or
 # modify it under the terms of the GNU Affero General Public License as
 # published by the Free Software Foundation, either version 3 of the
 # License, or (at your option) any later version.
 #
-# Orion Context Broker is distributed in the hope that it will be useful,
+# Orion-LD Context Broker is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero
 # General Public License for more details.
 #
 # You should have received a copy of the GNU Affero General Public License
-# along with Orion Context Broker. If not, see http://www.gnu.org/licenses/.
+# along with Orion-LD Context Broker. If not, see http://www.gnu.org/licenses/.
 #
 # For those usages not covered by this license please contact with
-# iot_support at tid dot es
+# orionld at fiware dot org
 
 # VALGRIND_READY - to mark the test ready for valgrindTestSuite.sh
 
@@ -71,7 +71,7 @@ payload='{
     ]
   },
   "@context": [
-    "https://gitlab.com/synchronicity-iot/synchronicity-data-models/raw/master/synchronicity-data-models-context.jsonld",
+    "https://gitlab.com/synchronicity-iot/synchronicity-data-models/raw/master/context.jsonld",
     "https://uri.etsi.org/ngsi-ld/v1/ngsi-ld-core-context.jsonld"
   ]
 }'
@@ -82,7 +82,7 @@ echo
 
 echo "02. GET the entity by type - longname"
 echo "====================================="
-orionCurl --url "/ngsi-ld/v1/entities?type=https://uri.synchronicity-iot.eu/ns/dataModels%23Store"
+orionCurl --url "/ngsi-ld/v1/entities?type=https://uri.synchronicity-iot.eu/ns/data-models%23Store"
 echo
 echo
 
@@ -99,7 +99,7 @@ echo
 =======================================================================
 HTTP/1.1 201 Created
 Content-Length: 0
-Link: REGEX(.*)
+Link: <https://gitlab.com/synchronicity-iot/synchronicity-data-models/raw/master/context.jsonld>; rel="http://www.w3.org/ns/json-ld#context"; type="application/ld+json"
 Location: /ngsi-ld/v1/entities/urn:ngsi-ld:Store:santander:COM4111
 Date: REGEX(.*)
 
@@ -108,28 +108,22 @@ Date: REGEX(.*)
 02. GET the entity by type - longname
 =====================================
 HTTP/1.1 200 OK
-Content-Length: 696
+Content-Length: 639
 Content-Type: application/json
 Link: <https://uri.etsi.org/ngsi-ld/v1/ngsi-ld-core-context.jsonld>; rel="http://www.w3.org/ns/json-ld#context"; type="application/ld+json"
 Date: REGEX(.*)
 
 [
     {
-        "https://uri.etsi.org/ngsi-ld/description": {
+        "description": {
             "type": "Property",
             "value": "Cosmetica natural fabricada en Santander."
         },
-        "https://uri.etsi.org/ngsi-ld/name": {
+        "https://uri.synchronicity-iot.eu/ns/data-models#currenciesAccepted": {
             "type": "Property",
-            "value": "MARTA KAUFMANN"
+            "value": "EUR"
         },
-        "https://uri.synchronicity-iot.eu/ns/dataModels#currenciesAccepted": {
-            "type": "Property",
-            "value": [
-                "EUR"
-            ]
-        },
-        "https://uri.synchronicity-iot.eu/ns/dataModels#image": {
+        "https://uri.synchronicity-iot.eu/ns/data-models#image": {
             "type": "Property",
             "value": "http://www.comerciosantander.com/imagenes/Comercios/124F214A-CE55-5A33-A77D-679C0F848FFC.jpg/resize/50/100/"
         },
@@ -144,7 +138,11 @@ Date: REGEX(.*)
                 "type": "Point"
             }
         },
-        "type": "https://uri.synchronicity-iot.eu/ns/dataModels#Store"
+        "name": {
+            "type": "Property",
+            "value": "MARTA KAUFMANN"
+        },
+        "type": "https://uri.synchronicity-iot.eu/ns/data-models#Store"
     }
 ]
 
@@ -152,28 +150,22 @@ Date: REGEX(.*)
 03. GET the entity with id as URI param
 =======================================
 HTTP/1.1 200 OK
-Content-Length: 696
+Content-Length: 639
 Content-Type: application/json
 Link: <https://uri.etsi.org/ngsi-ld/v1/ngsi-ld-core-context.jsonld>; rel="http://www.w3.org/ns/json-ld#context"; type="application/ld+json"
 Date: REGEX(.*)
 
 [
     {
-        "https://uri.etsi.org/ngsi-ld/description": {
+        "description": {
             "type": "Property",
             "value": "Cosmetica natural fabricada en Santander."
         },
-        "https://uri.etsi.org/ngsi-ld/name": {
+        "https://uri.synchronicity-iot.eu/ns/data-models#currenciesAccepted": {
             "type": "Property",
-            "value": "MARTA KAUFMANN"
+            "value": "EUR"
         },
-        "https://uri.synchronicity-iot.eu/ns/dataModels#currenciesAccepted": {
-            "type": "Property",
-            "value": [
-                "EUR"
-            ]
-        },
-        "https://uri.synchronicity-iot.eu/ns/dataModels#image": {
+        "https://uri.synchronicity-iot.eu/ns/data-models#image": {
             "type": "Property",
             "value": "http://www.comerciosantander.com/imagenes/Comercios/124F214A-CE55-5A33-A77D-679C0F848FFC.jpg/resize/50/100/"
         },
@@ -188,7 +180,11 @@ Date: REGEX(.*)
                 "type": "Point"
             }
         },
-        "type": "https://uri.synchronicity-iot.eu/ns/dataModels#Store"
+        "name": {
+            "type": "Property",
+            "value": "MARTA KAUFMANN"
+        },
+        "type": "https://uri.synchronicity-iot.eu/ns/data-models#Store"
     }
 ]
 

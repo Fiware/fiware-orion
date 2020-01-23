@@ -1,22 +1,22 @@
-# Copyright 2019 Telefonica Investigacion y Desarrollo, S.A.U
+# Copyright 2019 FIWARE Foundation e.V.
 #
-# This file is part of Orion Context Broker.
+# This file is part of Orion-LD Context Broker.
 #
-# Orion Context Broker is free software: you can redistribute it and/or
+# Orion-LD Context Broker is free software: you can redistribute it and/or
 # modify it under the terms of the GNU Affero General Public License as
 # published by the Free Software Foundation, either version 3 of the
 # License, or (at your option) any later version.
 #
-# Orion Context Broker is distributed in the hope that it will be useful,
+# Orion-LD Context Broker is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero
 # General Public License for more details.
 #
 # You should have received a copy of the GNU Affero General Public License
-# along with Orion Context Broker. If not, see http://www.gnu.org/licenses/.
+# along with Orion-LD Context Broker. If not, see http://www.gnu.org/licenses/.
 #
 # For those usages not covered by this license please contact with
-# iot_support at tid dot es
+# orionld at fiware dot org
 
 # VALGRIND_READY - to mark the test ready for valgrindTestSuite.sh
 
@@ -38,7 +38,7 @@ brokerStart CB 0-255
 # 05. Update 'locatedIn', changing its value
 # 06. GET the entity, make sure the value of 'locatedIn' has changed
 # 07. Update 'locatedIn', adding another metadata
-# 08. GET the entity, make sure all metadata of 'locatedIn' are present
+# 08. GET the entity, make sure only new metadata of 'locatedIn' are present
 # 09. GET the entity, with tutorials.Step-by-Step context - see shortnames
 #
 
@@ -69,7 +69,7 @@ echo
 
 echo "02. GET the entity, make sure all props/rels are present"
 echo "========================================================"
-orionCurl --url '/ngsi-ld/v1/entities/urn:ngsi-ld:Shelf:unit001?prettyPrint=yes' --noPayloadCheck --linkHeaderFix # -H 'Link: <https://fiware.github.io/tutorials.Step-by-Step/tutorials-context.jsonld>; rel="http://www.w3.org/ns/json-ld#context"; type="application/ld+json"'
+orionCurl --url '/ngsi-ld/v1/entities/urn:ngsi-ld:Shelf:unit001?prettyPrint=yes' --noPayloadCheck --linkHeaderFix
 echo
 echo
 
@@ -101,7 +101,6 @@ echo
 
 echo "04. GET the entity, make sure all metadata of 'locatedIn' are present"
 echo "====================================================================="
-# -H 'Link: <https://fiware.github.io/tutorials.Step-by-Step/tutorials-context.jsonld>; rel="http://www.w3.org/ns/json-ld#context"; type="application/ld+json"'
 orionCurl --url '/ngsi-ld/v1/entities/urn:ngsi-ld:Shelf:unit001?prettyPrint=yes' --noPayloadCheck --linkHeaderFix
 echo
 echo
@@ -111,6 +110,7 @@ echo "05. Update 'locatedIn', changing its value"
 echo "=========================================="
 payload='{
   "locatedIn" : {
+    "type": "Relationship",
     "object": "urn:ngsi-ld:Building:store002"
   },
   "@context": [
@@ -134,6 +134,8 @@ echo "07. Update 'locatedIn', adding another metadata"
 echo "==============================================="
 payload='{
   "locatedIn" : {
+    "type": "Relationship",
+    "object": "urn:ngsi-ld:Building:store002",
     "xtraMdata": {
       "type": "Property",
       "value": "urn:ngsi-ld:Building:store005"
@@ -149,8 +151,8 @@ echo
 echo
 
 
-echo "08. GET the entity, make sure all metadata of 'locatedIn' are present"
-echo "====================================================================="
+echo "08. GET the entity, make sure only new metadata of 'locatedIn' are present"
+echo "=========================================================================="
 orionCurl --url '/ngsi-ld/v1/entities/urn:ngsi-ld:Shelf:unit001?prettyPrint=yes' --noPayloadCheck --linkHeaderFix
 echo
 echo
@@ -168,7 +170,7 @@ echo
 =====================================================
 HTTP/1.1 201 Created
 Content-Length: 0
-Link: REGEX(.*)
+Link: <https://fiware.github.io/tutorials.Step-by-Step/tutorials-context.jsonld>; rel="http://www.w3.org/ns/json-ld#context"; type="application/ld+json"
 Location: /ngsi-ld/v1/entities/urn:ngsi-ld:Shelf:unit001
 Date: REGEX(.*)
 
@@ -179,7 +181,7 @@ Date: REGEX(.*)
 HTTP/1.1 200 OK
 Content-Length: 603
 Content-Type: application/json
-Link: REGEX(.*)
+Link: <https://uri.etsi.org/ngsi-ld/v1/ngsi-ld-core-context.jsonld>; rel="http://www.w3.org/ns/json-ld#context"; type="application/ld+json"
 Date: REGEX(.*)
 
 {
@@ -215,7 +217,7 @@ Date: REGEX(.*)
 ===================================================
 HTTP/1.1 204 No Content
 Content-Length: 0
-Link: REGEX(.*)
+Link: <https://fiware.github.io/tutorials.Step-by-Step/tutorials-context.jsonld>; rel="http://www.w3.org/ns/json-ld#context"; type="application/ld+json"
 Date: REGEX(.*)
 
 
@@ -225,7 +227,7 @@ Date: REGEX(.*)
 HTTP/1.1 200 OK
 Content-Length: 1108
 Content-Type: application/json
-Link: REGEX(.*)
+Link: <https://uri.etsi.org/ngsi-ld/v1/ngsi-ld-core-context.jsonld>; rel="http://www.w3.org/ns/json-ld#context"; type="application/ld+json"
 Date: REGEX(.*)
 
 {
@@ -273,7 +275,7 @@ Date: REGEX(.*)
 ==========================================
 HTTP/1.1 204 No Content
 Content-Length: 0
-Link: REGEX(.*)
+Link: <https://fiware.github.io/tutorials.Step-by-Step/tutorials-context.jsonld>; rel="http://www.w3.org/ns/json-ld#context"; type="application/ld+json"
 Date: REGEX(.*)
 
 
@@ -281,9 +283,9 @@ Date: REGEX(.*)
 06. GET the entity, make sure the value of 'locatedIn' has changed
 ==================================================================
 HTTP/1.1 200 OK
-Content-Length: 1108
+Content-Length: 754
 Content-Type: application/json
-Link: REGEX(.*)
+Link: <https://uri.etsi.org/ngsi-ld/v1/ngsi-ld-core-context.jsonld>; rel="http://www.w3.org/ns/json-ld#context"; type="application/ld+json"
 Date: REGEX(.*)
 
 {
@@ -291,15 +293,7 @@ Date: REGEX(.*)
   "type": "https://fiware.github.io/tutorials.Step-by-Step/schema/Shelf",
   "https://fiware.github.io/tutorials.Step-by-Step/schema/locatedIn": {
     "type": "Relationship",
-    "object": "urn:ngsi-ld:Building:store002",
-    "https://fiware.github.io/tutorials.Step-by-Step/schema/installedBy": {
-      "type": "Relationship",
-      "object": "urn:ngsi-ld:Person:employee001"
-    },
-    "https://fiware.github.io/tutorials.Step-by-Step/schema/statusOfWork": {
-      "type": "Property",
-      "value": "https://fiware.github.io/tutorials.Step-by-Step/schema/completed"
-    }
+    "object": "urn:ngsi-ld:Building:store002"
   },
   "https://fiware.github.io/tutorials.Step-by-Step/schema/maxCapacity": {
     "type": "Property",
@@ -331,17 +325,17 @@ Date: REGEX(.*)
 ===============================================
 HTTP/1.1 204 No Content
 Content-Length: 0
-Link: REGEX(.*)
+Link: <https://fiware.github.io/tutorials.Step-by-Step/tutorials-context.jsonld>; rel="http://www.w3.org/ns/json-ld#context"; type="application/ld+json"
 Date: REGEX(.*)
 
 
 
-08. GET the entity, make sure all metadata of 'locatedIn' are present
-=====================================================================
+08. GET the entity, make sure only new metadata of 'locatedIn' are present
+==========================================================================
 HTTP/1.1 200 OK
-Content-Length: 1207
+Content-Length: 853
 Content-Type: application/json
-Link: REGEX(.*)
+Link: <https://uri.etsi.org/ngsi-ld/v1/ngsi-ld-core-context.jsonld>; rel="http://www.w3.org/ns/json-ld#context"; type="application/ld+json"
 Date: REGEX(.*)
 
 {
@@ -350,14 +344,6 @@ Date: REGEX(.*)
   "https://fiware.github.io/tutorials.Step-by-Step/schema/locatedIn": {
     "type": "Relationship",
     "object": "urn:ngsi-ld:Building:store002",
-    "https://fiware.github.io/tutorials.Step-by-Step/schema/installedBy": {
-      "type": "Relationship",
-      "object": "urn:ngsi-ld:Person:employee001"
-    },
-    "https://fiware.github.io/tutorials.Step-by-Step/schema/statusOfWork": {
-      "type": "Property",
-      "value": "https://fiware.github.io/tutorials.Step-by-Step/schema/completed"
-    },
     "xtraMdata": {
       "type": "Property",
       "value": "urn:ngsi-ld:Building:store005"
@@ -392,9 +378,9 @@ Date: REGEX(.*)
 09. GET the entity, with tutorials.Step-by-Step context - see shortnames
 ========================================================================
 HTTP/1.1 200 OK
-Content-Length: 822
+Content-Length: 633
 Content-Type: application/json
-Link: REGEX(.*)
+Link: <https://fiware.github.io/tutorials.Step-by-Step/tutorials-context.jsonld>; rel="http://www.w3.org/ns/json-ld#context"; type="application/ld+json"
 Date: REGEX(.*)
 
 {
@@ -403,14 +389,6 @@ Date: REGEX(.*)
   "locatedIn": {
     "type": "Relationship",
     "object": "urn:ngsi-ld:Building:store002",
-    "installedBy": {
-      "type": "Relationship",
-      "object": "urn:ngsi-ld:Person:employee001"
-    },
-    "statusOfWork": {
-      "type": "Property",
-      "value": "completed"
-    },
     "xtraMdata": {
       "type": "Property",
       "value": "urn:ngsi-ld:Building:store005"

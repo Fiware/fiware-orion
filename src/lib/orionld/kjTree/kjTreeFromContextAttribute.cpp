@@ -1,24 +1,24 @@
 /*
 *
-* Copyright 2018 Telefonica Investigacion y Desarrollo, S.A.U
+* Copyright 2018 FIWARE Foundation e.V.
 *
-* This file is part of Orion Context Broker.
+* This file is part of Orion-LD Context Broker.
 *
-* Orion Context Broker is free software: you can redistribute it and/or
+* Orion-LD Context Broker is free software: you can redistribute it and/or
 * modify it under the terms of the GNU Affero General Public License as
 * published by the Free Software Foundation, either version 3 of the
 * License, or (at your option) any later version.
 *
-* Orion Context Broker is distributed in the hope that it will be useful,
+* Orion-LD Context Broker is distributed in the hope that it will be useful,
 * but WITHOUT ANY WARRANTY; without even the implied warranty of
 * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero
 * General Public License for more details.
 *
 * You should have received a copy of the GNU Affero General Public License
-* along with Orion Context Broker. If not, see http://www.gnu.org/licenses/.
+* along with Orion-LD Context Broker. If not, see http://www.gnu.org/licenses/.
 *
 * For those usages not covered by this license please contact with
-* iot_support at tid dot es
+* orionld at fiware dot org
 *
 * Author: Ken Zangelin
 */
@@ -36,12 +36,9 @@ extern "C"
 #include "orionld/common/numberToDate.h"                       // numberToDate
 #include "rest/httpHeaderAdd.h"                                // httpHeaderAdd
 #include "ngsi/ContextAttribute.h"                             // ContextAttribute
-#include "orionld/common/OrionldConnection.h"                  // orionldState
-#include "orionld/context/orionldCoreContext.h"                // orionldCoreContext
-#include "orionld/context/orionldContextValueLookup.h"         // orionldContextValueLookup
-#include "orionld/context/orionldContextCreateFromTree.h"      // orionldContextCreateFromTree
-#include "orionld/context/orionldContextListInsert.h"          // orionldContextListInsert
-#include "orionld/context/orionldAliasLookup.h"                // orionldAliasLookup
+#include "orionld/common/orionldState.h"                       // orionldState
+#include "orionld/context/OrionldContext.h"                    // OrionldContext
+#include "orionld/context/orionldContextItemAliasLookup.h"     // orionldContextItemAliasLookup
 #include "orionld/kjTree/kjTreeFromCompoundValue.h"            // kjTreeFromCompoundValue
 #include "orionld/kjTree/kjTreeFromContextAttribute.h"         // Own interface
 
@@ -66,8 +63,8 @@ extern "C"
 //
 KjNode* kjTreeFromContextAttribute(ContextAttribute* caP, OrionldContext* contextP, RenderFormat renderFormat, char** detailsP)
 {
-  bool     valueMayBeContracted;
-  char*    nameAlias = orionldAliasLookup(contextP, caP->name.c_str(), &valueMayBeContracted);
+  bool     valueMayBeCompacted;
+  char*    nameAlias = orionldContextItemAliasLookup(contextP, caP->name.c_str(), &valueMayBeCompacted, NULL);
   KjNode*  nodeP     = NULL;
 
   if (nameAlias == NULL)
@@ -82,12 +79,12 @@ KjNode* kjTreeFromContextAttribute(ContextAttribute* caP, OrionldContext* contex
     switch (caP->valueType)
     {
     case orion::ValueTypeString:
-      if (valueMayBeContracted == true)
+      if (valueMayBeCompacted == true)
       {
-        char* contractedValue = orionldAliasLookup(contextP, caP->stringValue.c_str(), NULL);
+        char* compactedValue = orionldContextItemAliasLookup(contextP, caP->stringValue.c_str(), NULL, NULL);
 
-        if (contractedValue != NULL)
-          nodeP = kjString(orionldState.kjsonP, nameAlias, contractedValue);
+        if (compactedValue != NULL)
+          nodeP = kjString(orionldState.kjsonP, nameAlias, compactedValue);
         else
           nodeP = kjString(orionldState.kjsonP, nameAlias, caP->stringValue.c_str());
       }
@@ -113,7 +110,7 @@ KjNode* kjTreeFromContextAttribute(ContextAttribute* caP, OrionldContext* contex
 
     case orion::ValueTypeVector:
     case orion::ValueTypeObject:
-      nodeP = kjTreeFromCompoundValue(caP->compoundValueP, NULL, valueMayBeContracted, detailsP);
+      nodeP = kjTreeFromCompoundValue(caP->compoundValueP, NULL, valueMayBeCompacted, detailsP);
       if (nodeP == NULL)
         return NULL;
       break;
@@ -154,7 +151,6 @@ KjNode* kjTreeFromContextAttribute(ContextAttribute* caP, OrionldContext* contex
 
   // Value
   const char* valueName = (isRelationship == false)? "value" : "object";
-  LM_TMP(("NOTIF: valueType of attr '%s': '%s'", caP->name.c_str(), valueTypeName(caP->valueType)));
   switch (caP->valueType)
   {
   case orion::ValueTypeString:
@@ -179,7 +175,7 @@ KjNode* kjTreeFromContextAttribute(ContextAttribute* caP, OrionldContext* contex
 
   case orion::ValueTypeVector:
   case orion::ValueTypeObject:
-    nodeP = kjTreeFromCompoundValue(caP->compoundValueP, NULL, valueMayBeContracted, detailsP);
+    nodeP = kjTreeFromCompoundValue(caP->compoundValueP, NULL, valueMayBeCompacted, detailsP);
     nodeP->name = (char*) "value";
     if (nodeP == NULL)
       return NULL;
@@ -193,18 +189,15 @@ KjNode* kjTreeFromContextAttribute(ContextAttribute* caP, OrionldContext* contex
   kjChildAdd(aTopNodeP, nodeP);
 
   bool isGeoProperty = false;
-  LM_TMP(("NOTIF: attribute type is: '%s'", caP->type.c_str()));
   if (strcmp(caP->type.c_str(), "GeoProperty") == 0)
   {
     //
     // GeoProperty attributes seem to get an extra metadata, called "location". It needs to be removed
     //
-    LM_TMP(("NOTIF: It's a GeoProperty attribute!"));
     isGeoProperty = true;
   }
 
   // Metadata
-  LM_TMP(("NOTIF: converting %d metadata of attribute '%s' of type '%s'", caP->metadataVector.size(), caP->name.c_str(), caP->type.c_str()));
   for (unsigned int ix = 0; ix < caP->metadataVector.size(); ix++)
   {
     Metadata*   mdP    = caP->metadataVector[ix];
@@ -218,11 +211,9 @@ KjNode* kjTreeFromContextAttribute(ContextAttribute* caP, OrionldContext* contex
       //   In the future we might want to keep this metadata, but the unit must be looked over (WGS84).
       //   What was default unit in orion v1 is not default for orionld
       //
-      LM_TMP(("NOTIF: skipping metadata '%s'", mdName));
       continue;
     }
 
-    LM_TMP(("NOTIF: converting metadata '%s'", mdName));
     //
     // Special case: observedAt - stored as Number but must be served as a string ...
     //                            also, not expanded
@@ -242,14 +233,12 @@ KjNode* kjTreeFromContextAttribute(ContextAttribute* caP, OrionldContext* contex
     }
     else
     {
-      bool    valueMayBeContracted;
-      char*   mdLongName     = orionldAliasLookup(contextP, mdName, &valueMayBeContracted);
+      bool    valueMayBeCompacted;
+      char*   mdLongName     = orionldContextItemAliasLookup(contextP, mdName, &valueMayBeCompacted, NULL);
       KjNode* typeNodeP      = kjString(orionldState.kjsonP, "type", mdP->type.c_str());
       KjNode* valueNodeP     = NULL;
 
       nodeP = kjObject(orionldState.kjsonP, mdLongName);
-
-      LM_TMP(("NOTIF: metadata '%s' is a '%s'", mdName, valueTypeName(mdP->valueType)));
 
       kjChildAdd(nodeP, typeNodeP);
       if (strcmp(mdP->type.c_str(), "Relationship") == 0)
@@ -261,12 +250,12 @@ KjNode* kjTreeFromContextAttribute(ContextAttribute* caP, OrionldContext* contex
         switch (mdP->valueType)
         {
         case orion::ValueTypeString:
-          if (valueMayBeContracted == true)
+          if (valueMayBeCompacted == true)
           {
-            char* contractedValue = orionldAliasLookup(contextP, mdP->stringValue.c_str(), NULL);
+            char* compactedValue = orionldContextItemAliasLookup(contextP, mdP->stringValue.c_str(), NULL, NULL);
 
-            if (contractedValue != NULL)
-              valueNodeP = kjString(orionldState.kjsonP, "value", contractedValue);
+            if (compactedValue != NULL)
+              valueNodeP = kjString(orionldState.kjsonP, "value", compactedValue);
             else
               valueNodeP = kjString(orionldState.kjsonP, "value", mdP->stringValue.c_str());
           }
@@ -288,7 +277,7 @@ KjNode* kjTreeFromContextAttribute(ContextAttribute* caP, OrionldContext* contex
 
         case orion::ValueTypeVector:
         case orion::ValueTypeObject:
-          valueNodeP = kjTreeFromCompoundValue(mdP->compoundValueP, NULL, valueMayBeContracted, detailsP);
+          valueNodeP = kjTreeFromCompoundValue(mdP->compoundValueP, NULL, valueMayBeCompacted, detailsP);
           break;
 
         case orion::ValueTypeNotGiven:

@@ -1,43 +1,47 @@
 /*
 *
-* Copyright 2019 Telefonica Investigacion y Desarrollo, S.A.U
+* Copyright 2019 FIWARE Foundation e.V.
 *
-* This file is part of Orion Context Broker.
+* This file is part of Orion-LD Context Broker.
 *
-* Orion Context Broker is free software: you can redistribute it and/or
+* Orion-LD Context Broker is free software: you can redistribute it and/or
 * modify it under the terms of the GNU Affero General Public License as
 * published by the Free Software Foundation, either version 3 of the
 * License, or (at your option) any later version.
 *
-* Orion Context Broker is distributed in the hope that it will be useful,
+* Orion-LD Context Broker is distributed in the hope that it will be useful,
 * but WITHOUT ANY WARRANTY; without even the implied warranty of
 * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero
 * General Public License for more details.
 *
 * You should have received a copy of the GNU Affero General Public License
-* along with Orion Context Broker. If not, see http://www.gnu.org/licenses/.
+* along with Orion-LD Context Broker. If not, see http://www.gnu.org/licenses/.
 *
 * For those usages not covered by this license please contact with
-* iot_support at tid dot es
+* orionld at fiware dot org
 *
 * Author: Ken Zangelin
 */
-#include "orionld/db/dbConfiguration.h"                             // This is where the DB is selected
+#include "orionld/db/dbConfiguration.h"                                    // This is where the DB is selected
 
 #if DB_DRIVER_MONGO_CPP_LEGACY
-#include "orionld/mongoCppLegacy/mongoCppLegacyInit.h"              // mongoCppLegacyInit
-#include "orionld/mongoCppLegacy/mongoCppLegacyEntityUpdate.h"      // mongoCppLegacyEntityUpdate
-#include "orionld/mongoCppLegacy/mongoCppLegacyEntityLookup.h"      // mongoCppLegacyEntityLookup
-#include "orionld/mongoCppLegacy/mongoCppLegacyKjTreeFromBsonObj.h" // mongoCppLegacyKjTreeFromBsonObj
-#include "orionld/mongoCppLegacy/mongoCppLegacyKjTreeToBsonObj.h"   // mongoCppLegacyKjTreeToBsonObj
+
+#include "orionld/mongoCppLegacy/mongoCppLegacyInit.h"                     // mongoCppLegacyInit
+#include "orionld/mongoCppLegacy/mongoCppLegacyEntityUpdate.h"             // mongoCppLegacyEntityUpdate
+#include "orionld/mongoCppLegacy/mongoCppLegacyEntityLookup.h"             // mongoCppLegacyEntityLookup
+#include "orionld/mongoCppLegacy/mongoCppLegacyKjTreeFromBsonObj.h"        // mongoCppLegacyKjTreeFromBsonObj
+#include "orionld/mongoCppLegacy/mongoCppLegacyKjTreeToBsonObj.h"          // mongoCppLegacyKjTreeToBsonObj
+#include "orionld/mongoCppLegacy/mongoCppLegacyEntityBatchDelete.h"        // mongoCppLegacyEntityBatchDelete
 #include "orionld/mongoCppLegacy/mongoCppLegacySubscriptionMatchEntityIdAndAttributes.h"   // mongoCppLegacySubscriptionMatchEntityIdAndAttributes
+#include "orionld/mongoCppLegacy/mongoCppLegacyEntityListLookupWithIdTypeCreDate.h"        // mongoCppLegacyEntityListLookupWithIdTypeCreDate
+
 #elif DB_DRIVER_MONGOC
-#include "orionld/mongoc/mongocInit.h"                              // mongocInit
-#include "orionld/mongoc/mongocEntityUpdate.h"                      // mongocEntityUpdate
-#include "orionld/mongoc/mongocEntityLookup.h"                      // mongocEntityLookup
-#include "orionld/mongoc/mongocKjTreeFromBson.h"                    // mongocKjTreeFromBson
+#include "orionld/mongoc/mongocInit.h"                                     // mongocInit
+#include "orionld/mongoc/mongocEntityUpdate.h"                             // mongocEntityUpdate
+#include "orionld/mongoc/mongocEntityLookup.h"                             // mongocEntityLookup
+#include "orionld/mongoc/mongocKjTreeFromBson.h"                           // mongocKjTreeFromBson
 #endif
-#include "orionld/db/dbInit.h"                                      // Own interface
+#include "orionld/db/dbInit.h"                                             // Own interface
 
 
 
@@ -57,7 +61,9 @@ void dbInit(const char* dbHost, const char* dbName)
   dbEntityUpdate                           = mongoCppLegacyEntityUpdate;
   dbDataToKjTree                           = mongoCppLegacyKjTreeFromBsonObj;
   dbDataFromKjTree                         = mongoCppLegacyKjTreeToBsonObj;
+  dbEntityBatchDelete                      = mongoCppLegacyEntityBatchDelete;
   dbSubscriptionMatchEntityIdAndAttributes = mongoCppLegacySubscriptionMatchEntityIdAndAttributes;
+  dbEntityListLookupWithIdTypeCreDate      = mongoCppLegacyEntityListLookupWithIdTypeCreDate;
 
   mongoCppLegacyInit(dbHost, dbName);
 

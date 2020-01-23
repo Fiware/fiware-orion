@@ -1,24 +1,24 @@
 /*
 *
-* Copyright 2018 Telefonica Investigacion y Desarrollo, S.A.U
+* Copyright 2018 FIWARE Foundation e.V.
 *
-* This file is part of Orion Context Broker.
+* This file is part of Orion-LD Context Broker.
 *
-* Orion Context Broker is free software: you can redistribute it and/or
+* Orion-LD Context Broker is free software: you can redistribute it and/or
 * modify it under the terms of the GNU Affero General Public License as
 * published by the Free Software Foundation, either version 3 of the
 * License, or (at your option) any later version.
 *
-* Orion Context Broker is distributed in the hope that it will be useful,
+* Orion-LD Context Broker is distributed in the hope that it will be useful,
 * but WITHOUT ANY WARRANTY; without even the implied warranty of
 * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero
 * General Public License for more details.
 *
 * You should have received a copy of the GNU Affero General Public License
-* along with Orion Context Broker. If not, see http://www.gnu.org/licenses/.
+* along with Orion-LD Context Broker. If not, see http://www.gnu.org/licenses/.
 *
 * For those usages not covered by this license please contact with
-* iot_support at tid dot es
+* orionld at fiware dot org
 *
 * Author: Ken Zangelin
 */
@@ -33,7 +33,6 @@
 #include "orionld/common/orionldErrorResponse.h"               // OrionldBadRequestData, ...
 #include "orionld/common/orionldState.h"                       // orionldState, orionldStateInit
 #include "orionld/common/SCOMPARE.h"                           // SCOMPARE
-#include "orionld/context/orionldContextListPresent.h"         // orionldContextListPresent
 #include "orionld/rest/temporaryErrorPayloads.h"               // Temporary Error Payloads
 #include "orionld/rest/orionldMhdConnectionInit.h"             // Own interface
 
@@ -174,8 +173,6 @@ static void ipAddressAndPort(ConnectionInfo* ciP)
 //
 static int orionldUriArgumentGet(void* cbDataP, MHD_ValueKind kind, const char* key, const char* value)
 {
-  LM_TMP(("Got URI Param: '%s' == '%s'", key, value));
-
   if (SCOMPARE3(key, 'i', 'd', 0))
     orionldState.uriParams.id = (char*) value;
   else if (SCOMPARE5(key, 't', 'y', 'p', 'e', 0))
@@ -184,7 +181,8 @@ static int orionldUriArgumentGet(void* cbDataP, MHD_ValueKind kind, const char* 
     orionldState.uriParams.idPattern = (char*) value;
   else if (SCOMPARE6(key, 'a', 't', 't', 'r', 's', 0))
     orionldState.uriParams.attrs = (char*) value;
-
+  else if (SCOMPARE8(key, 'o', 'p', 't', 'i', 'o', 'n', 's', 0))
+    orionldState.uriParams.options = (char*) value;
   return MHD_YES;
 }
 
@@ -192,14 +190,15 @@ static int orionldUriArgumentGet(void* cbDataP, MHD_ValueKind kind, const char* 
 
 // -----------------------------------------------------------------------------
 //
-// uriArgumentsPresent - temp - FIXME: TO BE REMOVED
+// uriArgumentsPresent - necessary for functest "ngsild_uri_params_in_orionldState.test"
 //
 static void uriArgumentsPresent(void)
 {
-  LM_TMP(("orionldUriArguments: id:        '%s'", orionldState.uriParams.id));
-  LM_TMP(("orionldUriArguments: type:      '%s'", orionldState.uriParams.type));
-  LM_TMP(("orionldUriArguments: idPattern: '%s'", orionldState.uriParams.idPattern));
-  LM_TMP(("orionldUriArguments: attrs:     '%s'", orionldState.uriParams.attrs));
+  LM_T(LmtUriParams, ("orionldUriArguments: id:        '%s'", orionldState.uriParams.id));
+  LM_T(LmtUriParams, ("orionldUriArguments: type:      '%s'", orionldState.uriParams.type));
+  LM_T(LmtUriParams, ("orionldUriArguments: idPattern: '%s'", orionldState.uriParams.idPattern));
+  LM_T(LmtUriParams, ("orionldUriArguments: attrs:     '%s'", orionldState.uriParams.attrs));
+  LM_T(LmtUriParams, ("orionldUriArguments: options:   '%s'", orionldState.uriParams.options));
 }
 
 
@@ -223,8 +222,6 @@ int orionldMhdConnectionInit
   // This call to LM_TMP should not be removed. Only commented out
   //
   LM_TMP(("------------------------- Servicing NGSI-LD request %03d: %s %s --------------------------", requestNo, method, url));
-  orionldContextListPresent();
-
 
   //
   // 1. Prepare connectionInfo
@@ -333,7 +330,9 @@ int orionldMhdConnectionInit
   // 13. Get URI parameters
   MHD_get_connection_values(connection, MHD_GET_ARGUMENT_KIND, uriArgumentGet, ciP);           // FIXME: To Be Removed!
   MHD_get_connection_values(connection, MHD_GET_ARGUMENT_KIND, orionldUriArgumentGet, NULL);
-  uriArgumentsPresent();
+
+  if (lmTraceIsSet(LmtUriParams))
+    uriArgumentsPresent();
 
   // 14. Check ...
 

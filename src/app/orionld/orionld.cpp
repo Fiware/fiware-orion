@@ -1,24 +1,24 @@
 /*
 *
-* Copyright 2018 Telefonica Investigacion y Desarrollo, S.A.U
+* Copyright 2018 FIWARE Foundation e.V.
 *
-* This file is part of Orion Context Broker.
+* This file is part of Orion-LD Context Broker.
 *
-* Orion Context Broker is free software: you can redistribute it and/or
+* Orion-LD Context Broker is free software: you can redistribute it and/or
 * modify it under the terms of the GNU Affero General Public License as
 * published by the Free Software Foundation, either version 3 of the
 * License, or (at your option) any later version.
 *
-* Orion Context Broker is distributed in the hope that it will be useful,
+* Orion-LD Context Broker is distributed in the hope that it will be useful,
 * but WITHOUT ANY WARRANTY; without even the implied warranty of
 * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero
 * General Public License for more details.
 *
 * You should have received a copy of the GNU Affero General Public License
-* along with Orion Context Broker. If not, see http://www.gnu.org/licenses/.
+* along with Orion-LD Context Broker. If not, see http://www.gnu.org/licenses/.
 *
 * For those usages not covered by this license please contact with
-* iot_support at tid dot es
+* orionld at fiware dot org
 *
 * Author: Ken Zangelin
 */
@@ -108,15 +108,14 @@ extern "C"
 #include "metricsMgr/metricsMgr.h"
 #include "logSummary/logSummary.h"
 
-#include "orionld/common/OrionldConnection.h"               // kjFree - FIXME: call instead orionldGlobalFree();
-#include "orionld/context/orionldCoreContext.h"             // orionldCoreContext
+#include "orionld/common/orionldState.h"                    // orionldStateRelease, kalloc, ...
+#include "orionld/context/orionldContextCacheRelease.h"     // orionldContextCacheRelease
 #include "orionld/rest/orionldServiceInit.h"                // orionldServiceInit
 #include "orionld/db/dbInit.h"                              // dbInit
 
 #include "orionld/version.h"
 #include "orionld/orionRestServices.h"
 #include "orionld/orionldRestServices.h"
-#include "orionld/context/orionldContextList.h"             // orionldContextHead
 
 using namespace orion;
 
@@ -523,6 +522,13 @@ void orionExit(int code, const std::string& reason)
     LM_E(("Fatal Error (reason: %s)", reason.c_str()));
   }
 
+  orionldStateRelease();
+
+  //
+  // Contexts that have been cloned must be freed
+  //
+  orionldContextCacheRelease();
+
   exit(code);
 }
 
@@ -554,26 +560,9 @@ void exitFunc(void)
   curl_global_cleanup();
 
   //
-  // Free the context cache
+  // Free the context cache ?
+  // Or, is freeing up the global KAlloc instance sufficient ... ?
   //
-  OrionldContext* contextP = orionldContextHead;
-  OrionldContext* next;
-  while (contextP != NULL)
-  {
-    if (contextP == &orionldCoreContext)
-    {
-      contextP = contextP->next;
-      continue;
-    }
-
-    next = contextP->next;
-
-    kjFree(contextP->tree);   // Always cloned using kjClone ???
-    // free(contextP);  - the context is allocated using kaAlloc(&kalloc) - to free this, kaBufferReset is used (a few lines down)
-
-    contextP = next;
-  }
-
 
   //
   // Free the kalloc buffer
@@ -583,13 +572,6 @@ void exitFunc(void)
   if (unlink(pidPath) != 0)
   {
     LM_T(LmtSoftError, ("error removing PID file '%s': %s", pidPath, strerror(errno)));
-  }
-
-  if ((orionldState.contextP != NULL) && (orionldState.contextP->temporary == true))
-  {
-    free(orionldState.contextP->url);  // Always allocated using 'malloc' ???
-    free(orionldState.contextP);       // Always cloned using kjClone ???
-    orionldState.contextP = NULL;
   }
 }
 
@@ -601,8 +583,9 @@ void exitFunc(void)
 */
 const char* description =
   "\n"
-  "Orion context broker version details:\n"
-  "  version:            " ORION_VERSION   "\n"
+  "Orion-LD context broker version details:\n"
+  "  orionld version:    " ORIONLD_VERSION "\n"
+  "  orion version:      " ORION_VERSION   "\n"
   "  git hash:           " GIT_HASH        "\n"
   "  compile time:       " COMPILE_TIME    "\n"
   "  compiled by:        " COMPILED_BY     "\n"
@@ -867,7 +850,7 @@ int main(int argC, char* argV[])
   paConfig("man synopsis",                  (void*) "[options]");
   paConfig("man shortdescription",          (void*) "Options:");
   paConfig("man description",               (void*) description);
-  paConfig("man author",                    (void*) "Telefonica I+D");
+  paConfig("man author",                    (void*) "Telefonica I+D and FIWARE Foundation");
   paConfig("man version",                   (void*) versionString.c_str());
   paConfig("log to file",                   (void*) true);
   paConfig("log file line format",          (void*) LOG_FILE_LINE_FORMAT);
@@ -906,11 +889,17 @@ int main(int argC, char* argV[])
   lmTimeFormat(0, (char*) "%Y-%m-%dT%H:%M:%S");
 
 
+  //
+  // Set portNo
+  //
+  portNo = port;
+
 
   //
-  // Setting global variables from the arguments
+  // Set global variables from the arguments
   //
   dbNameLen = strlen(dbName);
+
 
   //
   // NOTE: Calling '_exit()' and not 'exit()' if 'pidFile()' returns error.
@@ -969,17 +958,6 @@ int main(int argC, char* argV[])
     daemonize();
   }
 
-  //
-  // Get host name
-  //
-  char hname[128];
-  gethostname(hname, sizeof(hname));
-  hostname = hname;
-
-  //
-  // Set portNo
-  //
-  portNo = port;
 
   if ((s = pidFile(false)) != 0)
   {
@@ -998,16 +976,12 @@ int main(int argC, char* argV[])
   LM_M(("x: '%s'", x));  // Outdeffed
 #endif
 
-  IpVersion    ipVersion        = IPDUAL;
+  IpVersion ipVersion = IPDUAL;
 
   if (useOnlyIPv4)
-  {
     ipVersion = IPV4;
-  }
   else if (useOnlyIPv6)
-  {
     ipVersion = IPV6;
-  }
 
   SemOpType policy = policyGet(reqMutexPolicy);
   orionInit(orionExit, ORION_VERSION, policy, statCounters, statSemWait, statTiming, statNotifQueue, strictIdv1);
@@ -1072,6 +1046,10 @@ int main(int argC, char* argV[])
   // Actually, another interesting usage is that a functional test case could create a context before starting the broker and
   // use that conext during the test.
   //
+
+  //
+  // Initialize orionld
+  //
   orionldServiceInit(restServiceVV, 9, getenv("ORIONLD_CACHED_CONTEXT_DIRECTORY"));
 
   if (https)
@@ -1127,15 +1105,13 @@ int main(int argC, char* argV[])
                           NULL);
   }
 
-  // orionldServiceInitPresent();
-
   LM_I(("Startup completed"));
   if (simulatedNotification)
   {
     LM_W(("simulatedNotification is 'true', outgoing notifications won't be sent"));
   }
 
-  LM_F(("Initialization Ready - Accepting Requests on Port %d", port));
+  LM_TMP(("Initialization ready - accepting requests on port %d", port));
 
   while (1)
   {

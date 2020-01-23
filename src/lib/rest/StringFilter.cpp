@@ -27,7 +27,8 @@
 
 extern "C"
 {
-#include "kbase/kFloatTrim.h"                 // kFloatTrim
+#include "kbase/kFloatTrim.h"                       // kFloatTrim
+#include "kalloc/kaStrdup.h"                        // kaStrdup
 }
 
 #include "mongo/client/dbclient.h"
@@ -45,9 +46,9 @@ extern "C"
 #include "mongoBackend/dbConstants.h"
 
 #ifdef ORIONLD
-#include "orionld/context/OrionldContext.h"
-#include "orionld/common/OrionldConnection.h"    // orionldState
-#include "orionld/context/orionldUriExpand.h"
+#include "orionld/common/orionldState.h"                         // orionldState
+#include "orionld/common/eqForDot.h"                             // eqForDot
+#include "orionld/context/orionldContextItemExpand.h"            // orionldContextItemExpand
 #endif
 #include "rest/StringFilter.h"
 
@@ -462,9 +463,9 @@ bool StringFilterItem::valueGet
 
   if ((*valueTypeP == SfvtString) && (op != SfopMatchPattern))
   {
-    if (forbiddenChars(s, ""))
+    if (forbiddenChars(s, "="))  // For NGSI-LD, attr long names have had the dots replaced by '='
     {
-      LM_E(("forbidden characters in String Filter"));
+      LM_E(("forbidden characters in String Filter '%s'", s));
       *errorStringP = std::string("forbidden characters in String Filter");
       return false;
     }
@@ -522,7 +523,14 @@ static StringFilterOp opFind(char* expression, char** lhsP, char** rhsP)
       }
       else   if (*eP == '<') { *rhsP = &eP[1]; op = SfopLessThan;           }
       else   if (*eP == '>') { *rhsP = &eP[1]; op = SfopGreaterThan;        }
-      else   if (*eP == ':') { *rhsP = &eP[1]; op = SfopEquals;             }
+      else   if (*eP == ':')
+      {
+        if ((orionldState.apiVersion != NGSI_LD_V1) && (eP[1] != '/') && (eP[2] != '/'))  // Don't if xxx://
+        {
+          *rhsP = &eP[1];
+          op = SfopEquals;
+        }
+      }
 
       if (op != SfopExists)  // operator found, RHS already set
       {
@@ -617,6 +625,9 @@ bool StringFilterItem::parse(char* qItem, std::string* errorStringP, StringFilte
     return false;
   }
 
+  // Replace '=' back to '.'
+  eqForDot(lhs);
+
   if (forbiddenChars(lhs, "'"))
   {
     if (type == SftQ)
@@ -648,24 +659,21 @@ bool StringFilterItem::parse(char* qItem, std::string* errorStringP, StringFilte
   //
   if (orionldState.apiVersion == NGSI_LD_V1)
   {
-    char*  details;
-    char   expanded[256];
-
-    if (orionldUriExpand(orionldState.contextP, (char*) attributeName.c_str(), expanded, sizeof(expanded), NULL, &details) == false)
-    {
-      *errorStringP = details;
-      return false;
-    }
+    char* expanded = orionldContextItemExpand(orionldState.contextP, attributeName.c_str(), NULL, true, NULL);
 
     //
     // After expanding we need to replace all dots ('.') with equal signs ('='), because, that is how the attribute name is stored in mongo
+    // But, we need to do this in a copy, to not destroy its real name, as 'expanded' points to the value inside the Context-Cache
     //
-    for (unsigned int ix = 0; ix < sizeof(expanded); ix++)
+    expanded = kaStrdup(&orionldState.kalloc, expanded);
+
+    char* cP = expanded;
+
+    while (*cP != 0)
     {
-      if (expanded[ix] == '.')
-        expanded[ix] = '=';
-      else if (expanded[ix] == 0)
-        break;
+      if (*cP == '.')
+        *cP = '=';
+      ++cP;
     }
 
     attributeName = expanded;

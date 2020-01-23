@@ -3,25 +3,25 @@
 
 /*
 *
-* Copyright 2019 Telefonica Investigacion y Desarrollo, S.A.U
+* Copyright 2019 FIWARE Foundation e.V.
 *
-* This file is part of Orion Context Broker.
+* This file is part of Orion-LD Context Broker.
 *
-* Orion Context Broker is free software: you can redistribute it and/or
+* Orion-LD Context Broker is free software: you can redistribute it and/or
 * modify it under the terms of the GNU Affero General Public License as
 * published by the Free Software Foundation, either version 3 of the
 * License, or (at your option) any later version.
 *
-* Orion Context Broker is distributed in the hope that it will be useful,
+* Orion-LD Context Broker is distributed in the hope that it will be useful,
 * but WITHOUT ANY WARRANTY; without even the implied warranty of
 * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero
 * General Public License for more details.
 *
 * You should have received a copy of the GNU Affero General Public License
-* along with Orion Context Broker. If not, see http://www.gnu.org/licenses/.
+* along with Orion-LD Context Broker. If not, see http://www.gnu.org/licenses/.
 *
 * For those usages not covered by this license please contact with
-* iot_support at tid dot es
+* orionld at fiware dot org
 *
 * Author: Ken Zangelin
 */
@@ -33,10 +33,13 @@ extern "C"
 #include "kjson/kjson.h"                                         // Kjson
 #include "kjson/KjNode.h"                                        // KjNode
 }
+
 #include "common/globals.h"                                      // ApiVersion
 #include "common/MimeType.h"                                     // MimeType
 #include "orionld/common/QNode.h"                                // QNode
 #include "orionld/types/OrionldGeoJsonType.h"                    // OrionldGeoJsonType
+#include "orionld/types/OrionldPrefixCache.h"                    // OrionldPrefixCache
+#include "orionld/common/OrionldResponseBuffer.h"                // OrionldResponseBuffer
 #include "orionld/context/OrionldContext.h"                      // OrionldContext
 
 
@@ -46,6 +49,14 @@ extern "C"
 // QNODE_SIZE - maximum number of QNodes allowed
 //
 #define QNODE_SIZE 100
+
+
+
+// -----------------------------------------------------------------------------
+//
+// ORIONLD_VERSION -
+//
+#define ORIONLD_VERSION "post-v0.1.0"
 
 
 
@@ -65,6 +76,8 @@ struct ConnectionInfo;
 typedef struct OrionldUriParamOptions
 {
   bool noOverwrite;
+  bool update;
+  bool replace;
 } OrionldUriParamOptions;
 
 
@@ -129,22 +142,16 @@ typedef struct OrionldConnectionState
   char*                   tenant;
   bool                    linkHttpHeaderPresent;
   char*                   link;
-  char                    linkBuffer[1024];
   bool                    linkHeaderAdded;
-  bool                    useLinkHeader;
-  OrionldContext          inlineContext;
+  bool                    noLinkHeader;
   OrionldContext*         contextP;
-  bool                    contextToBeFreed;
   ApiVersion              apiVersion;
   int                     requestNo;
-  KjNode*                 locationAttributeP;  // This assumes we have only ONE Geo-Location attribute ...
+  KjNode*                 locationAttributeP;           // This assumes we have only ONE Geo-Location attribute ...
   char*                   geoType;
   KjNode*                 geoCoordsP;
-  int64_t                 overriddenCreationDate;
-  int64_t                 overriddenModificationDate;
   bool                    entityCreated;                // If an entity is created, if complex context, it must be stored
   char*                   entityId;
-  char*                   httpReqBuffer;
   OrionldUriParamOptions  uriParamOptions;
   OrionldUriParams        uriParams;
   char*                   errorAttributeArrayP;
@@ -170,12 +177,31 @@ typedef struct OrionldConnectionState
   mongo::BSONObj*         qMongoFilterP;
   char*                   jsonBuf;    // Used by kjTreeFromBsonObj
 
+  //
+  // Array of KjNode trees that are to freed when the request thread ends
+  //
   KjNode*                 delayedKjFreeVec[50];
   int                     delayedKjFreeVecIndex;
   int                     delayedKjFreeVecSize;
+
+  //
+  // Array of allocated buffers that are to freed when the request thread ends
+  //
+  //
+  void*                   delayedFreeVec[50];
+  int                     delayedFreeVecIndex;
+  int                     delayedFreeVecSize;
+
+  //
+  // Special "delayed free" field for orionldRequestSend that does reallocs and it's simpler this way
+  //
+  void*                   delayedFreePointer;
+
   int                     notificationRecords;
   OrionldNotificationInfo notificationInfo[100];
   bool                    notify;
+  OrionldPrefixCache      prefixCache;
+  OrionldResponseBuffer   httpResponse;
 
 #ifdef DB_DRIVER_MONGOC
   //
@@ -185,6 +211,11 @@ typedef struct OrionldConnectionState
   mongoc_client_t*        mongoClient;
   mongoc_database_t*      mongoDatabase;
 #endif
+
+  //
+  // Instructions for mongoBackend
+  //
+  KjNode*                 creDatesP;
 } OrionldConnectionState;
 
 
@@ -201,29 +232,35 @@ extern __thread OrionldConnectionState orionldState;
 //
 // Global state
 //
-extern char      kallocBuffer[32 * 1024];
-extern int       requestNo;                // Never mind protecting with semaphore. Just a debugging help
-extern KAlloc    kalloc;
-extern Kjson     kjson;
-extern Kjson*    kjsonP;
-extern char*     hostname;
-extern uint16_t  portNo;
-extern char      dbName[];                 // From orionld.cpp
-extern int       dbNameLen;
-extern char      dbUser[];                 // From orionld.cpp
-extern char      dbPwd[];                  // From orionld.cpp
-extern bool      multitenancy;             // From orionld.cpp
-extern char*     tenant;                   // From orionld.cpp
-extern int       contextDownloadAttempts;  // From orionld.cpp
-extern int       contextDownloadTimeout;   // From orionld.cpp
+extern char        orionldHostName[128];
+extern int         orionldHostNameLen;
+extern char        kallocBuffer[32 * 1024];
+extern int         requestNo;                // Never mind protecting with semaphore. Just a debugging help
+extern KAlloc      kalloc;
+extern Kjson       kjson;
+extern Kjson*      kjsonP;
+extern uint16_t    portNo;
+extern char        dbName[];                 // From orionld.cpp
+extern int         dbNameLen;
+extern char        dbUser[];                 // From orionld.cpp
+extern char        dbPwd[];                  // From orionld.cpp
+extern bool        multitenancy;             // From orionld.cpp
+extern char*       tenant;                   // From orionld.cpp
+extern int         contextDownloadAttempts;  // From orionld.cpp
+extern int         contextDownloadTimeout;   // From orionld.cpp
+extern const char* orionldVersion;
 
+
+
+// -----------------------------------------------------------------------------
+//
+// Global variables for Mongo C Driver
+//
 #ifdef DB_DRIVER_MONGOC
-//
-// Variables for Mongo C Driver
-//
 extern mongoc_collection_t*  mongoEntitiesCollectionP;
 extern mongoc_collection_t*  mongoRegistrationsCollectionP;
 #endif
+
 
 
 // -----------------------------------------------------------------------------
@@ -252,8 +289,24 @@ extern void orionldStateErrorAttributeAdd(const char* attributeName);
 
 // -----------------------------------------------------------------------------
 //
-// orionldStateDelayedKjFree -
+// orionldStateDelayedKjFreeEnqueue -
 //
-extern void orionldStateDelayedKjFree(KjNode* tree);
+extern void orionldStateDelayedKjFreeEnqueue(KjNode* tree);
+
+
+
+// -----------------------------------------------------------------------------
+//
+// orionldStateDelayedFreeEnqueue -
+//
+extern void orionldStateDelayedFreeEnqueue(void* allocatedBuffer);
+
+
+
+// -----------------------------------------------------------------------------
+//
+// orionldStateDelayedFreeCancel -
+//
+extern void orionldStateDelayedFreeCancel(void* allocatedBuffer);
 
 #endif  // SRC_LIB_ORIONLD_COMMON_ORIONLDSTATE_H_
