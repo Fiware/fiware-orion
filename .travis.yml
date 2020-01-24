@@ -85,6 +85,8 @@ script: >
       -e CB_SKIP_FUNC_TESTS="${CB_SKIP_FUNC_TESTS}" \
       ${IMAGE_DEPS_CENTOS} build.sh -s ${STAGE_TYPE} --os centos -dqt;
   fi
+  
+  exit $?
  
   
 after_success: >
