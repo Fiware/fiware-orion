@@ -21,8 +21,8 @@ env:
   - STAGE=debian_release
   - STAGE=debian_deps
 before_install: >
-  export PLATFORM=$(echo ${STAGE} | cut -c1-6)
-  export STAGE_TYPE=$(echo ${STAGE} | cut -c8-)
+  export PLATFORM=$(echo ${STAGE} | cut -c1-6);
+  export STAGE_TYPE=$(echo ${STAGE} | cut -c8-);
   if [[ "${PUSH}" && ${TRAVIS_BRANCH} == "develop" && ${TRAVIS_EVENT_TYPE} == "push" ]]; then 
     export PUSH_STATUS="True"; 
   fi
