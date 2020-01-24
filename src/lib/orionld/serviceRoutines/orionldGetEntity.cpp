@@ -516,7 +516,7 @@ bool orionldGetEntity(ConnectionInfo* ciP)
   {
     if (orionldState.responseTree == NULL)
     {
-      KjNode* idNodeP = kjString(orionldState.kjsonP, "id", orionldState.wildcard[0]); 
+      KjNode* idNodeP = kjString(orionldState.kjsonP, "id", orionldState.wildcard[0]);
 
       orionldState.responseTree = kjObject(orionldState.kjsonP, NULL);
       kjChildAdd(orionldState.responseTree, idNodeP);
