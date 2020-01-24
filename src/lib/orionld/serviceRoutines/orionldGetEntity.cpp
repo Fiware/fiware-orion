@@ -47,71 +47,11 @@ extern "C"
 #include "orionld/common/orionldState.h"                         // orionldState
 #include "orionld/common/orionldErrorResponse.h"                 // orionldErrorResponseCreate
 #include "orionld/common/orionldRequestSend.h"                   // orionldRequestSend
+#include "orionld/db/dbConfiguration.h"                          // dbRegistrationLookup
 #include "orionld/kjTree/kjTreeFromQueryContextResponse.h"       // kjTreeFromQueryContextResponse
 #include "orionld/context/orionldContextItemExpand.h"            // orionldContextItemExpand
 #include "orionld/serviceRoutines/orionldGetEntity.h"            // Own Interface
 
-
-#include "mongo/client/dbclient.h"                               // MongoDB C++ Client Legacy Driver
-#include "mongoBackend/MongoGlobal.h"                            // getMongoConnection, releaseMongoConnection, ...
-#include "orionld/db/dbCollectionPathGet.h"                      // dbCollectionPathGet
-#include "orionld/db/dbConfiguration.h"                          // dbDataToKjTree
-
-
-
-// -----------------------------------------------------------------------------
-//
-// mongoCppLegacyRegistrationLookup - FIXME: move to src/lib/orionld/mongoCppLegacy/mongoCppLegacyRegistrationLookup.cpp
-//
-static KjNode* mongoCppLegacyRegistrationLookup(char* entityId)
-{
-  //
-  // Query registrations collection for:
-  //   db.registrations.find({ "contextRegistration.entities.id": "urn:ngsi-ld:entities:E1" })
-  //
-  // This part is to be moved to "src/lib/orionld/mongoCppLegacy/" once working ...
-  //
-  char    collectionPath[256];
-  KjNode* kjRegArray = NULL;
-
-  dbCollectionPathGet(collectionPath, sizeof(collectionPath), "registrations");
-
-  //
-  // Populate filter - only Entity ID for this operation - FOR NOW ...
-  //
-  mongo::BSONObjBuilder  filter;
-  filter.append("contextRegistration.entities.id", entityId);
-
-  // semTake()
-  mongo::DBClientBase*                  connectionP = getMongoConnection();
-  std::auto_ptr<mongo::DBClientCursor>  cursorP;
-  mongo::Query                          query(filter.obj());
-
-  cursorP = connectionP->query(collectionPath, query);
-
-  while (cursorP->more())
-  {
-    mongo::BSONObj  bsonObj = cursorP->nextSafe();
-    char*           title;
-    char*           details;
-    KjNode*         kjTree = dbDataToKjTree(&bsonObj, &title, &details);
-
-    if (kjTree == NULL)
-      LM_E(("%s: %s", title, details));
-    else
-    {
-      if (kjRegArray == NULL)
-        kjRegArray = kjArray(orionldState.kjsonP, NULL);
-      kjChildAdd(kjRegArray, kjTree);
-    }
-  }
-
-  releaseMongoConnection(connectionP);
-
-  // semGive()
-
-  return kjRegArray;
-}
 
 
 // -----------------------------------------------------------------------------
@@ -371,7 +311,7 @@ static KjNode* orionldForwardGetEntity(ConnectionInfo* ciP, char* entityId, KjNo
 {
   LM_TMP(("FWD: looking up registrations for entity '%s'", entityId));
 
-  KjNode*  regArrayP = mongoCppLegacyRegistrationLookup(entityId);
+  KjNode*  regArrayP = dbRegistrationLookup(entityId);
 
   if (regArrayP == NULL)
   {
