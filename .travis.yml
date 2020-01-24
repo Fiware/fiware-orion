@@ -26,9 +26,10 @@ before_install: >
   if [[ "${PUSH}" && ${TRAVIS_BRANCH} == "develop" && ${TRAVIS_EVENT_TYPE} == "push" ]]; then 
     export PUSH_STATUS="True"; 
   fi
-  if [[ "${TRAVIS_EVENT_TYPE}" == "pull_request" && "${STAGE_TYPE}" != "release" && "${STAGE_TYPE}" != "deps" ]]; then export TEST_STATUS="True"; fi
-    echo ${DOCKER_PASSWORD} | docker login -u ${DOCKER_USERNAME} --password-stdin
-    git lfs pull
+  if [[ "${TRAVIS_EVENT_TYPE}" == "pull_request" && "${STAGE_TYPE}" != "release" && "${STAGE_TYPE}" != "deps" ]]; then 
+    export TEST_STATUS="True"; 
+  fi
+  echo ${DOCKER_PASSWORD} | docker login -u ${DOCKER_USERNAME} --password-stdin git lfs pull;
   if [[ "${TEST_STATUS}" && "${STAGE}" != "compliance" ]]; then 
     echo "0" | sudo tee /proc/sys/net/ipv6/conf/all/disable_ipv6;
     echo '{"ipv6":true,"fixed-cidr-v6":"2001:db8:1::/64"}'| sudo tee /etc/docker/daemon.json; 
