@@ -1,9 +1,9 @@
-#ifndef SRC_LIB_ORIONLD_COMMON_ORIONLDREQUESTSEND_H_
-#define SRC_LIB_ORIONLD_COMMON_ORIONLDREQUESTSEND_H_
+#ifndef SRC_LIB_ORIONLD_MONGOCPPLEGACY_MONGOCPPLEGACYREGISTRATIONLOOKUP_H_
+#define SRC_LIB_ORIONLD_MONGOCPPLEGACY_MONGOCPPLEGACYREGISTRATIONLOOKUP_H_
 
 /*
 *
-* Copyright 2018 FIWARE Foundation e.V.
+* Copyright 2019 FIWARE Foundation e.V.
 *
 * This file is part of Orion-LD Context Broker.
 *
@@ -25,26 +25,18 @@
 *
 * Author: Ken Zangelin
 */
-#include "orionld/common/OrionldResponseBuffer.h"
+
+extern "C"
+{
+#include "kjson/KjNode.h"                                        // KjNode
+}
 
 
 
 // -----------------------------------------------------------------------------
 //
-// orionldRequestSend - send a request and await its response
+// mongoCppLegacyRegistrationLookup -
 //
-extern bool orionldRequestSend
-(
-  OrionldResponseBuffer*  rBufP,
-  const char*             protocol,
-  const char*             ip,
-  uint16_t                port,
-  const char*             urlPath,
-  int                     tmoInMilliSeconds,
-  char**                  detailPP,
-  bool*                   tryAgainP,
-  bool*                   downloadFailedP,
-  const char*             acceptHeader
-);
+extern KjNode* mongoCppLegacyRegistrationLookup(const char* entityId);
 
-#endif  // SRC_LIB_ORIONLD_COMMON_ORIONLDREQUESTSEND_H_
+#endif  // SRC_LIB_ORIONLD_MONGOCPPLEGACY_MONGOCPPLEGACYREGISTRATIONLOOKUP_H_

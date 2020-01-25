@@ -24,21 +24,312 @@
 */
 extern "C"
 {
-#include "kbase/kStringSplit.h"                                // kStringSplit
+#include "kbase/kMacros.h"                                       // K_VEC_SIZE
+#include "kbase/kStringSplit.h"                                  // kStringSplit
+#include "kbase/kStringArrayJoin.h"                              // kStringArrayJoin
+#include "kbase/kStringArrayLookup.h"                            // kStringArrayLookup
+#include "kjson/KjNode.h"                                        // KjNode
+#include "kjson/kjBuilder.h"                                     // kjObject, ...
+#include "kjson/kjLookup.h"                                      // kjLookup
+#include "kjson/kjParse.h"                                       // kjParse
 }
 
-#include "logMsg/logMsg.h"                                     // LM_*
-#include "logMsg/traceLevels.h"                                // Lmt*
+#include "logMsg/logMsg.h"                                       // LM_*
+#include "logMsg/traceLevels.h"                                  // Lmt*
 
-#include "rest/ConnectionInfo.h"                               // ConnectionInfo
-#include "mongoBackend/mongoQueryContext.h"                    // mongoQueryContext
+#include "rest/ConnectionInfo.h"                                 // ConnectionInfo
+#include "mongoBackend/mongoQueryContext.h"                      // mongoQueryContext
 
-#include "orionld/common/urlCheck.h"                           // urlCheck
-#include "orionld/common/urnCheck.h"                           // urnCheck
-#include "orionld/common/orionldState.h"                       // orionldState
-#include "orionld/common/orionldErrorResponse.h"               // orionldErrorResponseCreate
-#include "orionld/kjTree/kjTreeFromQueryContextResponse.h"     // kjTreeFromQueryContextResponse
-#include "orionld/serviceRoutines/orionldGetEntity.h"          // Own Interface
+#include "orionld/common/SCOMPARE.h"                             // SCOMPAREx
+#include "orionld/common/urlCheck.h"                             // urlCheck
+#include "orionld/common/urlParse.h"                             // urlParse
+#include "orionld/common/urnCheck.h"                             // urnCheck
+#include "orionld/common/orionldState.h"                         // orionldState
+#include "orionld/common/orionldErrorResponse.h"                 // orionldErrorResponseCreate
+#include "orionld/common/orionldRequestSend.h"                   // orionldRequestSend
+#include "orionld/db/dbConfiguration.h"                          // dbRegistrationLookup
+#include "orionld/kjTree/kjTreeFromQueryContextResponse.h"       // kjTreeFromQueryContextResponse
+#include "orionld/context/orionldContextItemExpand.h"            // orionldContextItemExpand
+#include "orionld/serviceRoutines/orionldGetEntity.h"            // Own Interface
+
+
+
+// -----------------------------------------------------------------------------
+//
+// orionldForwardGetEntity2 -
+//
+// An NGSI-LD Registration looks like this:
+//
+// {
+//   "id": "urn:ngsi-ld:ContextSourceRegistration:csr01",
+//   "type": "ContextSourceRegistration",
+//   "information": [
+//     {
+//       "entities": [
+//         {
+//           "id": "urn:ngsi-ld:entities:E1",
+//           "type": "Entity"
+//         }
+//       ],
+//       "properties": [ "P1", "P2", ... ],
+//       "relationships": [ "R1", ... ]
+//     }
+//   ],
+//   "endpoint": "http://localhost:9801"
+// }
+//
+// I.e., each registration have:
+// - ONE Endpoint
+// - An array of entity/attribute combinations
+//
+// -----------------------------------------------------------------------
+//
+// In the NGSIv1 database model, the registration is stored like this:
+//
+//  {
+//    ...
+//    "contextRegistration" : [
+//      {
+//        "entities" : [
+//          {
+//            "id" : "urn:ngsi-ld:entities:E1",
+//            "type" : "https://uri.etsi.org/ngsi-ld/default-context/Entity"
+//          }
+//        ],
+//        "attrs" : [
+//          {
+//            "name" : "https://uri.etsi.org/ngsi-ld/default-context/P1",
+//            "type" : "Property",
+//          },
+//          {
+//            "name" : "https://uri.etsi.org/ngsi-ld/default-context/P2",
+//            "type" : "Property",
+//          },
+//          {
+//            "name" : "https://uri.etsi.org/ngsi-ld/default-context/R1",
+//            "type" : "Relationship",
+//          }
+//        ],
+//        "providingApplication" : "http://my.csource.org:1026"
+//      }
+//    ], ...
+//
+// In the database, every contextRegistration item can have its own "providingApplication", however, the incoming payload of NGSi-LD Registrations
+// doesn't allow this, so ALL the contextRegistration items will forcibly have the same "providingApplication" ("endpoint" in NGSI-LD).
+//
+// We assume that one entity is registered for one endpoint only once.
+// => There will be ONE forwarded request per matching registration.
+//
+// As all forwarded requests will return "a piece" of the entity, the Entity::ID and Entity::Type will be stripped off the response, so that only the attributes
+// remain and then those attributes will be merged into the "Response Entity".
+//
+// Let's skip the Entity Type completely. If the Entity ID matches, we're good.
+//
+// So, we'll need to merge the attribute names into a comma-separated list, for the URI parameter "attrs"
+// And especially, if the original GET operation contained the attrs URI param, we need to not include those.
+// Four cases:
+//
+//   URI param 'attrs' present in Original Request     Attribute List in the Registration     Action
+//   --------------------------------------------      ----------------------------------     --------------------------------------
+//   NO                                                NO                                     No "attrs" URI param in the forwarded request
+//   NO                                                YES                                    "attrs" URI param exact copy of "Attribute List in the Registration"
+//   YES                                               NO                                     "attrs" URI param exact copy of "URI param 'attrs' in Original Request"
+//   YES                                               YES                                    "attrs" URI param is a merge between the two
+//
+//
+static KjNode* orionldForwardGetEntity2(KjNode* regP, char* entityId, char** uriParamAttrV, int uriParamAttrs)
+{
+  char            host[128]                  = { 0 };
+  char            protocol[32]               = { 0 };
+  unsigned short  port                       = 0;
+  char*           uriDir;
+  char*           detail;
+  KjNode*         entityP                    = NULL;
+  int             ix                         = 0;
+  char*           registrationAttrV[100];
+  int             registrationAttrs          = 0;
+
+  for (KjNode* nodeP = regP->value.firstChildP; nodeP != NULL; nodeP = nodeP->next)
+  {
+    ++ix;
+
+    if (strcmp(nodeP->name, "format") == 0)
+    {
+      // format = nodeP->value.s;
+    }
+    else if (strcmp(nodeP->name, "@context") == 0)
+    {
+      // contextP = nodeP;
+    }
+    else if (strcmp(nodeP->name, "contextRegistration") == 0)
+    {
+      for (KjNode* crNodeP = nodeP->value.firstChildP; crNodeP != NULL; crNodeP = crNodeP->next)
+      {
+        int crItemIx = 0;
+
+        for (KjNode* crItemNodeP = nodeP->value.firstChildP->value.firstChildP; crItemNodeP != NULL; crItemNodeP = crItemNodeP->next)
+        {
+          if (strcmp(crItemNodeP->name, "attrs") == 0)
+          {
+            //
+            // Populate the array registrationAttrV with the registered attributes
+            //
+            for (KjNode* attrItemP = crItemNodeP->value.firstChildP; attrItemP != NULL; attrItemP = attrItemP->next)
+            {
+              KjNode* nameP = kjLookup(attrItemP, "name");
+
+              if (nameP == NULL)
+              {
+                LM_W(("FWD: 'name' field not found in attrs array item"));
+                continue;
+              }
+
+              registrationAttrV[registrationAttrs] = nameP->value.s;
+              ++registrationAttrs;
+            }
+          }
+          else if ((host[0] == 0) && (strcmp(crItemNodeP->name, "providingApplication") == 0))
+          {
+            if (urlParse(crItemNodeP->value.s, protocol, sizeof(protocol), host, sizeof(host), &port, &uriDir, &detail) == false)
+            {
+              // Mark Error so that "Incomplete Response" is present in response?
+              return NULL;
+            }
+          }
+
+          ++crItemIx;
+        }
+      }
+    }
+  }
+
+  char* newUriParamAttrsString = (char*) kaAlloc(&orionldState.kalloc, 200 * 30);  // Assuming max 20 attrs, max 200 chars per attr ...
+
+  if ((uriParamAttrs == 0) && (registrationAttrs == 0))
+    newUriParamAttrsString = (char*) "";
+  else if ((uriParamAttrs == 0) && (registrationAttrs != 0))
+  {
+    newUriParamAttrsString = (char*) kaAlloc(&orionldState.kalloc, registrationAttrs * 200);
+    kStringArrayJoin(newUriParamAttrsString, registrationAttrV, registrationAttrs, ",");
+  }
+  else if ((uriParamAttrs != 0) && (registrationAttrs == 0))
+  {
+    newUriParamAttrsString = (char*) kaAlloc(&orionldState.kalloc, uriParamAttrs * 200);
+    kStringArrayJoin(newUriParamAttrsString, uriParamAttrV, uriParamAttrs, ",");
+  }
+  else
+  {
+    char* attrsV[100];
+    int   attrs = 0;
+
+    for (int ix = 0; ix < uriParamAttrs; ix++)
+    {
+      if (kStringArrayLookup(registrationAttrV, registrationAttrs, uriParamAttrV[ix]) != -1)
+        attrsV[attrs++] = uriParamAttrV[ix];
+    }
+    kStringArrayJoin(newUriParamAttrsString, attrsV, attrs, ",");
+  }
+
+  int   size    = 256 + strlen(newUriParamAttrsString);
+  char* urlPath = (char*) kaAlloc(&orionldState.kalloc, size);
+
+  if (*newUriParamAttrsString != 0)
+    snprintf(urlPath, size, "/ngsi-ld/v1/entities/%s?attrs=%s", entityId, newUriParamAttrsString);
+  else
+    snprintf(urlPath, size, "/ngsi-ld/v1/entities/%s", entityId);
+
+  //
+  // Sending the Forwarded request
+  //
+  orionldState.httpResponse.buf       = NULL;  // orionldRequestSend allocates
+  orionldState.httpResponse.size      = 0;
+  orionldState.httpResponse.used      = 0;
+  orionldState.httpResponse.allocated = false;
+
+  bool tryAgain = false;
+  bool reqOk;
+  bool downloadFailed;
+
+  reqOk = orionldRequestSend(&orionldState.httpResponse, protocol, host, port, urlPath, 5000, &detail, &tryAgain, &downloadFailed, "Accept: application/json");
+
+  if (reqOk)
+    entityP = kjParse(orionldState.kjsonP, orionldState.httpResponse.buf);
+  else
+    LM_TMP(("FWD: orionldRequestSend failed: %s", detail));
+
+  return entityP;
+}
+
+
+
+// -----------------------------------------------------------------------------
+//
+// orionldForwardGetEntity -
+//
+static KjNode* orionldForwardGetEntity(ConnectionInfo* ciP, char* entityId, KjNode* regArrayP, KjNode* responseP, bool needEntityType)
+{
+  //
+  // If URI param 'attrs' was used, split the attr-names into an array and expanmd according to @context
+  //
+  char* uriParamAttrsV[100];
+  int   uriParamAttrs = 0;
+
+  if (!ciP->uriParam["attrs"].empty())
+  {
+    char* uriParamAttrsString = (char*) ciP->uriParam["attrs"].c_str();
+
+    uriParamAttrs = kStringSplit(uriParamAttrsString, ',', uriParamAttrsV, K_VEC_SIZE(uriParamAttrsV));
+
+    //
+    // Populate the array uriParamAttrsV with the expanded attribute names
+    //
+    for (int ix = 0; ix < uriParamAttrs; ix++)
+    {
+      uriParamAttrsV[ix] = orionldContextItemExpand(orionldState.contextP, uriParamAttrsV[ix], NULL, true, NULL);
+    }
+  }
+
+  //
+  // Treating all hits from the registrations
+  //
+  for (KjNode* regP = regArrayP->value.firstChildP; regP != NULL; regP = regP->next)
+  {
+    KjNode*  partTree = orionldForwardGetEntity2(regP, entityId, uriParamAttrsV, uriParamAttrs);
+
+    if (partTree != NULL)  // Move all attributes from 'partTree' into responseP
+    {
+      KjNode* nodeP = partTree->value.firstChildP;
+      KjNode* next;
+
+      while (nodeP != NULL)
+      {
+        next = nodeP->next;
+
+        if      (SCOMPARE3(nodeP->name, 'i', 'd', 0))
+        {}
+        else if (SCOMPARE5(nodeP->name, 't', 'y', 'p', 'e', 0))
+        {
+          if (needEntityType)
+          {
+            //
+            // We're taking the entity::type from the Response to the forwarded request
+            // because no local entity was found.
+            // It could also betaken from the registration.
+            //
+            kjChildAdd(responseP, nodeP);
+            needEntityType = false;
+          }
+        }
+        else
+          kjChildAdd(responseP, nodeP);
+
+        nodeP = next;
+      }
+    }
+  }
+
+  return responseP;
+}
 
 
 
@@ -47,37 +338,48 @@ extern "C"
 // orionldGetEntity -
 //
 // URI params:
-// - attrs
-// - options=keyValues
+// - attrs               (orionldState.uriParams.attrs)
+// - options=keyValues   ()
+//
+// For the NGSI-LD Forwarding scheme to work, we need to check for registrations and not only in the
+// local database. For this to work correctly:
+// 1. Lookup matching registrations
+// 2. Lookup the entity in the local database
+// 3. If not found locally and no matching registrations, return a404 Not Found
+// 4. If not found locally, we need to extract the entity type from a Context Provider and if that doesn't work, then we can get
+//    the entity type from the matching registration.
+// 5. Forward the GET /entities/{entityId} to all matching CPs and add the attributes to the entity
+// 6. Return the full entity
 //
 bool orionldGetEntity(ConnectionInfo* ciP)
 {
-  char*                 attrs     = (ciP->uriParam["attrs"].empty())? NULL : (char*) ciP->uriParam["attrs"].c_str();
-  bool                  keyValues = ciP->uriParamOptions[OPT_KEY_VALUES];
-  QueryContextRequest   request;
-  QueryContextResponse  response;
-  EntityId              entityId(orionldState.wildcard[0], "", "false", false);
-  char*                 details;
-
-  LM_T(LmtServiceRoutine, ("In orionldGetEntity: %s", orionldState.wildcard[0]));
-
-  request.entityIdVector.push_back(&entityId);
+  char*                 detail;
+  KjNode*               regArray;
 
   //
   // Make sure the ID (orionldState.wildcard[0]) is a valid URI
   //
-  if ((urlCheck(orionldState.wildcard[0], &details) == false) && (urnCheck(orionldState.wildcard[0], &details) == false))
+  if ((urlCheck(orionldState.wildcard[0], &detail) == false) && (urnCheck(orionldState.wildcard[0], &detail) == false))
   {
     LM_W(("Bad Input (Invalid Entity ID - Not a URL nor a URN)"));
     orionldErrorResponseCreate(OrionldBadRequestData, "Invalid Entity ID", "Not a URL nor a URN");
     return false;
   }
 
+  regArray = dbRegistrationLookup(orionldState.wildcard[0]);
 
+  LM_T(LmtServiceRoutine, ("In orionldGetEntity: %s", orionldState.wildcard[0]));
+
+#if 1
   //
-  // FIXME: mongoQueryContext should respond with a KJson tree -
-  //        next year perhaps, and when starting with new mongo driver
+  // Use dbEntityLookup() instead of mongoQueryContext()
   //
+  bool                  keyValues = ciP->uriParamOptions[OPT_KEY_VALUES];
+  EntityId              entityId(orionldState.wildcard[0], "", "false", false);
+  QueryContextRequest   request;
+  QueryContextResponse  response;
+  request.entityIdVector.push_back(&entityId);
+
   ciP->httpStatusCode = mongoQueryContext(&request,
                                           &response,
                                           orionldState.tenant,
@@ -89,17 +391,114 @@ bool orionldGetEntity(ConnectionInfo* ciP)
 
   if (response.errorCode.code == SccBadRequest)
   {
+    //
+    // Not found in local, or some error
+    // Get Entity::Type and Entity::ID from the registration (if found)
+    // Add the forwardTree to the entity and return it
+    // If no registration found, retuirn 404 Not Found
+    //
+    LM_E(("ToDo: Implement this special case of entity not found in local BUT in registration"));
     orionldErrorResponseCreate(OrionldBadRequestData, "Bad Request", NULL);
     return false;
   }
 
-  // Create response by converting "QueryContextResponse response" into a KJson tree
-  orionldState.responseTree = kjTreeFromQueryContextResponse(ciP, true, attrs, keyValues, &response);
+  // It's OK to not find the Entity in local - we still may find it in a Context Provider
+  if ((response.errorCode.code == SccOk) || (response.errorCode.code == 0))
+  {
+    // Create response by converting "QueryContextResponse response" into a KJson tree
+    orionldState.responseTree = kjTreeFromQueryContextResponse(ciP, true, orionldState.uriParams.attrs, keyValues, &response);
+  }
+#else
+  //
+  // FIXME
+  // dbEntityLookup (mongoCppLegacyEntityLookup) uses dbDataToKjTree, which makes a complete copy of the tree in mongo:
+  // {
+  //   "_id": {
+  //     "id": "urn:ngsi-ld:E09",
+  //     "type": "https://uri.etsi.org/ngsi-ld/default-context/T",
+  //     "servicePath": "/"
+  //   },
+  //   "attrNames": [
+  //     "https://uri.etsi.org/ngsi-ld/default-context/P1"
+  //   ],
+  //   "attrs": {
+  //     "https://uri=etsi=org/ngsi-ld/default-context/P1": {
+  //       "type": "Property",
+  //       "creDate": 1579884546,
+  //       "modDate": 1579884546,
+  //       "value": {
+  //         "@type": "DateTime",
+  //         "@value": "2018-12-04T12:00:00"
+  //       },
+  //       "mdNames": []
+  //     }
+  //   },
+  //   "creDate": 1579884546,
+  //   "modDate": 1579884546,
+  //   "lastCorrelator": ""
+  // }
+  //
+  // Instead of:
+  // {
+  //   "id": "urn:ngsi-ld:E09",
+  //   "type": "T",
+  //   "P1": {
+  //     "type": "Property",
+  //     "value": {
+  //     "@type": "DateTime",
+  //     "@value": "2018-12-04T12:00:00"
+  //   }
+  // }
+  //
+  // To fix this:
+  // - Call a less generic function to create the KjNode tree (dbEntityDataToKjTree) that
+  //   - Removes "_id", "servicePath", "attrNames", "mdNames", "creDate", "modDate", "lastCorrelator"
+  // - Compact the attribute names and the entity id
+  // - keyValues
+  // - sysAttrs
+  //
+  // With all this done, I could stop using mongoBackend for this (and similar with all GET operations)
+  //
+  KjNode* entityWithDatabaseStructure = dbEntityLookup(orionldState.wildcard[0]);
+  orionldState.responseTree = kjTreeFromEntityWithDatabaseStructure(entityWithDatabaseStructure, keyValues, sysAttrs);
+#endif
 
-  if (orionldState.responseTree == NULL)
+  if ((orionldState.responseTree == NULL) && (regArray == NULL))
+  {
+    orionldErrorResponseCreate(OrionldResourceNotFound, "Entity Not Found", orionldState.wildcard[0]);
     ciP->httpStatusCode = SccContextElementNotFound;
+    return false;
+  }
 
-  // request.entityIdVector.vec.erase(0);  // Remove 'entityId' from entityIdVector
+
+  //
+  // GET /ngsi-ld/v1/entities/{entityId} returns a single Entity, not an Array.
+  // It is supposed that there is only ONE entity with a certain Enmtity ID in the entire system ...
+  //
+  // However, a Context Provider (or more) may have a copy of an entity and that same entity may exist in local in the broker ...
+  // In the future we need to rethink this, and perhaps return an Array of entities, not just one single entity.
+  // We might also want to include the origin (the Context Provider) of the entity as part of the response ...
+  //
+  // For now, if the entity is found in a Context Provider, the first one that is found will be returned.
+  // If nothing found in the Context Providers, then the local database is searched.
+  // This way, only one Entity is returned and we don't break the API. For now ...
+  //
+  if (regArray != NULL)
+  {
+    bool needEntityType = false;
+
+    if (orionldState.responseTree == NULL)
+    {
+      KjNode* idNodeP = kjString(orionldState.kjsonP, "id", orionldState.wildcard[0]);
+
+      orionldState.responseTree = kjObject(orionldState.kjsonP, NULL);
+      kjChildAdd(orionldState.responseTree, idNodeP);
+
+      needEntityType = true;  // Get it from Forward-response
+    }
+
+    orionldForwardGetEntity(ciP, orionldState.wildcard[0], regArray, orionldState.responseTree, needEntityType);
+  }
 
   return true;
 }
