@@ -37,6 +37,6 @@ extern "C"
 //
 // mongoCppLegacyRegistrationLookup -
 //
-extern KjNode* mongoCppLegacyRegistrationLookup(const char* entityId);
+extern KjNode* mongoCppLegacyRegistrationLookup(const char* entityId, const char* attribute);
 
 #endif  // SRC_LIB_ORIONLD_MONGOCPPLEGACY_MONGOCPPLEGACYREGISTRATIONLOOKUP_H_

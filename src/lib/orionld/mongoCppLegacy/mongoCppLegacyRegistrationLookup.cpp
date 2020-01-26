@@ -42,7 +42,7 @@ extern "C"
 //
 // mongoCppLegacyRegistrationLookup -
 //
-KjNode* mongoCppLegacyRegistrationLookup(const char* entityId)
+KjNode* mongoCppLegacyRegistrationLookup(const char* entityId, const char* attribute)
 {
   //
   // Query registrations collection for:
@@ -60,6 +60,25 @@ KjNode* mongoCppLegacyRegistrationLookup(const char* entityId)
   //
   mongo::BSONObjBuilder  filter;
   filter.append("contextRegistration.entities.id", entityId);
+
+  if (attribute != NULL)
+  {
+    mongo::BSONObjBuilder   zeroSizeObject;
+    mongo::BSONObjBuilder   zeroSizeArrayItem;
+    mongo::BSONObjBuilder   attrNameMatchArrayItem;
+    mongo::BSONArrayBuilder orArray;
+    
+    zeroSizeObject.append("$size", 0);
+    zeroSizeArrayItem.append("contextRegistration.attrs", zeroSizeObject.obj());
+
+    attrNameMatchArrayItem.append("contextRegistration.attrs.name", attribute);
+    
+    orArray.append(zeroSizeArrayItem.obj());
+    orArray.append(attrNameMatchArrayItem.obj());
+
+    filter.append("$or", orArray.arr());
+  }
+  
 
   // semTake()
   mongo::DBClientBase*                  connectionP = getMongoConnection();

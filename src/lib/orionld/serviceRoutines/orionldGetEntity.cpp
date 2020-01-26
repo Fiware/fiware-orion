@@ -366,7 +366,7 @@ bool orionldGetEntity(ConnectionInfo* ciP)
     return false;
   }
 
-  regArray = dbRegistrationLookup(orionldState.wildcard[0]);
+  regArray = dbRegistrationLookup(orionldState.wildcard[0], NULL);
 
   LM_T(LmtServiceRoutine, ("In orionldGetEntity: %s", orionldState.wildcard[0]));
 
