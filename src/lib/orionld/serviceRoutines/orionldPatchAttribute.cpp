@@ -89,7 +89,7 @@ bool orionldPatchAttribute(ConnectionInfo* ciP)
 
   // validate the payload content informed by user e get the attribute value
   KjValue        attrValue;
-  KjValueType    atrrValueType;
+  KjValueType    attrValueType = KjNone;
 
   for (KjNode* userPayloadNodeP = orionldState.requestTree->value.firstChildP; userPayloadNodeP != NULL; userPayloadNodeP = userPayloadNodeP->next)
   {
@@ -100,14 +100,14 @@ bool orionldPatchAttribute(ConnectionInfo* ciP)
     else if (SCOMPARE6(userPayloadNodeP->name, 'v', 'a', 'l', 'u', 'e', 0))  // the updated attr is a property or geoproperty
     {
       // Get the attribute value and the attribute value type
-      attrValue = userPayloadNodeP->value;
-      atrrValueType = userPayloadNodeP->type;
+      attrValue     = userPayloadNodeP->value;
+      attrValueType = userPayloadNodeP->type;
     }
-    else if (SCOMPARE7(userPayloadNodeP->name, 'o', 'b', 'j', 'e', 'c', 't', 0))  // the updated atrr is a relationship
+    else if (SCOMPARE7(userPayloadNodeP->name, 'o', 'b', 'j', 'e', 'c', 't', 0))  // the updated attr is a relationship
     {
       // Get the attribute object and the attrbibue value type
-      attrValue = userPayloadNodeP->value;
-      atrrValueType = userPayloadNodeP->type;
+      attrValue     = userPayloadNodeP->value;
+      attrValueType = userPayloadNodeP->type;
     }
     else
     {
@@ -203,13 +203,13 @@ bool orionldPatchAttribute(ConnectionInfo* ciP)
           if (SCOMPARE6(attrP->name, 'v',  'a', 'l', 'u', 'e', 0))  // update the property or geoproperty value
           {
             attrP->value = attrValue;
-            attrP->type = atrrValueType;
+            attrP->type  = attrValueType;
             break;
           }
           else if (SCOMPARE7(attrP->name, 'o',  'b', 'j', 'e', 'c', 't', 0))  // update the relationship value
           {
             attrP->value = attrValue;
-            attrP->type = atrrValueType;
+            attrP->type  = attrValueType;
             break;
           }
         }
