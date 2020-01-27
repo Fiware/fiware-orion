@@ -35,6 +35,7 @@
 #include "orionld/common/orionldErrorResponse.h"                 // orionldErrorResponseCreate
 #include "orionld/common/orionldState.h"                         // orionldState
 #include "orionld/common/SCOMPARE.h"                             // SCOMPAREx
+#include "orionld/common/CHECK.h"                                // *CHECK*
 #include "orionld/common/urlCheck.h"                             // urlCheck
 #include "orionld/common/urnCheck.h"                             // urnCheck
 #include "orionld/kjTree/kjTreeFromQueryContextResponse.h"       // kjTreeFromQueryContextResponse
@@ -42,7 +43,57 @@
 #include "orionld/context/orionldContextItemExpand.h"            // orionldUriExpand
 #include "orionld/mongoBackend/mongoAttributeExists.h"           // mongoAttributeExists
 #include "orionld/mongoBackend/mongoEntityExists.h"              // mongoEntityExists
+#include "orionld/db/dbConfiguration.h"                          // dbRegistrationLookup
 #include "orionld/serviceRoutines/orionldPatchAttribute.h"       // Own Interface
+
+
+
+// -----------------------------------------------------------------------------
+//
+// kjTreeAttributeValidate -
+//
+static bool kjTreeAttributeValidate(KjNode* attrTree, KjValueType* attrValueTypeP, KjValue* attrValueP)
+{
+  // validate the payload content informed by user e get the attribute value
+
+  for (KjNode* userPayloadNodeP = attrTree->value.firstChildP; userPayloadNodeP != NULL; userPayloadNodeP = userPayloadNodeP->next)
+  {
+    if (SCOMPARE9(userPayloadNodeP->name, '@', 'c', 'o', 'n', 't', 'e', 'x', 't', 0))
+    {
+      // Do Nothing
+    }
+    else if (SCOMPARE6(userPayloadNodeP->name, 'v', 'a', 'l', 'u', 'e', 0))  // the updated attr is a property or geoproperty
+    {
+      // Get the attribute value and the attribute value type
+      *attrValueP     = userPayloadNodeP->value;
+      *attrValueTypeP = userPayloadNodeP->type;
+    }
+    else if (SCOMPARE7(userPayloadNodeP->name, 'o', 'b', 'j', 'e', 'c', 't', 0))  // the updated attr is a relationship
+    {
+      // Get the attribute object and the attrbibue value type
+      *attrValueP     = userPayloadNodeP->value;
+      *attrValueTypeP = userPayloadNodeP->type;
+    }
+    else
+    {
+      // Invalid key in payload
+      orionldErrorResponseCreate(OrionldBadRequestData, "Invalid key in the payload:", userPayloadNodeP->name);
+      return false;
+    }
+  }
+
+  return true;
+}
+
+
+// -----------------------------------------------------------------------------
+//
+// orionldForwardPatchEntity
+//
+static bool orionldForwardPatchEntity(const char* entityId, const char* attrName, KjNode* payloadData, KjNode* regArray)
+{
+  return false;
+}
 
 
 
@@ -52,93 +103,49 @@
 //
 bool orionldPatchAttribute(ConnectionInfo* ciP)
 {
-  LM_T(LmtServiceRoutine, ("In orionldPatchAttribute"));
+  char*          entityId      = orionldState.wildcard[0];
+  char*          attrName      = orionldState.wildcard[1];
+  KjValueType    attrValueType = KjNone;
+  KjValue        attrValue;
+  KjNode*        regArray;
 
-  char* entityId = orionldState.wildcard[0];
+  LM_TMP(("FWD: In orionldPatchAttribute"));
 
+  PAYLOAD_EMPTY_CHECK();
+  PAYLOAD_IS_OBJECT_CHECK();
+  PAYLOAD_EMPTY_OBJECT_CHECK();
+
+  if (kjTreeAttributeValidate(orionldState.requestTree, &attrValueType, &attrValue) == false)
+  {
+    ciP->httpStatusCode = SccBadRequest;
+    return false;
+  }
+
+  //
+  // Expand the attribute name, if not a special attribute - special attributes aren't expanded
+  //
+  if ((strcmp(attrName, "location") != 0) && (strcmp(attrName, "observationSpace") != 0) && (strcmp(attrName, "operationSpace") != 0))
+    attrName = orionldContextItemExpand(orionldState.contextP, orionldState.wildcard[1], NULL, true, NULL);
+
+  //
+  // Lookup any matching Registrations
+  //
+  regArray = dbRegistrationLookup(entityId, attrName);
+
+  if (regArray != NULL)
+  {
+    LM_TMP(("FWD: Registration found for entity-attribute combination '%s' - '%s'", entityId, attrName));
+    return orionldForwardPatchEntity(entityId, attrName, orionldState.requestTree, regArray);
+  }
+  LM_TMP(("FWD: No registration found for entity-attribute combination '%s' - '%s'", entityId, attrName));
+
+  // Make sure the entity to be patched exists
   if (mongoEntityExists(entityId, orionldState.tenant) == false)
   {
     ciP->httpStatusCode = SccNotFound;
     orionldErrorResponseCreate(OrionldBadRequestData, "Entity does not exist", orionldState.wildcard[0]);
     return false;
   }
-
-  // Is the payload empty?
-  if (orionldState.requestTree == NULL)
-  {
-    ciP->httpStatusCode = SccBadRequest;
-    orionldErrorResponseCreate(OrionldBadRequestData, "Payload is missing", NULL);
-    return false;
-  }
-
-  // Is the payload not a JSON object?
-  if  (orionldState.requestTree->type != KjObject)
-  {
-    ciP->httpStatusCode = SccBadRequest;
-    orionldErrorResponseCreate(OrionldBadRequestData, "Payload not a JSON object", kjValueType(orionldState.requestTree->type));
-    return false;
-  }
-
-  // Is the payload an empty object?
-  if  (orionldState.requestTree->value.firstChildP == NULL)
-  {
-    ciP->httpStatusCode = SccBadRequest;
-    orionldErrorResponseCreate(OrionldBadRequestData, "Payload is an empty JSON object", NULL);
-    return false;
-  }
-
-  // validate the payload content informed by user e get the attribute value
-  KjValue        attrValue;
-  KjValueType    atrrValueType;
-
-  for (KjNode* userPayloadNodeP = orionldState.requestTree->value.firstChildP; userPayloadNodeP != NULL; userPayloadNodeP = userPayloadNodeP->next)
-  {
-    if (SCOMPARE9(userPayloadNodeP->name, '@', 'c', 'o', 'n', 't', 'e', 'x', 't', 0))
-    {
-      // Do Nothing
-    }
-    else if (SCOMPARE6(userPayloadNodeP->name, 'v', 'a', 'l', 'u', 'e', 0))  // the updated attr is a property or geoproperty
-    {
-      // Get the attribute value and the attribute value type
-      attrValue = userPayloadNodeP->value;
-      atrrValueType = userPayloadNodeP->type;
-    }
-    else if (SCOMPARE7(userPayloadNodeP->name, 'o', 'b', 'j', 'e', 'c', 't', 0))  // the updated atrr is a relationship
-    {
-      // Get the attribute object and the attrbibue value type
-      attrValue = userPayloadNodeP->value;
-      atrrValueType = userPayloadNodeP->type;
-    }
-    else
-    {
-      // Invalid key in payload
-      ciP->httpStatusCode = SccBadRequest;
-      orionldErrorResponseCreate(OrionldBadRequestData, "Invalid key in the payload:", userPayloadNodeP->name);
-      return false;
-    }
-  }
-
-  //
-  // URI Expansion for the attribute name, except if "location", "observationSpace", or "operationSpace"
-  //
-  char*  attrName;
-
-  if (SCOMPARE9(orionldState.wildcard[1],       'l', 'o', 'c', 'a', 't', 'i', 'o', 'n', 0))
-    attrName = orionldState.wildcard[1];
-  else if (SCOMPARE17(orionldState.wildcard[1], 'o', 'b', 's', 'e', 'r', 'v', 'a', 't', 'i', 'o', 'n', 'S', 'p', 'a', 'c', 'e', 0))
-    attrName = orionldState.wildcard[1];
-  else if (SCOMPARE15(orionldState.wildcard[1], 'o', 'p', 'e', 'r', 'a', 't', 'i', 'o', 'n', 'S', 'p', 'a', 'c', 'e', 0))
-    attrName = orionldState.wildcard[1];
-  else
-  {
-    attrName = orionldContextItemExpand(orionldState.contextP, orionldState.wildcard[1], NULL, true, NULL);
-    if (attrName == NULL)
-    {
-     orionldErrorResponseCreate(OrionldBadRequestData, "error expanding attribute name", orionldState.wildcard[1]);
-     return false;
-    }
-  }
-
 
   // Make sure the attribute to be patched exists
   if (mongoAttributeExists(entityId, attrName, orionldState.tenant) == false)
@@ -147,7 +154,6 @@ bool orionldPatchAttribute(ConnectionInfo* ciP)
     orionldErrorResponseCreate(OrionldBadRequestData, "Attribute does not exist", orionldState.wildcard[1]);
     return false;
   }
-
 
   bool                  keyValues = false;
   QueryContextRequest   request;
@@ -191,7 +197,7 @@ bool orionldPatchAttribute(ConnectionInfo* ciP)
     ciP->httpStatusCode = SccContextElementNotFound;
   else
   {
-    // update the attribute value based in content informed by user
+    // update the attribute value based on content informed by user
     for (KjNode* kNodeP = myEntity->value.firstChildP; kNodeP != NULL; kNodeP = kNodeP->next)
     {
       if (strcmp(kNodeP->name, orionldState.wildcard[1]) == 0)
@@ -203,13 +209,13 @@ bool orionldPatchAttribute(ConnectionInfo* ciP)
           if (SCOMPARE6(attrP->name, 'v',  'a', 'l', 'u', 'e', 0))  // update the property or geoproperty value
           {
             attrP->value = attrValue;
-            attrP->type = atrrValueType;
+            attrP->type  = attrValueType;
             break;
           }
           else if (SCOMPARE7(attrP->name, 'o',  'b', 'j', 'e', 'c', 't', 0))  // update the relationship value
           {
             attrP->value = attrValue;
-            attrP->type = atrrValueType;
+            attrP->type  = attrValueType;
             break;
           }
         }
@@ -223,17 +229,17 @@ bool orionldPatchAttribute(ConnectionInfo* ciP)
   KjNode*                attrTypeNodeP = NULL;
   UpdateContextRequest   mongoRequest;
   UpdateContextResponse  mongoResponse;
-  ContextElement*        ceP       = new ContextElement();  // FIXME: Any way I can avoid to allocate ?
   EntityId*              entityIdP;
+  ContextElement*        ceP        = new ContextElement();  // FIXME: Any way I can avoid to allocate ?
+  ContextAttribute*      caP        = new ContextAttribute();
+  char*                  detail;
+
 
   mongoRequest.contextElementVector.push_back(ceP);
 
   entityIdP                     = &mongoRequest.contextElementVector[0]->entityId;
   entityIdP->id                 = entityId;
   mongoRequest.updateActionType = ActionTypeAppendStrict;
-
-  ContextAttribute*  caP           = new ContextAttribute();
-  char*              detail;
 
   if (kjTreeToContextAttribute(ciP, updatedAttrP, caP, &attrTypeNodeP, &detail) == false)
   {

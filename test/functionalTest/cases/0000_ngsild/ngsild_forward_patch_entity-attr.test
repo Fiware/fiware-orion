@@ -1,0 +1,136 @@
+# Copyright 2019 FIWARE Fundation
+
+# This file is part of Orion Context Broker.
+#
+# Orion Context Broker is free software: you can redistribute it and/or
+# modify it under the terms of the GNU Affero General Public License as
+# published by the Free Software Foundation, either version 3 of the
+# License, or (at your option) any later version.
+#
+# Orion Context Broker is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero
+# General Public License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with Orion Context Broker. If not, see http://www.gnu.org/licenses/.
+#
+# For those usages not covered by this license please contact with
+# iot_support at tid dot es
+
+# VALGRIND_READY - to mark the test ready for valgrindTestSuite.sh
+
+--NAME--
+Forwarding of PATCH Entity-Attribute requests
+
+--SHELL-INIT--
+export BROKER=orionld
+dbInit CB
+dbInit C1
+brokerStart CB 0-255
+brokerStart CP1
+
+--SHELL--
+#
+# 01. Create an entity E1 without properties in CB
+# 02. Create an entity E1 with properties A1 and A2 in CP1
+# 03. Register E1/A1 for CP1, in CB
+# 04. PATCH E1/A1 in CB
+# 05. GET the entity E1 from CP1 - see A1 changed
+#
+
+
+echo "01. Create an entity E1 without properties in CB"
+echo "================================================"
+payload='{
+  "id": "urn:ngsi-ld:entity:E1",
+  "type": "T"
+}'
+orionCurl --url /ngsi-ld/v1/entities --payload "$payload"
+echo
+echo
+
+
+echo "02. Create an entity E1 with properties A1 and A2 in CP1"
+echo "========================================================"
+payload='{
+  "id": "urn:ngsi-ld:entity:E1",
+  "type": "T",
+  "A1": {
+    "type": "Property",
+    "value": "A1 in CP1"
+  }
+}'
+orionCurl --url /ngsi-ld/v1/entities --payload "$payload" --port $CP1_PORT
+echo
+echo
+
+
+echo "03. Register E1/A1 for CP1, in CB"
+echo "================================="
+payload='{
+  "id": "urn:ngsi-ld:ContextSourceRegistration:R1",
+  "type": "ContextSourceRegistration",
+  "information": [
+    {
+      "entities": [
+        {
+          "id": "urn:ngsi-ld:entities:E1",
+          "type": "T"
+        }
+      ],
+      "properties": [ "A1" ]
+    }
+  ],
+  "endpoint": "http://localhost:'$CP1_PORT'"
+}'
+orionCurl --url /ngsi-ld/v1/csourceRegistrations --payload "$payload"
+echo
+echo
+
+
+echo "04. PATCH E1/A1 in CB"
+echo "====================="
+payload='{
+  "value": "A1 forwarded from CB"
+}'
+orionCurl --url /ngsi-ld/v1/entities/urn:ngsi-ld:entity:E1/attrs/A1 --payload "$payload" -X PATCH
+echo
+echo
+
+
+--REGEXPECT--
+01. Create an entity E1 without properties in CB
+================================================
+HTTP/1.1 201 Created
+Content-Length: 0
+Link: REGEX(.*)
+Location: /ngsi-ld/v1/entities/urn:ngsi-ld:entity:E1
+Date: REGEX(.*)
+
+
+
+02. Create an entity E1 with properties A1 and A2 in CP1
+========================================================
+HTTP/1.1 201 Created
+Content-Length: 0
+Link: REGEX(.*)
+Location: /ngsi-ld/v1/entities/urn:ngsi-ld:entity:E1
+Date: REGEX(.*)
+
+
+
+03. Register E1/A1 for CP1, in CB
+=================================
+
+
+
+04. PATCH E1/A1 in CB
+=====================
+
+
+--TEARDOWN--
+brokerStop CB
+brokerStop CP1
+#dbDrop CB
+dbDrop CP1

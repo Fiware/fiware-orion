@@ -30,37 +30,28 @@ brokerStart CB 0-255
 
 --SHELL--
 #
-# 01. Create an entity E1 with properties attr_A1 and attr_A2
+# 01. Create an entity Madrid with location attr
 # 02. Update the E1 property attr_A1
-# 03. GET the entity E1, make sure that the attr_A1 value was changed  (attrs as long name)
+# 03. GET the entity E1, make sure that the attr_A1 value was changed   (attrs as long name)
 # 04. Create an entity E2 with relationship attr_A3
-# 05. Update the E2 relashionship attr_A3
+# 05. Update the E2 relationship attr_A3
 # 06. GET the entity E2, make sure that the attr_A3 value was changed  (attrs as short name)
+#
 
-
-echo "01. Create an entity E1 with properties attr_A1 and attr_A2"
-echo "==========================================================="
+echo "01. Create an entity Madrid with location attr"
+echo "=============================================="
 payload='{
-  "id": "urn:ngsi-ld:entity:E1",
-  "type": "T",
-  "attr_A1": {
-    "type": "Property",
-    "value": "Attribute 1"
-  },
-  "attr_A2": {
-    "type": "Property",
-    "value": "Attribute 2"
-  },
-  "@context": [
-    "https://fiware.github.io/NGSI-LD_TestSuite/ldContext/testContext.jsonld",
-    {
-      "attr_A1": "http://a.b.c/A1",
-      "attr_A2": "http://a.b.c/A2",
-      "type_T": "http://a.b.c/T"
+  "id": "urn:ngsi-ld:City:Madrid",
+  "type": "T_City",
+  "location": {
+    "type": "GeoProperty",
+    "value": {
+      "type": "Point",
+      "coordinates": [-3.691944, 40.418889]
     }
-  ]
+  }
 }'
-orionCurl --url /ngsi-ld/v1/entities -X POST --payload "$payload" -H "Content-Type: application/ld+json" --linkHeaderFix
+orionCurl --url /ngsi-ld/v1/entities -X POST --payload "$payload" -H "Content-Type: application/json"
 echo
 echo
 
@@ -114,15 +105,13 @@ echo
 echo "05. Update the E2 relationship attr_A3"
 echo "======================================"
 payload='{
-"@context": [
+  "@context": [
     {
       "attr_A3": "http://a.b.c/A3",
       "type_T": "http://a.b.c/T"
     }
-    ],
-
+  ],
   "object": "urn:ngsi-ld:entity:E3"
- 
  }'
 orionCurl --url /ngsi-ld/v1/entities/urn:ngsi-ld:entity:E2/attrs/attr_A3 -X PATCH --payload "$payload" -H "Content-Type: application/ld+json" --linkHeaderFix
 echo
@@ -132,15 +121,14 @@ echo
 HOST=$(hostname)
 echo "06. GET the entity E2, make sure that the attr_A3 value was changed  (attrs as short name)"
 echo "=========================================================================================="
-orionCurl --url '/ngsi-ld/v1/entities/urn:ngsi-ld:entity:E2?prettyPrint=yes' -H 'Link: <http://'$HOST:$CB_PORT'/ngsi-ld/ex/v1/contexts/'$contextId'>; rel="http://www.w3.org/ns/json-ld#context"; type="application/ld+json"' --linkHeaderFix --noPayloadCheck
+orionCurl --url '/ngsi-ld/v1/entities/urn:ngsi-ld:entity:E2?prettyPrint=yes' -H "Link: <http://$HOST:$CB_PORT/ngsi-ld/contexts/"$contextId">;"' rel="http://www.w3.org/ns/json-ld#context"; type="application/ld+json"' --linkHeaderFix --noPayloadCheck
 echo
 echo
-
 
 
 --REGEXPECT--
-01. Create an entity E1 with properties attr_A1 and attr_A2
-===========================================================
+01. Create an entity Madrid with location attr
+==============================================
 HTTP/1.1 201 Created
 Content-Length: 0
 Link: REGEX(.*)
@@ -161,14 +149,14 @@ Date: REGEX(.*)
 03. GET the entity E1, make sure that the attr_A1 value was changed   (attrs as long name)
 ==========================================================================================
 HTTP/1.1 200 OK
-Content-Length: 219
+Content-Length: 200
 Content-Type: application/json
 Link: REGEX(.*)
 Date: REGEX(.*)
 
 {
   "id": "urn:ngsi-ld:entity:E1",
-  "type": "http://example.org/T",
+  "type": "T",
   "http://a.b.c/A1": {
     "type": "Property",
     "value": "30"
