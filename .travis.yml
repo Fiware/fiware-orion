@@ -41,13 +41,13 @@ before_install: >
     sudo service docker restart; 
 
     if [[ "${PLATFORM}" == "debian" ]]; then
-      docker build \
+      docker build --quiet \
         --build-arg TOKEN=${TOKEN} \
         --build-arg REV=${TRAVIS_COMMIT} \
         --build-arg STAGE=deps -t ${IMAGE_DEPS_DEBIAN} \
         -f $(pwd)/docker/Dockerfile-debian $(pwd)/docker/ ;
     elif [[ "${PLATFORM}" == "centos" ]]; then
-      docker build \
+      docker build --quiet \
         --build-arg TOKEN=${TOKEN} \
         --build-arg REV=${TRAVIS_COMMIT} \
         --build-arg STAGE=deps -t ${IMAGE_DEPS_CENTOS} \
@@ -63,12 +63,12 @@ script: >
   if [[ "${TEST_STATUS}" && "${STAGE}" == "compliance" ]]; then
     $(pwd)/docker/build.sh -s compliance -t -p $(pwd);
   elif [[ "${PUSH_STATUS}" && "${STAGE_TYPE}" == "release" && "${PLATFORM}" == "debian" ]]; then
-    docker build \
+    docker build --quiet \
       --build-arg TOKEN=${TOKEN} \
       --build-arg REV=${TRAVIS_COMMIT} \
       --build-arg STAGE=release -t ${IMAGE_RELEASE_DEBIAN} -f $(pwd)/docker/Dockerfile-debian $(pwd)/docker/ ;
   elif [[ "${PUSH_STATUS}" && "${STAGE_TYPE}" == "release" && "${PLATFORM}" == "centos" ]]; then
-    docker build \
+    docker build --quiet \
       --build-arg TOKEN=${TOKEN} \
       --build-arg REV=${TRAVIS_COMMIT} \
       --build-arg STAGE=release -t ${IMAGE_RELEASE_CENTOS} -f $(pwd)/docker/Dockerfile-centos $(pwd)/docker/ ;
