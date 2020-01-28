@@ -86,9 +86,6 @@ script: >
       ${IMAGE_DEPS_CENTOS} build.sh -s ${STAGE_TYPE} --os centos -dqt;
   fi
   
-  exit $?
- 
-  
 after_success: >
   if [[ "${PUSH_STATUS}" && "${STAGE_TYPE}" == "deps" && "${PLATFORM}" == "debian" ]]; then
    docker push ${IMAGE_DEPS_DEBIAN};
