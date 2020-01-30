@@ -1,6 +1,8 @@
 dist: xenial
 sudo: false
-language: minimal
+language: node_js
+node_js:
+  - 12.14
 env:
   global:
   - IMAGE_RELEASE_DEBIAN=fiware/orion-ld
@@ -20,6 +22,9 @@ env:
   - STAGE=debian_functional_901_1300
   - STAGE=debian_release
   - STAGE=debian_deps
+  - STAGE=debian_ngsi-ld
+  allow_failures:
+  - env: STAGE=debian_ngsi-ld
 before_install: >
   export PLATFORM=$(echo ${STAGE} | cut -c1-6);
   export STAGE_TYPE=$(echo ${STAGE} | cut -c8-);
@@ -63,7 +68,16 @@ install: >
   fi
 
 script: >
-  if [[ "${TEST_STATUS}" && "${STAGE}" == "compliance" ]]; then
+  if [[ "${TEST_STATUS}" && "${STAGE}" == "ngsi-ld" ]]; then
+    echo -e " \033[1;33mRunning NGSI-LD Test Suite";
+    curl -LO https://github.com/FIWARE/NGSI-LD_TestSuite/archive/master.zip;
+    unzip -q master.zip;
+    rm master.zip;
+    cd NGSI-LD_TestSuite-master;
+    ./services orion;
+    export TEST_ENDPOINT=http://localhost:1026;
+    npm test;
+  elif [[ "${TEST_STATUS}" && "${STAGE}" == "compliance" ]]; then
     echo -e " \033[1;33mRunning Compliance Tests";
     $(pwd)/docker/build.sh -s compliance -t -p $(pwd);
   elif [[ "${PUSH_STATUS}" && "${STAGE_TYPE}" == "release" && "${PLATFORM}" == "debian" ]]; then
