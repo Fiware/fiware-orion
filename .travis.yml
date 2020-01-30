@@ -70,7 +70,7 @@ jobs:
       name: "Deploy to Docker Hub"
       stage: deploy
       install: >
-        if [[ "${PUSH_STATUS}"]]; then
+        if [[ "${PUSH_STATUS}" ]]; then
           echo -e " \033[1;33mBuilding Debian Docker image for Release";
           docker build --quiet \
             --build-arg TOKEN=${TOKEN} \
@@ -80,7 +80,7 @@ jobs:
         fi
       script: true
       after_success: >
-        if [[ "${PUSH_STATUS}"]]; then
+        if [[ "${PUSH_STATUS}" ]]; then
           echo -e " \033[1;33mPushing Debian Release to Docker Hub";
           docker push ${IMAGE_RELEASE_DEBIAN};
         fi
@@ -88,7 +88,7 @@ jobs:
       name: "Deploy to Docker Hub - Image with Deps"
       stage: deploy
       install: >
-        if [[ "${PUSH_STATUS}"]]; then
+        if [[ "${PUSH_STATUS}" ]]; then
           docker build --quiet \
             --build-arg TOKEN=${TOKEN} \
             --build-arg REV=${TRAVIS_COMMIT} \
@@ -97,7 +97,7 @@ jobs:
         fi
       script: true
       after_success: >
-        if [[ "${PUSH_STATUS}"]]; then
+        if [[ "${PUSH_STATUS}" ]]; then
           echo -e " \033[1;33mPushing Debian Release (with Dependencies) to Docker Hub";
           docker push ${IMAGE_DEPS_DEBIAN};
         fi
