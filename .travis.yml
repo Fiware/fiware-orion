@@ -48,7 +48,7 @@ jobs:
       node_js: 12.14
       install: >
         echo -e " \033[1;33mBuilding Debian Docker image for Integration Test";
-        docker build --quiet \
+        travis_wait 30 docker build --quiet \
             --build-arg TOKEN=${TOKEN} \
             --build-arg REV=${TRAVIS_COMMIT} \
             --build-arg STAGE=release -t ${IMAGE_RELEASE_DEBIAN} \
@@ -72,7 +72,7 @@ jobs:
       install: >
         if [[ "${PUSH_STATUS}" ]]; then
           echo -e " \033[1;33mBuilding Debian Docker image for Release";
-          docker build --quiet \
+          travis_wait 30 docker build --quiet \
             --build-arg TOKEN=${TOKEN} \
             --build-arg REV=${TRAVIS_COMMIT} \
             --build-arg STAGE=release -t ${IMAGE_RELEASE_DEBIAN} \
@@ -89,7 +89,7 @@ jobs:
       stage: deploy
       install: >
         if [[ "${PUSH_STATUS}" ]]; then
-          docker build --quiet \
+          travis_wait 30 docker build --quiet \
             --build-arg TOKEN=${TOKEN} \
             --build-arg REV=${TRAVIS_COMMIT} \
             --build-arg STAGE=deps -t ${IMAGE_DEPS_DEBIAN} \
@@ -132,7 +132,7 @@ before_install: >
 
 install: >
   echo -e " \033[1;33mRebuilding Debian Docker Images (with deps)";
-  docker build --quiet \
+  travis_wait 30 docker build --quiet \
     --build-arg TOKEN=${TOKEN} \
     --build-arg REV=${TRAVIS_COMMIT} \
     --build-arg STAGE=deps -t ${IMAGE_DEPS_DEBIAN} \
