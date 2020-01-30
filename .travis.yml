@@ -1,5 +1,5 @@
 dist: xenial
-language: minimal
+language: shell
 
 env:
   global:
@@ -28,18 +28,11 @@ jobs:
       script: >
         echo -e " \033[1;33mRunning Compliance Tests";
         $(pwd)/docker/build.sh -s compliance -t -p $(pwd);
-  include:
     - env: STAGE=debian_unit
-  include:
     - env: STAGE=debian_functional_1_380
-  include:
     - env: STAGE=debian_functional_381_600
-  include:
     - env: STAGE=debian_functional_601_900
-  include:
     - env: STAGE=debian_functional_901_1300
-
-  include:
     - env: STAGE=debian_release
       install: >
         if [[ "${PUSH_STATUS}"]]; then
@@ -56,8 +49,6 @@ jobs:
           echo -e " \033[1;33mPushing Debian Release to Docker Hub";
           docker push ${IMAGE_RELEASE_DEBIAN};
         fi
-
-  include:
     - env: STAGE=debian_deps
       install: >
         if [[ "${PUSH_STATUS}"]]; then
@@ -73,8 +64,6 @@ jobs:
           echo -e " \033[1;33mPushing Debian Release (with Dependencies) to Docker Hub";
           docker push ${IMAGE_DEPS_DEBIAN};
         fi
-
-  include:
     - env: STAGE=debian_integration
       language: nodejs
       node_js: 12.14
@@ -87,7 +76,7 @@ jobs:
             -f $(pwd)/docker/Dockerfile-debian $(pwd)/docker/ ;
         fi
      
-       before_script : >
+      before_script : >
         curl -LO https://github.com/FIWARE/NGSI-LD_TestSuite/archive/master.zip;
         unzip -q master.zip;
         rm master.zip;
@@ -127,7 +116,7 @@ before_install: >
     sudo service docker restart; 
   fi
 
-install: > 
+install: >
   echo -e " \033[1;33mRebuilding Debian Docker Images (with deps)";
   docker build --quiet \
     --build-arg TOKEN=${TOKEN} \
