@@ -132,9 +132,9 @@ jobs:
         fi
 
   include:
-    - language: nodejs
+    - env: STAGE=debian_integration
+      language: nodejs
       node_js: 12.14
-      env: STAGE=debian_integration
       install: >
         echo -e " \033[1;33mBuilding Debian Docker image for Integration Test";
         docker build --quiet \
