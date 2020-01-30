@@ -68,7 +68,7 @@ install: >
   fi
 
 script: >
-  if [[ "${TEST_STATUS}" && "${STAGE}" == "ngsi-ld" ]]; then
+  if [[ "${TEST_STATUS}" && "${STAGE}" == "debian_ngsi-ld" ]]; then
     echo -e " \033[1;33mRunning NGSI-LD Test Suite";
     curl -LO https://github.com/FIWARE/NGSI-LD_TestSuite/archive/master.zip;
     unzip -q master.zip;
