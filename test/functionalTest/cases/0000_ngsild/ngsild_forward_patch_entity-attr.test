@@ -43,7 +43,7 @@ brokerStart CP1
 echo "01. Create an entity E1 without properties in CB"
 echo "================================================"
 payload='{
-  "id": "urn:ngsi-ld:entity:E1",
+  "id": "urn:ngsi-ld:entities:E1",
   "type": "T"
 }'
 orionCurl --url /ngsi-ld/v1/entities --payload "$payload"
@@ -54,11 +54,19 @@ echo
 echo "02. Create an entity E1 with properties A1 and A2 in CP1"
 echo "========================================================"
 payload='{
-  "id": "urn:ngsi-ld:entity:E1",
+  "id": "urn:ngsi-ld:entities:E1",
   "type": "T",
   "A1": {
     "type": "Property",
-    "value": "A1 in CP1"
+    "value": "A1 in CP1",
+    "P1": {
+      "type": "Property",
+      "value": "Direct Creation"
+    }
+  },
+  "A2": {
+    "type": "Property",
+    "value": "A2 in CP1"
   }
 }'
 orionCurl --url /ngsi-ld/v1/entities --payload "$payload" --port $CP1_PORT
@@ -92,9 +100,20 @@ echo
 echo "04. PATCH E1/A1 in CB"
 echo "====================="
 payload='{
-  "value": "A1 forwarded from CB"
+  "value": "A1 forwarded from CB",
+  "P2": {
+    "type": "Property",
+    "value": "Added via Forward"
+  }
 }'
-orionCurl --url /ngsi-ld/v1/entities/urn:ngsi-ld:entity:E1/attrs/A1 --payload "$payload" -X PATCH
+orionCurl --url /ngsi-ld/v1/entities/urn:ngsi-ld:entities:E1/attrs/A1 --payload "$payload" -X PATCH
+echo
+echo
+
+
+echo "05. GET the entity E1 from CP1 - see A1 changed"
+echo "==============================================="
+orionCurl --url /ngsi-ld/v1/entities/urn:ngsi-ld:entities:E1 --port $CP1_PORT
 echo
 echo
 
@@ -105,7 +124,7 @@ echo
 HTTP/1.1 201 Created
 Content-Length: 0
 Link: REGEX(.*)
-Location: /ngsi-ld/v1/entities/urn:ngsi-ld:entity:E1
+Location: /ngsi-ld/v1/entities/urn:ngsi-ld:entities:E1
 Date: REGEX(.*)
 
 
@@ -115,18 +134,58 @@ Date: REGEX(.*)
 HTTP/1.1 201 Created
 Content-Length: 0
 Link: REGEX(.*)
-Location: /ngsi-ld/v1/entities/urn:ngsi-ld:entity:E1
+Location: /ngsi-ld/v1/entities/urn:ngsi-ld:entities:E1
 Date: REGEX(.*)
 
 
 
 03. Register E1/A1 for CP1, in CB
 =================================
+HTTP/1.1 201 Created
+Content-Length: 0
+Link: <https://uri.etsi.org/ngsi-ld/v1/ngsi-ld-core-context.jsonld>; rel="http://www.w3.org/ns/json-ld#context"; type="application/ld+json"
+Location: /ngsi-ld/v1/csourceRegistrations/urn:ngsi-ld:ContextSourceRegistration:R1
+Date: REGEX(.*)
 
 
 
 04. PATCH E1/A1 in CB
 =====================
+HTTP/1.1 204 No Content
+Content-Length: 0
+Link: <https://uri.etsi.org/ngsi-ld/v1/ngsi-ld-core-context.jsonld>; rel="http://www.w3.org/ns/json-ld#context"; type="application/ld+json"
+Date: REGEX(.*)
+
+
+
+05. GET the entity E1 from CP1 - see A1 changed
+===============================================
+HTTP/1.1 200 OK
+Content-Length: 248
+Content-Type: application/json
+Link: <https://uri.etsi.org/ngsi-ld/v1/ngsi-ld-core-context.jsonld>; rel="http://www.w3.org/ns/json-ld#context"; type="application/ld+json"
+Date: REGEX(.*)
+
+{
+    "A1": {
+        "P1": {
+            "type": "Property",
+            "value": "Direct Creation"
+        },
+        "P2": {
+            "type": "Property",
+            "value": "Added via Forward"
+        },
+        "type": "Property",
+        "value": "A1 forwarded from CB"
+    },
+    "A2": {
+        "type": "Property",
+        "value": "A2 in CP1"
+    },
+    "id": "urn:ngsi-ld:entities:E1",
+    "type": "T"
+}
 
 
 --TEARDOWN--

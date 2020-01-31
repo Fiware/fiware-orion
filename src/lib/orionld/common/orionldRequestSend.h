@@ -39,12 +39,16 @@ extern bool orionldRequestSend
   const char*             protocol,
   const char*             ip,
   uint16_t                port,
+  const char*             verb,
   const char*             urlPath,
   int                     tmoInMilliSeconds,
   char**                  detailPP,
   bool*                   tryAgainP,
   bool*                   downloadFailedP,
-  const char*             acceptHeader
+  const char*             acceptHeader,
+  const char*             contentType,
+  const char*             payload,
+  int                     payloadLen
 );
 
 #endif  // SRC_LIB_ORIONLD_COMMON_ORIONLDREQUESTSEND_H_
