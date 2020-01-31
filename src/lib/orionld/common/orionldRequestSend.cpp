@@ -99,6 +99,7 @@ bool orionldRequestSend
   const char*             verb,
   const char*             urlPath,
   int                     tmoInMilliSeconds,
+  const char*             linkHeader,
   char**                  detailPP,
   bool*                   tryAgainP,
   bool*                   downloadFailedP,
@@ -199,6 +200,7 @@ bool orionldRequestSend
 
   struct curl_slist* headers = NULL;
 
+
   if (contentType != NULL)  // then also payload and payloadLen is supplied
   {
     char contentTypeHeader[128];
@@ -214,6 +216,17 @@ bool orionldRequestSend
     curl_easy_setopt(cc.curl, CURLOPT_HTTPHEADER, headers);
 
     curl_easy_setopt(cc.curl, CURLOPT_POSTFIELDS, (u_int8_t*) payload);
+  }
+
+  if (linkHeader != NULL)
+  {
+    char linkHeaderString[512];
+
+    snprintf(linkHeaderString, sizeof(linkHeaderString), "Link: %s", linkHeader);
+    headers = curl_slist_append(headers, linkHeaderString);
+    curl_easy_setopt(cc.curl, CURLOPT_HTTPHEADER, headers);
+
+    LM_TMP(("KZ: Link Header: %s", linkHeader));
   }
 
   if (acceptHeader != NULL)

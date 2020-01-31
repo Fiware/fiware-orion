@@ -108,7 +108,16 @@ static bool orionldForwardPatchAttribute
     snprintf(uriPath, sizeof(uriPath), "%s/ngsi-ld/v1/entities/%s/attrs/%s", uriDir, entityId, attrName);
   }
 
-  reqOk = orionldRequestSend(&orionldState.httpResponse, protocol, host, port, "PATCH", uriPath, 5000, &detail, &tryAgain, &downloadFailed, NULL, contentType, orionldState.requestPayload, payloadLen);
+  if (orionldState.linkHttpHeaderPresent)
+  {
+    char link[512];
+
+    snprintf(link, sizeof(link), "<%s>; rel=\"http://www.w3.org/ns/json-ld#context\"; type=\"application/ld+json\"", orionldState.link);
+    reqOk = orionldRequestSend(&orionldState.httpResponse, protocol, host, port, "PATCH", uriPath, 5000, link, &detail, &tryAgain, &downloadFailed, NULL, contentType, orionldState.requestPayload, payloadLen);
+  }
+  else
+    reqOk = orionldRequestSend(&orionldState.httpResponse, protocol, host, port, "PATCH", uriPath, 5000, NULL, &detail, &tryAgain, &downloadFailed, NULL, contentType, orionldState.requestPayload, payloadLen);
+
   if (reqOk == false)
   {
     LM_E(("PATCH: orionldRequestSend failed: %s", detail));

@@ -42,6 +42,7 @@ extern bool orionldRequestSend
   const char*             verb,
   const char*             urlPath,
   int                     tmoInMilliSeconds,
+  const char*             linkHeader,
   char**                  detailPP,
   bool*                   tryAgainP,
   bool*                   downloadFailedP,
