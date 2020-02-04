@@ -98,6 +98,8 @@ typedef enum TraceLevels
 
   /* Notifications (160-179) */
   LmtNotifier = 160,
+  LmtNotificationFormat,
+  LmtNotifications,
 
   /* Input/Output payloads (180-199) */
   LmtServiceInputPayload = 180,
@@ -116,19 +118,68 @@ typedef enum TraceLevels
   LmtCacheSem,
   LmtTimeStatSem,
 
-  /* Cache (210 - 230) */
-  LmtSubCache = 210,
+  /* Cache (205 - 207) */
+  LmtSubCache = 205,
   LmtSubCacheMatch,
   LmtCacheSync,
 
-  /* Others (>=230) */
-  LmtCm = 230,
+  /* Others (207-211) */
+  LmtCm = 207,
   LmtRush,
   LmtSoftError,
   LmtNotImplemented,
   LmtCurlContext,
 
-  LmtBug = 250
+#ifdef ORIONLD
+  LmtKjlParse     = 212,
+  LmtKjlParseValue,
+  LmtKjlParseObject,
+  LmtKjlParseArray,
+  LmtKjlAllocBuffer,
+  LmtKjlMalloc,
+  LmtKjlAllocBytesLeft,
+  LmtKjlRender,
+  LmtKjlRenderNode,
+  LmtKjlRenderArray,
+  LmtKjlRenderObject,
+  LmtKjlRenderValue,
+  LmtKjlShortArray,
+  LmtKjlNewline,
+  LmtKjlBuilder,
+
+  LmtWriteCallback = 228,
+  LmtRequestSend,
+  LmtPayloadCheck,
+  LmtUriExpansion,
+  LmtCompoundCreation,
+  LmtErrorResponse,
+  LmtUriPath,
+  LmtVerb,
+  LmtServiceRoutine,
+  LmtServiceLookup,
+  LmtPayloadParse,
+  LmtJsonResponse,
+  LmtFree,
+  LmtMetadata,
+
+  LmtContext = 242,
+  LmtContextList,
+  LmtContextTreat,
+  LmtContextDownload,
+  LmtContextLookup,
+  LmtContextItemLookup,
+  LmtContextValueLookup,
+  LmtContextPresent,
+  LmtPreloadedContexts,
+  LmtAlias,
+  LmtGeoJson,
+  LmtAccept,
+  LmtBadVerb,
+  LmtStringFilter = 254,
+
+#endif
+
+  LmtBug = 255
 } TraceLevels;
 
 

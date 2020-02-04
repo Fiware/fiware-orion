@@ -1,0 +1,160 @@
+# Copyright 2018 FIWARE Foundation e.V.
+#
+# This file is part of Orion-LD Context Broker.
+#
+# Orion-LD Context Broker is free software: you can redistribute it and/or
+# modify it under the terms of the GNU Affero General Public License as
+# published by the Free Software Foundation, either version 3 of the
+# License, or (at your option) any later version.
+#
+# Orion-LD Context Broker is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero
+# General Public License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with Orion-LD Context Broker. If not, see http://www.gnu.org/licenses/.
+#
+# For those usages not covered by this license please contact with
+# orionld at fiware dot org
+
+# VALGRIND_READY - to mark the test ready for valgrindTestSuite.sh
+
+--NAME--
+Accept Header MIME Types
+
+--SHELL-INIT--
+export BROKER=orionld
+dbInit CB
+brokerStart CB 212-249
+
+--SHELL--
+
+#
+# 01. Create Entity E1 with context as a string
+# 02. Checking mongo content to see URL
+# 03. GET E1, with 'Accept: application/json' - see 'Content-Type: application/json'
+# 04. GET E1, with 'Accept: application/ld+json' - see 'Content-Type: application/ld+json'
+# 05. GET E1, without specific Accept MIME type (application/json is default), see results like step 03
+#
+
+echo "01. Create Entity E1 with context as a string"
+echo "============================================="
+payload='{
+  "id": "http://a.b.c/entity/E1",
+  "type": "A",
+  "@context": "https://fiware.github.io/NGSI-LD_TestSuite/ldContext/testContext.jsonld"
+}'
+orionCurl --url /ngsi-ld/v1/entities -X POST --payload "$payload" -H "Content-Type: application/ld+json"
+echo
+echo
+
+
+echo "02. Checking mongo content to see URL"
+echo "====================================="
+mongoCmd2 ftest "db.entities.findOne()"
+echo
+echo
+
+
+echo "03. GET E1, with 'Accept: application/json' - see 'Content-Type: application/json'"
+echo "=================================================================================="
+url="http://a.b.c/entity/E1"
+orionCurl --url /ngsi-ld/v1/entities/$url -H "Accept: application/json"
+echo
+echo
+
+
+echo "04. GET E1, with 'Accept: application/ld+json' - see 'Content-Type: application/ld+json'"
+echo "========================================================================================"
+orionCurl --url /ngsi-ld/v1/entities/http://a.b.c/entity/E1 -H "Accept: application/ld+json"
+echo
+echo
+
+
+echo "05. GET E1, without specific Accept MIME type (application/json is default), see results like step 03"
+echo "====================================================================================================="
+orionCurl --url /ngsi-ld/v1/entities/http://a.b.c/entity/E1
+echo
+echo
+
+
+
+--REGEXPECT--
+01. Create Entity E1 with context as a string
+=============================================
+HTTP/1.1 201 Created
+Content-Length: 0
+Link: <https://fiware.github.io/NGSI-LD_TestSuite/ldContext/testContext.jsonld>; rel="http://www.w3.org/ns/json-ld#context"; type="application/ld+json"
+Location: /ngsi-ld/v1/entities/http://a.b.c/entity/E1
+Date: REGEX(.*)
+
+
+
+02. Checking mongo content to see URL
+=====================================
+MongoDB shell version REGEX(.*)
+connecting to: mongodb://localhost:27017/ftest
+MongoDB server version: REGEX(.*)
+{
+	"_id" : {
+		"id" : "http://a.b.c/entity/E1",
+		"type" : "https://uri.etsi.org/ngsi-ld/default-context/A",
+		"servicePath" : "/"
+	},
+	"attrNames" : [ ],
+	"attrs" : {
+		
+	},
+	"creDate" : REGEX(.*),
+	"modDate" : REGEX(.*),
+	"lastCorrelator" : ""
+}
+bye
+
+
+03. GET E1, with 'Accept: application/json' - see 'Content-Type: application/json'
+==================================================================================
+HTTP/1.1 200 OK
+Content-Length: 42
+Content-Type: application/json
+Link: <https://uri.etsi.org/ngsi-ld/v1/ngsi-ld-core-context.jsonld>; rel="http://www.w3.org/ns/json-ld#context"; type="application/ld+json"
+Date: REGEX(.*)
+
+{
+    "id": "http://a.b.c/entity/E1",
+    "type": "A"
+}
+
+
+04. GET E1, with 'Accept: application/ld+json' - see 'Content-Type: application/ld+json'
+========================================================================================
+HTTP/1.1 200 OK
+Content-Length: 115
+Content-Type: application/ld+json
+Date: REGEX(.*)
+
+{
+    "@context": "https://uri.etsi.org/ngsi-ld/v1/ngsi-ld-core-context.jsonld",
+    "id": "http://a.b.c/entity/E1",
+    "type": "A"
+}
+
+
+05. GET E1, without specific Accept MIME type (application/json is default), see results like step 03
+=====================================================================================================
+HTTP/1.1 200 OK
+Content-Length: 42
+Content-Type: application/json
+Link: <https://uri.etsi.org/ngsi-ld/v1/ngsi-ld-core-context.jsonld>; rel="http://www.w3.org/ns/json-ld#context"; type="application/ld+json"
+Date: REGEX(.*)
+
+{
+    "id": "http://a.b.c/entity/E1",
+    "type": "A"
+}
+
+
+--TEARDOWN--
+brokerStop CB
+dbDrop CB

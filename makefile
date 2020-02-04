@@ -68,10 +68,18 @@ all: prepare_release release
 
 di: install_debug
 
-compile_info:
+branchFile:
+	./scripts/build/branchFileCreate.sh
+
+redi: rm_orionld_exec di
+
+rm_orionld_exec:
+	\rm -f BUILD_DEBUG/src/app/orionld/orionld
+
+compile_info: branchFile
 	./scripts/build/compileInfo.sh
 
-compile_info_release:
+compile_info_release: branchFile
 	./scripts/build/compileInfo.sh --release
 
 prepare_release: compile_info_release

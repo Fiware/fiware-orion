@@ -39,6 +39,10 @@
 #include "rest/StringFilter.h"
 #include "cache/subCache.h"
 
+#ifdef ORIONLD
+#include "orionld/common/OrionldConnection.h"                  // orionldState
+#endif
+
 #include "mongoBackend/MongoGlobal.h"
 #include "mongoBackend/connectionOperations.h"
 #include "mongoBackend/safeMongo.h"
@@ -111,8 +115,26 @@ int mongoSubCacheItemInsert(const char* tenant, const BSONObj& sub)
   std::string    renderFormatString = sub.hasField(CSUB_FORMAT)? getStringFieldF(sub, CSUB_FORMAT) : "legacy";
   RenderFormat   renderFormat       = stringToRenderFormat(renderFormatString);
 
-  cSubP->tenant                = (tenant[0] == 0)? strdup("") : strdup(tenant);
-  cSubP->subscriptionId        = strdup(idField.OID().toString().c_str());
+  cSubP->tenant = (tenant[0] == 0)? strdup("") : strdup(tenant);
+
+#ifdef ORIONLD
+  //
+  // Make sure 'idField' is an OID before calling OID.
+  // Subs created with NGSI-LD aren't OIDs, so ...
+  // Using idField.OID() on a sub-id that isn't an OID gets an exception and the broker crashes.
+  //
+  char oid[128];
+
+  strncpy(oid, idField.toString().c_str(), sizeof(oid));
+
+  if (strncmp(oid, "_id: ObjectId('", 15) == 0)
+    cSubP->subscriptionId  = strdup(idField.OID().toString().c_str());
+  else
+    cSubP->subscriptionId  = strdup(idField.toString().c_str());
+#else
+  cSubP->subscriptionId    = strdup(idField.OID().toString().c_str());
+#endif
+
   cSubP->servicePath           = strdup(sub.hasField(CSUB_SERVICE_PATH)? getStringFieldF(sub, CSUB_SERVICE_PATH).c_str() : "/");
   cSubP->renderFormat          = renderFormat;
   cSubP->throttling            = sub.hasField(CSUB_THROTTLING)?       getIntOrLongFieldAsLongF(sub, CSUB_THROTTLING)       : -1;

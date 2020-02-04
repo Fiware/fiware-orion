@@ -21,12 +21,36 @@
 # iot_support at tid dot es
 #
 # Author: Ken Zangelin
-
-
+#
 date
+export BROKER=${BROKER:-orionld}
+export ORIONLD_SUPPRESS_LOG_FILE_OUTPUT=${ORIONLD_SUPPRESS_LOG_FILE_OUTPUT:-NO}
+
 testStartTime=$(date +%s.%2N)
 MAX_TRIES=${CB_MAX_TRIES:-3}
-echo $testStartTime > /tmp/brokerStartCounter
+
+
+
+# -----------------------------------------------------------------------------
+#
+# Log file for debugging
+#
+export LOG_FILE=/tmp/testHarness.log
+
+echo $testStartTime > $LOG_FILE
+
+
+
+# -----------------------------------------------------------------------------
+#
+# logMsg -
+#
+function logMsg()
+{
+  now=$(date)
+  echo $now: $* >> $LOG_FILE
+}
+
 
 
 # -----------------------------------------------------------------------------
@@ -68,15 +92,6 @@ if [ "$ORION_FT_DEBUG" == "1" ]
 then
   _debug='on'
 fi
-
-
-
-# -----------------------------------------------------------------------------
-#
-# Log file for debugging
-#
-rm -f /tmp/orionFuncTestDebug.log
-echo $(date) > /tmp/orionFuncTestDebug.log
 
 
 
@@ -127,12 +142,17 @@ function usage()
   empty=$(echo $sfile | tr 'a-zA-z/0-9.:' ' ')
   echo "$sfile [-u (usage)]"
   echo "$empty [-v (verbose)]"
+  echo "$empty [-s (silent)]"
+  echo "$empty [-ld (only ngsild tests)]"
+  echo "$empty [-eb (external broker)]"
+  echo "$empty [-tk (on error, show the diff ising tkdiff)]"
   echo "$empty [--filter <test filter>]"
   echo "$empty [--match <string for test to match>]"
   echo "$empty [--keep (don't remove output files)]"
   echo "$empty [--dryrun (don't execute any tests)]"
   echo "$empty [--dir <directory>]"
   echo "$empty [--fromIx <index of test where to start>]"
+  echo "$empty [--toIx <index of test where to end (inclusive)>]"
   echo "$empty [--ixList <list of test indexes>]"
   echo "$empty [--skipList <list of indexes of test cases to be skipped>]"
   echo "$empty [--stopOnError (stop at first error encountered)]"
@@ -146,8 +166,14 @@ function usage()
   echo "* If a file is passed as parameter, its entire file-name must be given, including '.test'"
   echo ""
   echo "Env Vars:"
+  echo "BROKER:              the name of the executable (orionld or contextBroker - orionld is the default value)"
+  echo "CB_MAX_TRIES:        the number of tries before giving up on a failing test case"
   echo "CB_SKIP_LIST:        default value for option --skipList"
-  echo "CB_SKIP_FUNC_TESTS:  list of names of func tests to skip"
+  echo "CB_SKIP_FUNC_TESTS:  comma-separated list of names of func tests to skip"
+  echo "CB_NO_CACHE:         Start the broker without subscription cache (if set to 'ON')"
+  echo "CB_THREADPOOL:       Start the broker without thread pool (if set to 'OFF')"
+  echo "CB_DIFF_TOOL:        To view diff of failing tests with diff/tkdiff/meld/..."
+  echo "CB_EXTERNAL_BROKER:  The broker is started externally - not 'automatically' by the test harness (if set to 'ON')"
   echo
   exit $1
 }
@@ -178,34 +204,152 @@ function exitFunction()
   errorText=$2
   testFile=$3
   errorString=$4
-  errorFile=$5
-  forced=$6
+  stderrFile=$5
+  diffFile=$5    # In the case of exitCode 9
+  stdoutFile=$6
+  forced=$7
 
-  echo -n "(FAIL $exitCode - $errorText) "
+  logMsg "FAILURE $exitCode for test $testFile: $errorText"
+  echo -n "(FAILURE $exitCode - $errorText) "
+
+  #
+  # To only run this verbose output under Travis/Jenkins, I need an env var or a CLI option here ...
+  #
+  # if [ "$TRAVIS" == "YES" ]
+  # then
+  # ...
+
+  if [ "$silent" == "off" ]
+  then
+      #
+      # Error 9 - output not as expected
+      #
+      if [ $exitCode == 9 ]
+      then
+          echo
+          echo "Error 9 - output not as expected"
+          echo
+          echo $diffFile:
+          echo  "---------------------------------------"
+          cat $diffFile
+          echo  "---------------------------------------"
+          echo
+
+          cat /tmp/orionld.log | egrep 'lvl=ERR|lvl=WARN' > /tmp/orionld.err-warn.log
+          if [ "$ORIONLD_SUPPRESS_LOG_FILE_OUTPUT" != "YES" ] && [ -s /tmp/orionld.err-warn.log ]
+          then
+              echo "Errors and warnings from the orionld log file"
+              echo "-------------------------------------------------"
+              cat /tmp/orionld.err-warn.log
+              echo "-------------------------------------------------"
+              echo
+              echo
+          fi
+
+          if [ -s /tmp/accumulator_9997_stderr ]
+          then
+              echo "/tmp/accumulator_9997_stderr:"
+              echo "-------------------------------------------------"
+              cat /tmp/accumulator_9997_stderr
+              echo "-------------------------------------------------"
+              echo
+              echo
+          fi
+
+          if [ -s /tmp/accumulator_9997_stdout ]
+          then
+              echo "/tmp/accumulator_9997_stdout:"
+              echo "-------------------------------------------------"
+              cat /tmp/accumulator_9997_stdout
+              echo "-------------------------------------------------"
+              echo
+              echo
+          fi
+      elif [ $exitCode == 7 ] || [ $exitCode == 8 ] || [ $exitCode == 10 ] || [ $exitCode == 20 ] || [ $exitCode == 11 ]
+      then
+          echo
+          echo "Error $exitCode: $errorText"
+          echo
+          echo "$stderrFile:"
+          echo "-------------------------------------------------"
+          cat $stderrFile
+          echo "-------------------------------------------------"
+          echo
+          echo
+
+          if [ "$verbose" == "on" ]
+          then
+              echo "$stdoutFile:"
+              echo "-------------------------------------------------"
+              cat $stdoutFile
+              echo "-------------------------------------------------"
+          else
+              echo "Run in verbose mode to see also the stdout-file $stdoutFile"
+          fi
+          echo
+          echo
+
+          cat /tmp/orionld.log | egrep 'lvl=ERR|lvl=WARN' > /tmp/orionld.err-warn.log
+          if [ -s /tmp/orionld.err-warn.log ]
+          then
+              echo "Errors and warnings from the orionld log file"
+              echo "-------------------------------------------------"
+              cat /tmp/orionld.err-warn.log
+              echo "-------------------------------------------------"
+              echo
+              echo
+          fi
+
+          if [ -s /tmp/accumulator_9997_stderr ]
+          then
+              echo "/tmp/accumulator_9997_stderr:"
+              echo "-------------------------------------------------"
+              cat /tmp/accumulator_9997_stderr
+              echo "-------------------------------------------------"
+              echo
+              echo
+          fi
+
+          if [ -s /tmp/accumulator_9997_stdout ]
+          then
+              echo "/tmp/accumulator_9997_stdout:"
+              echo "-------------------------------------------------"
+              cat /tmp/accumulator_9997_stdout
+              echo "-------------------------------------------------"
+              echo
+              echo
+          fi
+      elif [ $exitCode == 1 ] || [ $exitCode == 2 ] || [ $exitCode == 3 ] || [ $exitCode == 4 ] || [ $exitCode == 5 ] || [ $exitCode == 6 ]
+      then
+          echo
+          echo "Error $exitCode (error in test-case-segments): $errorText"
+          echo
+      fi
+  fi
 
   if [ "$stopOnError" == "on" ] || [ "$forced" == "DIE" ]
   then
     echo $ME/$NAME: $errorString
 
-    if [ "$errorFile" != "" ] && [ -f "$errorFile" ]
+    if [ "$stderrFile" != "" ] && [ -f "$stderrFile" ]
     then
-      cat $errorFile 2> /dev/null
+      if [ "$verbose" == "on" ]
+      then
+        cat $stderrFile 2> /dev/null
+      fi
     fi
 
     exit $exitCode
   fi
 
-  echo                         >> /tmp/orionFuncTestLog
-  echo '----- ' $NAME ' -----' >> /tmp/orionFuncTestLog
-  echo $errorString            >> /tmp/orionFuncTestLog
+  logMsg
+  logMsg "----- $NAME -----"
+  logMsg $errorString
 
-  if [ "$errorFile" != "" ] && [ -f "$errorFile" ]
+  if [ "$stderrFile" != "" ] && [ -f "$stderrFile" ]
   then
-    cat $errorFile               >> /tmp/orionFuncTestLog   2> /dev/null
-    echo                         >> /tmp/orionFuncTestLog
+    cat $stderrFile >> $LOG_FILE
   fi
-
-  echo                         >> /tmp/orionFuncTestLog
 
   testErrorV[$testError]=$testFile
   testError=$testError+1
@@ -216,10 +360,10 @@ function exitFunction()
 
 # ------------------------------------------------------------------------------
 #
-# ME - name of script, to be used in error and verbose messages 
+# ME - name of script, to be used in error and verbose messages
 #
 ME=$(basename $0)
-vMsg "$ME, in directory $SCRIPT_HOME"
+logMsg "$ME, in directory $SCRIPT_HOME"
 
 
 
@@ -228,7 +372,9 @@ vMsg "$ME, in directory $SCRIPT_HOME"
 # Argument parsing
 #
 typeset -i fromIx
+typeset -i toIx
 verbose=off
+silent=off
 dryrun=off
 keep=off
 stopOnError=off
@@ -240,15 +386,22 @@ dirGiven=no
 filterGiven=no
 showDuration=on
 fromIx=0
+toIx=0
 ixList=""
 noCache=""
 threadpool=ON
+ngsild=OFF
+externalBroker=OFF
 
-vMsg "parsing options"
+logMsg "parsing options"
 while [ "$#" != 0 ]
 do
   if   [ "$1" == "-u" ];             then usage 0;
   elif [ "$1" == "-v" ];             then verbose=on;
+  elif [ "$1" == "-s" ];             then silent=on;
+  elif [ "$1" == "-ld" ];            then ngsild=on;
+  elif [ "$1" == "-eb" ];            then externalBroker=ON;
+  elif [ "$1" == "-tk" ];            then CB_DIFF_TOOL=tkdiff;
   elif [ "$1" == "--dryrun" ];       then dryrun=on;
   elif [ "$1" == "--keep" ];         then keep=on;
   elif [ "$1" == "--stopOnError" ];  then stopOnError=on;
@@ -256,6 +409,7 @@ do
   elif [ "$1" == "--match" ];        then match="$2"; shift;
   elif [ "$1" == "--dir" ];          then dir="$2"; dirGiven=yes; shift;
   elif [ "$1" == "--fromIx" ];       then fromIx=$2; shift;
+  elif [ "$1" == "--toIx" ];         then toIx=$2; shift;
   elif [ "$1" == "--ixList" ];       then ixList=$2; shift;
   elif [ "$1" == "--skipList" ];     then skipList=$2; shift;
   elif [ "$1" == "--no-duration" ];  then showDuration=off;
@@ -275,7 +429,18 @@ do
   shift
 done
 
-vMsg "options parsed"
+logMsg "options parsed"
+
+
+
+# -----------------------------------------------------------------------------
+#
+# If -eb is set, then the env var EXTERNAL_BROKER is set to "ON"
+#
+if [ "$externalBroker" == "ON" ]
+then
+  export CB_EXTERNAL_BROKER=ON
+fi
 
 
 
@@ -289,6 +454,8 @@ then
   export CB_NO_CACHE=$noCache
 fi
 
+
+
 # -----------------------------------------------------------------------------
 #
 # The function brokerStart looks at the env var CB_THREADPOOL to decide
@@ -300,6 +467,21 @@ then
   export CB_THREADPOOL=$threadpool
 fi
 
+
+
+# -----------------------------------------------------------------------------
+#
+# Only ngsild tests?
+#
+# If set, overrides parameter
+#
+if [ "$ngsild" == "on" ]
+then
+  dirOrFile=test/functionalTest/cases/0000_ngsild
+fi
+
+
+
 # ------------------------------------------------------------------------------
 #
 # Check unmatching --dir and 'parameter that is a directory' AND
@@ -307,15 +489,14 @@ fi
 #
 # 1. If it is a directory - just change the 'dir' variable and continue
 # 2. Else, it must be a file, or a filter.
-#    If the 
 #
 if [ "$dirOrFile" != "" ]
 then
-  vMsg dirOrFile: $dirOrFile
-  vMsg dirGiven: $dirGiven
-  vMsg filterGiven: $filterGiven
-  vMsg dir: $dir
-  vMsg testFilter: $testFilter
+  logMsg dirOrFile: $dirOrFile
+  logMsg dirGiven: $dirGiven
+  logMsg filterGiven: $filterGiven
+  logMsg dir: $dir
+  logMsg testFilter: $testFilter
 
   if [ -d "$dirOrFile" ]
   then
@@ -339,8 +520,8 @@ then
     dirPart=$(dirname $dirOrFile)
     filePath=$(basename $dirOrFile)
     xdir=$(basename $dirPart);
-    vMsg "dirPart: $dirPart"
-    vMsg "filePath: $filePath"
+    logMsg "dirPart: $dirPart"
+    logMsg "filePath: $filePath"
 
     if [ "$dirPart" != "." ]
     then
@@ -352,9 +533,9 @@ then
   fi
 fi
 
-vMsg directory: $dir
-vMsg testFilter: $testFilter
-vMsg "Script in $SCRIPT_HOME"
+logMsg directory: $dir
+logMsg testFilter: $testFilter
+logMsg "Script in $SCRIPT_HOME"
 
 
 
@@ -371,18 +552,18 @@ toBeStopped=false
 # Init files already sourced?
 #
 if [ "$CONTEXTBROKER_TESTENV_SOURCED" != "YES" ]
-then  
+then
   if [ -f "$SCRIPT_HOME/testEnv.sh" ]
   then
     # First, we try with a testEnv.sh file in the script home (usual situation in the
     # RPM deployment case)
-    vMsg Sourcing $SCRIPT_HOME/testEnv.sh
+    logMsg Sourcing $SCRIPT_HOME/testEnv.sh
     source $SCRIPT_HOME/testEnv.sh
   elif [ -f "$SCRIPT_HOME/../../scripts/testEnv.sh" ]
   then
     # Second, we try with a testEnv.sh file in the script/testEnv.sh (realtive to git repo home).
     # Note that the script home in this case is test/functionaTest
-    vMsg Sourcing $SCRIPT_HOME/../../scripts/testEnv.sh
+    logMsg Sourcing $SCRIPT_HOME/../../scripts/testEnv.sh
     source $SCRIPT_HOME/../../scripts/testEnv.sh
   else
     echo "------------------------------------------------------------------"
@@ -396,7 +577,7 @@ if [ "$CONTEXTBROKER_HARNESS_FUNCTIONS_SOURCED" != "YES" ]
 then
   if [ -f $SCRIPT_HOME/harnessFunctions.sh ]
   then
-    vMsg Sourcing $SCRIPT_HOME/harnessFunctions.sh
+    logMsg Sourcing $SCRIPT_HOME/harnessFunctions.sh
     source $SCRIPT_HOME/harnessFunctions.sh
   else
     echo "--------------------------------------------------------------------------------------------"
@@ -412,20 +593,19 @@ fi
 #
 # Preparations - cd to the test directory
 #
-dMsg Functional Tests Starting ...
+logMsg Functional Tests Starting ...
 if [ "$dirOrFile" != "" ] && [ -d "$dirOrFile" ]
 then
   cd $dirOrFile
 elif [ ! -d "$dir" ]
 then
-  exitFunction 1 "$dir is not a directory" "HARNESS" "$dir" "" DIE
+  exitFunction 1 "$dir is not a directory" "HARNESS" "$dir" "" "" DIE
 else
   cd $dir
 fi
 
 
-echo "Orion Functional tests starting" > /tmp/orionFuncTestLog
-date >> /tmp/orionFuncTestLog
+logMsg "Orion Functional tests starting"
 
 
 
@@ -433,14 +613,14 @@ date >> /tmp/orionFuncTestLog
 #
 # Preparations - number of test cases
 #
-vMsg find in $(pwd), filter: $testFilter
+logMsg find in $(pwd), filter: $testFilter
 if [ "$match" == "" ]
 then
   fileList=$(find . -name "$testFilter" | sort | sed 's/^.\///')
 else
   fileList=$(find . -name "$testFilter" | grep "$match" | sort | sed 's/^.\///')
 fi
-vMsg "fileList: $fileList"
+logMsg "fileList: $fileList"
 typeset -i noOfTests
 typeset -i testNo
 
@@ -459,7 +639,7 @@ done
 
 # ------------------------------------------------------------------------------
 #
-# fileCleanup - 
+# fileCleanup -
 #
 function fileCleanup()
 {
@@ -468,9 +648,9 @@ function fileCleanup()
   path=$3
   dir=$(dirname $path)
 
-  vMsg "---------------------------------------------------------"
-  vMsg "In fileCleanup for $filename in $dir"
-  vMsg "---------------------------------------------------------"
+  logMsg "---------------------------------------------------------"
+  logMsg "In fileCleanup for $filename in $dir"
+  logMsg "---------------------------------------------------------"
 
   if [ "$keepOutputFiles" != "on" ]
   then
@@ -493,6 +673,10 @@ function fileCleanup()
     rm $filename.blockSortDiff.out  2> /dev/null
     rm $filename.diff               2> /dev/null
 
+    cd /tmp
+    \rm -f accumulator_*_stdout
+    \rm -f accumulator_*_stderr
+    \rm -f contextBroker.pid
     cd $olddir
   fi
 }
@@ -511,25 +695,25 @@ function fileCreation()
 
   dirname=$(dirname $path)
   filename=$(basename $path .test)
-  
+
   if [ "$dirname" != "." ] && [ "$dirname" != "" ]
   then
     pathWithoutExt=$dirname/$filename
-    vMsg New path: $path
+    logMsg New path: $path
   else
     pathWithoutExt=$filename
   fi
 
-  vMsg Creating test files for $pathWithoutExt
+  logMsg Creating test files for $pathWithoutExt
 
-  
+
   #
   # Extract the NAME
   #
   NAME=$(sed -n '/--NAME--/,/^--/p' $path | grep -v "^--")
   if [ "$NAME" == "" ]
   then
-    exitFunction 2 "--NAME-- part is missing" "$path" "($path)" "" DIE
+    exitFunction 2 "--NAME-- part is missing" "$path" "($path)" "" "" DIE
     exit 2 # Just in case
   fi
 
@@ -539,10 +723,10 @@ function fileCreation()
   if [ $(grep "\-\-SHELL\-INIT\-\-" $path | wc -l) -eq 1 ]
   then
     TEST_SHELL_INIT=${pathWithoutExt}.shellInit
-    vMsg "Creating $TEST_SHELL_INIT at $PWD"
+    logMsg "Creating $TEST_SHELL_INIT at $PWD"
     sed -n '/--SHELL-INIT--/,/^--/p' $path  | grep -v "^--" > $TEST_SHELL_INIT
   else
-    exitFunction 3 "--SHELL-INIT-- part is missing" $path "($path)" "" DIE
+    exitFunction 3 "--SHELL-INIT-- part is missing" $path "($path)" "" "" DIE
   fi
 
   #
@@ -551,10 +735,10 @@ function fileCreation()
   if [ $(grep "\-\-SHELL\-\-" $path | wc -l) -eq 1 ]
   then
     TEST_SHELL=${pathWithoutExt}.shell
-    vMsg "Creating $TEST_SHELL at $PWD"
+    logMsg "Creating $TEST_SHELL at $PWD"
     sed -n '/--SHELL--/,/^--/p' $path  | grep -v "^--" > $TEST_SHELL
   else
-    exitFunction 4 "--SHELL-- part is missing" $path "($path)" "" DIE
+    exitFunction 4 "--SHELL-- part is missing" $path "($path)" "" "" DIE
   fi
 
   #
@@ -563,10 +747,10 @@ function fileCreation()
   if [ $(grep "\-\-REGEXPECT\-\-" $path | wc -l) -eq 1 ]
   then
     TEST_REGEXPECT=${pathWithoutExt}.regexpect
-    vMsg "Creating $TEST_REGEXPECT at $PWD"
+    logMsg "Creating $TEST_REGEXPECT at $PWD"
     sed -n '/--REGEXPECT--/,/^--/p' $path  | grep -v "^--" > $TEST_REGEXPECT
   else
-    exitFunction 5 "--REGEXPECT-- part is missing" $path "($path)" "" DIE
+    exitFunction 5 "--REGEXPECT-- part is missing" $path "($path)" "" "" DIE
   fi
 
   #
@@ -575,10 +759,10 @@ function fileCreation()
   if [ $(grep "\-\-TEARDOWN\-\-" $path | wc -l) -eq 1 ]
   then
     TEST_TEARDOWN=${pathWithoutExt}.teardown
-    vMsg "Creating $TEST_TEARDOWN at $PWD"
+    logMsg "Creating $TEST_TEARDOWN at $PWD"
     sed -n '/--TEARDOWN--/,/^--/p' $path  | grep -v "^--" > $TEST_TEARDOWN
   else
-    exitFunction 6 "--TEARDOWN-- part is missing" $path "($path)" "" DIE
+    exitFunction 6 "--TEARDOWN-- part is missing" $path "($path)" "" "" DIE
   fi
 }
 
@@ -595,10 +779,9 @@ function partExecute()
   forcedDie=$3
   __tryNo=$4
 
-  vMsg Executing $what part for $path
   dirname=$(dirname $path)
   filename=$(basename $path .test)
-  
+
   if [ "$dirname" != "." ] && [ "$dirname" != "" ]
   then
     path=$dirname/$filename.test
@@ -610,19 +793,29 @@ function partExecute()
   chmod 755 $dirname/$filename.$what
   rm -f $dirname/$filename.$what.stderr
   rm -f $dirname/$filename.$what.stdout
+
+  logMsg "Executing $what part for $path"
+  logMsg "==========================  $dirname/$filename.$what ==============================="
+  cat $dirname/$filename.$what >> $LOG_FILE
+  logMsg "=========================================================================================================="
   $dirname/$filename.$what > $dirname/$filename.$what.stdout 2> $dirname/$filename.$what.stderr
   exitCode=$?
+  logMsg "$what part of $path is done - now checks"
   linesInStderr=$(wc -l $dirname/$filename.$what.stderr | awk '{ print $1}' 2> /dev/null)
 
   #
-  # Check that stdout is empty
+  # Check that stderr is empty
   #
   if [ "$linesInStderr" != "" ] && [ "$linesInStderr" != "0" ]
   then
     if [ $__tryNo == $MAX_TRIES ]
     then
-      exitFunction 7 "$what: output on stderr" $path "($path): $what produced output on stderr" $dirname/$filename.$what.stderr "$forcedDie"
+      exitFunction 7 "$what: output on stderr" $path "($path): $what produced output on stderr" $dirname/$filename.$what.stderr $dirname/$filename.$what.stdout "$forcedDie"
     else
+      logMsg "$what: output on stderr"
+      logMsg "------------------------------------------------------"
+      cat $dirname/$filename.$what.stderr >> $LOG_FILE
+      logMsg "------------------------------------------------------"
       echo -n "(ERROR 7 - $what: output on stderr) "
     fi
 
@@ -636,9 +829,10 @@ function partExecute()
   #
   if [ "$exitCode" != "0" ]
   then
+    logMsg "$what: exit code is $exitCode - retry? (try: $__tryNo, MAX_TRIES: $MAX_TRIES)"
     if [ $__tryNo == $MAX_TRIES ]
     then
-      exitFunction 8 $path "$what exited with code $exitCode" "($path)" $dirname/$filename.$what.stderr "$forcedDie"
+      exitFunction 8 $path "$what exited with code $exitCode" "($path)" $dirname/$filename.$what.stderr $dirname/$filename.$what.stdout "$forcedDie"
     else
       echo -n "(ERROR 8 - $what: exited with code $exitCode) "
     fi
@@ -655,6 +849,7 @@ function partExecute()
   then
     mv $dirname/$filename.$what.stdout $dirname/$filename.out # We are very much used to this name ...
 
+    logMsg "Performing diff for $dirname/$filename"
     #
     # Special sorted diff or normal REGEX diff ?
     #
@@ -672,6 +867,7 @@ function partExecute()
 
     if [ "$exitCode" != "0" ]
     then
+      logMsg "$what $dirname/$filename: exitCode=$exitCode"
       if [ $__tryNo == $MAX_TRIES ]
       then
         exitFunction 9 ".out and .regexpect differ" $path "($path) output not as expected" $dirname/$filename.diff
@@ -681,6 +877,7 @@ function partExecute()
 
       if [ "$CB_DIFF_TOOL" != "" ] && [ $__tryNo == $MAX_TRIES ]
       then
+        logMsg "Calling diff tool $CB_DIFF_TOOL"
         endDate=$(date)
         if [ $blockDiff == 'yes' ]
         then
@@ -688,8 +885,11 @@ function partExecute()
         else
           $CB_DIFF_TOOL $dirname/$filename.regexpect $dirname/$filename.out
         fi
+        logMsg "diff tool $CB_DIFF_TOOL finished"
       fi
       partExecuteResult=9
+      logMsg "partExecute is DONE"
+      logMsg "==================================================================="
       return
     fi
   fi
@@ -723,7 +923,7 @@ function runTest()
 
   runTestStatus="ok"
 
-  vMsg path=$path
+  logMsg "runTest: path=$path"
   dirname=$(dirname $path)
   filename=$(basename $path .test)
   dir=""
@@ -731,16 +931,14 @@ function runTest()
   if [ "$dirname" != "." ] && [ "$dirname" != "" ]
   then
     path=$dirname/$filename.test
-    vMsg New path: $path
+    logMsg "New path: $path"
   fi
-
-  vMsg running test $path
 
   # 1. Remove old output files
   fileCleanup $filename removeAll $path
   if [ "$toBeStopped" == "yes" ]
   then
-    echo toBeStopped == yes
+    logMsg toBeStopped == yes
     runTestStatus="stopped"
     return
   fi
@@ -749,29 +947,31 @@ function runTest()
   fileCreation $path $filename
   if [ "$toBeStopped" == "yes" ]
   then
+    logMsg stopped2
     runTestStatus="stopped2"
     return
   fi
 
   # 3. Run the SHELL-INIT part
-  vMsg Executing SHELL-INIT part for $path
+  logMsg Executing SHELL-INIT part for $path
   chmod 755 $dirname/$filename.shellInit
   rm -f $dirname/$filename.shellInit.stderr
   rm -f $dirname/$filename.shellInit.stdout
   $dirname/$filename.shellInit > $dirname/$filename.shellInit.stdout 2> $dirname/$filename.shellInit.stderr
   exitCode=$?
+  logMsg "SHELL-INIT part for $path DONE. exitCode=$exitCode"
   linesInStderr=$(wc -l $dirname/$filename.shellInit.stderr | awk '{ print $1}' 2> /dev/null)
 
   if [ "$linesInStderr" != "" ] && [ "$linesInStderr" != "0" ]
   then
-    exitFunction 10 "SHELL-INIT produced output on stderr" $path "($path)" $dirname/$filename.shellInit.stderr
+    exitFunction 10 "SHELL-INIT produced output on stderr" $path "($path)" $dirname/$filename.shellInit.stderr $dirname/$filename.shellInit.stdout "Continue"
     runTestStatus="shell-init-error"
     return
   fi
 
   if [ "$exitCode" != "0" ]
   then
-
+    logMsg "Trying the SHELL-INIT part AGAIN for $path"
     #
     # 3.2 Run the SHELL-INIT part AGAIN
     #
@@ -786,20 +986,24 @@ function runTest()
     sleep 1
     rm -f $dirname/$filename.shellInit.stderr
     rm -f $dirname/$filename.shellInit.stdout
+
+    logMsg "Executing SHELL-INIT part for $path"
     $dirname/$filename.shellInit > $dirname/$filename.shellInit.stdout 2> $dirname/$filename.shellInit.stderr
     exitCode=$?
+    logMsg "SHELL-INIT (again) part for $path DONE. exitCode=$exitCode"
+
     linesInStderr=$(wc -l $dirname/$filename.shellInit.stderr | awk '{ print $1}' 2> /dev/null)
 
     if [ "$linesInStderr" != "" ] && [ "$linesInStderr" != "0" ]
     then
-      exitFunction 20 "SHELL-INIT II produced output on stderr" $path "($path)" $dirname/$filename.shellInit.stderr
+      exitFunction 20 "SHELL-INIT II produced output on stderr" $path "($path)" $dirname/$filename.shellInit.stderr $dirname/$filename.shellInit.stdout "Continue"
       runTestStatus="shell-init-output-on-stderr"
       return
     fi
 
     if [ "$exitCode" != "0" ]
     then
-      exitFunction 11 "SHELL-INIT exited with code $exitCode" $path "($path)" "" DIE
+      exitFunction 11 "SHELL-INIT exited with code $exitCode" $path "($path)" $dirname/$filename.shellInit.stderr $dirname/$filename.shellInit.stdout "Continue"
       runTestStatus="shell-init-exited-with-"$exitCode
       return
     fi
@@ -817,17 +1021,17 @@ function runTest()
   # 5. Run the TEARDOWN part
   partExecute teardown $path "DIE" 0
   teardownResult=$partExecuteResult
-  vMsg "teardownResult: $teardownResult"
-  vMsg "shellResult: $shellResult"
+  logMsg "teardownResult: $teardownResult"
+  logMsg "shellResult: $shellResult"
 
   if [ "$shellResult" == "0" ] && [ "$teardownResult" == "0" ]
   then
     # 6. Remove output files
-    vMsg "Remove output files: fileCleanup $filename $keep"
+    logMsg "Remove output files: fileCleanup $filename $keep"
     fileCleanup $filename $keep $path
   else
     file=$(basename $path .test)
-    cp /tmp/contextBroker.log $file.contextBroker.log
+    cp /tmp/$BROKER.log $file.$BROKER.log
     runTestStatus="test-failed"
   fi
 }
@@ -851,7 +1055,7 @@ function testDisabled
 
       #
       # NOTE: In a non-disabled test, running inside the valgrind test suite, the function 'localBrokerStart()' (from harnessFunctions.sh)
-      #       redirects the output of "valgrind contextBroker" to the file /tmp/valgrind.out.
+      #       redirects the output of "valgrind $BROKER" to the file /tmp/valgrind.out.
       #       Later, the valgrind test suite uses the existence of this file (/tmp/valgrind.out) to detect errors in the valgrind execution.
       #       But, in the case of a disabled func test, we will not start the test case. and thus we will not reach 'localBrokerStart()', so the
       #       file will not be created and an error will be flagged by the valgrind test suite.
@@ -871,7 +1075,7 @@ function testDisabled
 #
 # Main loop
 #
-vMsg Total number of tests: $noOfTests
+logMsg Total number of tests: $noOfTests
 testNo=0
 for testFile in $fileList
 do
@@ -883,6 +1087,11 @@ do
   testNo=$testNo+1
 
   if [ $fromIx != 0 ] && [ $testNo -lt $fromIx ]
+  then
+    continue;
+  fi
+
+  if [ $toIx != 0 ] && [ $testNo -gt $toIx ]
   then
     continue;
   fi
@@ -957,7 +1166,10 @@ do
         printf "Running test %04d/%d: %s\n" "$testNo" "$noOfTests" "$testFile"
       fi
 
+      logMsg "Calling runTest for $testFile, try $tryNo"
       runTest $testFile $tryNo
+      logMsg "runTest for $testFile, try $tryNo DONE. shellResult=$shellResult"
+
       if [ "$shellResult" == "0" ]
       then
         if [ $tryNo != 1 ]
@@ -1030,11 +1242,15 @@ exitCode=0
 if [ "$testError" != "0" ]
 then
   echo
-  echo "Orion Functional Test Log File:"
-  echo "================================================================================"
-  cat /tmp/orionFuncTestLog 2> /dev/null
-  echo "================================================================================"
-  echo
+  if [ "$verbose" == "on" ]
+  then
+    echo "Orion Functional Test Log File:"
+    echo "================================================================================"
+    cat $LOG_FILE 2> /dev/null
+    echo "================================================================================"
+    echo
+  fi
+
   echo "----------- Failing tests ------------------"
 
   ix=0

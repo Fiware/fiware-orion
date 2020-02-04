@@ -1,0 +1,96 @@
+# Copyright 2018 FIWARE Foundation e.V.
+#
+# This file is part of Orion-LD Context Broker.
+#
+# Orion-LD Context Broker is free software: you can redistribute it and/or
+# modify it under the terms of the GNU Affero General Public License as
+# published by the Free Software Foundation, either version 3 of the
+# License, or (at your option) any later version.
+#
+# Orion-LD Context Broker is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero
+# General Public License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with Orion-LD Context Broker. If not, see http://www.gnu.org/licenses/.
+#
+# For those usages not covered by this license please contact with
+# orionld at fiware dot org
+
+# VALGRIND_READY - to mark the test ready for valgrindTestSuite.sh
+
+--NAME--
+Test of orionld version service, with branch name
+
+--SHELL-INIT--
+export BROKER=orionld
+dbInit CB
+brokerStart CB 0-255
+
+--SHELL--
+
+#
+# 01. GET /ngsi-ld/ex/v1/version
+# 02. Make sure the branch output from Step 01 is the same as current branch
+#
+
+
+echo "01. GET /ngsi-ld/ex/v1/version"
+echo "=============================="
+orionCurl --url /ngsi-ld/ex/v1/version --noPayloadCheck
+echo
+echo
+
+
+echo "02. Make sure the branch output from Step 01 is the same as current branch"
+echo "=========================================================================="
+branchAccordingToBroker=$(echo $_response | awk -F\"branch\" '{ print $2 }' | awk -F\" '{ print $2 }')
+branchAccordingToGit=$(git branch | grep ^\* | awk '{ print $2 }')
+if [ "$branchAccordingToBroker" != "$branchAccordingToGit" ]
+then
+  echo "Branch According To Git:    $branchAccordingToGit"
+  echo "Branch According To Broker: $branchAccordingToBroker"
+else
+  echo Branch is OK
+fi
+echo
+echo
+
+
+--REGEXPECT--
+01. GET /ngsi-ld/ex/v1/version
+==============================
+HTTP/1.1 200 OK
+Content-Length: REGEX(.*)
+Content-Type: application/json
+Date: REGEX(.*)
+
+{
+  "Orion-LD version": "REGEX(.*)",
+  "based on orion": "REGEX(.*)",
+  "kbase version": "0.3",
+  "kalloc version": "0.3",
+  "khash version": "0.3",
+  "kjson version": "0.3",
+  "boost version": "REGEX(.*)",
+  "microhttpd version": "0.9.48-0",
+  "openssl version": "REGEX(.*)",
+  "mongo version": "REGEX(.*)",
+  "rapidjson version": "REGEX(.*)",
+  "libcurl version": "REGEX(.*)",
+  "libuuid version": "UNKNOWN",
+  "branch": "REGEX(.*)",
+  "Next File Descriptor": REGEX(\d+)
+}
+
+
+
+02. Make sure the branch output from Step 01 is the same as current branch
+==========================================================================
+Branch is OK
+
+
+--TEARDOWN--
+brokerStop CB
+dbDrop CB

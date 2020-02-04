@@ -280,7 +280,7 @@ Fiware-Correlator: REGEX([0-9a-f\-]{36})
                 "metadata": {
                     "previousValue": {
                         "toplevel": [
-                            1,
+                            1, 
                             {
                                 "b": "foo"
                             }

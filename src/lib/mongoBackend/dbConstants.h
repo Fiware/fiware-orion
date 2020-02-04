@@ -59,7 +59,18 @@
 #define REG_SERVICE_PATH             "servicePath"
 #define REG_FORMAT                   "format"
 #define REG_DESCRIPTION              "description"
+#define REG_NAME                     "name"
 #define REG_STATUS                   "status"
+#define REG_NAME                     "name"
+#define REG_OBSERVATION_INTERVAL     "observationInterval"
+#define REG_MANAGEMENT_INTERVAL      "managementInterval"
+#define REG_INTERVAL_START           "start"
+#define REG_INTERVAL_END             "end"
+#define REG_ENDPOINT                 "endpoint"
+#define REG_PROPERTIES_TYPE          "Property"
+#define REG_PROPERTIES_NAME          "name"
+#define REG_RELATIONSHIPS_TYPE       "Relationship"
+#define REG_RELATIONSHIPS_NAME       "name"
 
 #define ENT_ATTRS                    "attrs"
 #define ENT_ATTRNAMES                "attrNames"
@@ -114,6 +125,12 @@
 #define CSUB_BLACKLIST               "blacklist"
 #define CSUB_LASTFAILURE             "lastFailure"
 #define CSUB_LASTSUCCESS             "lastSuccess"
+
+#ifdef ORIONLD
+#define CSUB_LDCONTEXT               "ldContext"
+#define CSUB_NAME                    "name"
+#define CSUB_MIMETYPE                "mimeType"
+#endif
 
 #define CASUB_EXPIRATION             "expiration"
 #define CASUB_REFERENCE              "reference"

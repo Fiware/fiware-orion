@@ -1,8 +1,6 @@
 #ifndef HTTP_STATUS_CODE_H
 #define HTTP_STATUS_CODE_H
 
-#include <string>
-
 /*
 *
 * Copyright 2013 Telefonica Investigacion y Desarrollo, S.A.U
@@ -27,6 +25,9 @@
 *
 * Author: developer
 */
+#include <string>
+
+
 
 /* ****************************************************************************
 *
@@ -41,12 +42,13 @@ typedef enum HttpStatusCode
   SccBadRequest             = 400,   // The request is not well formed
   SccForbidden              = 403,   // The request is not allowed
   SccContextElementNotFound = 404,   // No context element found
+  SccNotFound               = 404,   // Not Found
   SccBadVerb                = 405,   // Request ok but verb/method NOT OK
   SccNotAcceptable          = 406,   // The Accept header in the request is not supported
   SccConflict               = 409,
   SccContentLengthRequired  = 411,   // Content-Length header missing
   SccRequestEntityTooLarge  = 413,   // Request Entity Too Large - over 1Mb of payload
-  SccUnsupportedMediaType   = 415,   // Unsupported Media Type (only support and application/json and -in some cases- text/plain)
+  SccUnsupportedMediaType   = 415,   // Unsupported Media Type (only support application/json and - in some cases - text/plain)
   SccInvalidModification    = 422,   // InvalidModification (unprocessable entity)
   SccSubscriptionIdNotFound = 470,   // The subscriptionId does not correspond to an active subscription
   SccMissingParameter       = 471,   // A parameter is missing in the request
@@ -56,7 +58,8 @@ typedef enum HttpStatusCode
   SccEntityTypeRequired     = 481,   // The EntityType is required by the receiver
   SccAttributeListRequired  = 482,   // The Attribute List is required by the receiver
   SccReceiverInternalError  = 500,   // An unknown error at the receiver has occurred
-  SccNotImplemented         = 501    // The given operation is not implemented
+  SccNotImplemented         = 501,   // The given operation is not implemented
+  SccServiceUnavailable     = 503    // The server is currently unable to handle the request
 } HttpStatusCode;
 
 

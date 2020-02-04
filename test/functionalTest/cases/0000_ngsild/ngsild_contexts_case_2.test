@@ -1,0 +1,149 @@
+# Copyright 2018 FIWARE Foundation e.V.
+#
+# This file is part of Orion-LD Context Broker.
+#
+# Orion-LD Context Broker is free software: you can redistribute it and/or
+# modify it under the terms of the GNU Affero General Public License as
+# published by the Free Software Foundation, either version 3 of the
+# License, or (at your option) any later version.
+#
+# Orion-LD Context Broker is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero
+# General Public License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with Orion-LD Context Broker. If not, see http://www.gnu.org/licenses/.
+#
+# For those usages not covered by this license please contact with
+# orionld at fiware dot org
+
+# VALGRIND_READY - to mark the test ready for valgrindTestSuite.sh
+
+--NAME--
+Parse Contexts - case two - string reference to a context
+
+--SHELL-INIT--
+export BROKER=orionld
+dbInit CB
+brokerStart CB 212-249
+
+--SHELL--
+
+#
+# https://fiware.github.io/NGSI-LD_TestSuite/ldContext/testFullContext.jsonld:
+# {
+#   "@context": [
+#     "https://fiware.github.io/NGSI-LD_TestSuite/ldContext/testContext.jsonld",
+#     "https://uri.etsi.org/ngsi-ld/v1/ngsi-ld-core-context.jsonld"
+#   ]
+# }
+#
+# https://fiware.github.io/NGSI-LD_TestSuite/ldContext/testContext.jsonld:
+# {
+#   "@context": {
+#     "T": "http://example.org/T",
+#     "T2": "http://example.org/T2",
+#     "T3": "http://example.org/T3",
+#     "P1": "http://example.org/P1",
+#     "P2": "http://example.org/P2",
+#     "P3": "http://example.org/P3",
+#     "R1": "http://example.org/R1",
+#     "R2": "http://example.org/R2",
+#     "R3": "http://example.org/R3",
+#     "P1_R1": "http://example.org/P1_R1",
+#     "P1_P1": "http://example.org/P1_P1",
+#     "R1_P1": "http://example.org/R1_P1",
+#     "R1_R1": "http://example.org/R1_R1"
+#   }
+# }
+#
+# https://uri.etsi.org/ngsi-ld/v1/ngsi-ld-core-context.jsonld:
+# {
+#   "@context": {
+#     "id": "@id",
+#     "type": "@type",
+#     "value": "http://uri.etsi.org/ngsi-ld/hasValue",
+#     "object": {
+#       "@id": "http://uri.etsi.org/ngsi-ld/hasObject",
+#       "@type":"@id"
+#     },
+#     "Property": "http://uri.etsi.org/ngsi-ld/Property",
+#     "Relationship": "http://uri.etsi.org/ngsi-ld/Relationship",
+#     ...                                                                                                                                                                        
+#   }
+# }
+
+
+#
+# 01. POST /ngsi-ld/v1/entities, with a context that is a 'string reference' to another context that is a 'simple' context
+# 02. Checking mongo to see a correct context
+#
+
+echo "01. POST /ngsi-ld/v1/entities, with a context that is a 'string reference' to another context that is a 'simple' context"
+echo "========================================================================================================================"
+payload='{
+  "id": "http://a.b.c/entity/E2",
+  "type": "A",
+  "name": {
+    "type": "Property",
+    "value": "John 2"
+  },
+  "@context": "https://uri.etsi.org/ngsi-ld/v1/ngsi-ld-core-context.jsonld"
+}'
+orionCurl --url /ngsi-ld/v1/entities -X POST --payload "$payload" -H "Content-Type: application/ld+json"
+echo
+echo
+
+
+echo "02. Checking mongo to see a correct context"
+echo "==========================================="
+mongoCmd2 ftest "db.entities.findOne()"
+echo
+echo
+
+
+--REGEXPECT--
+01. POST /ngsi-ld/v1/entities, with a context that is a 'string reference' to another context that is a 'simple' context
+========================================================================================================================
+HTTP/1.1 201 Created
+Content-Length: 0
+Link: <https://uri.etsi.org/ngsi-ld/v1/ngsi-ld-core-context.jsonld>; rel="http://www.w3.org/ns/json-ld#context"; type="application/ld+json"
+Location: /ngsi-ld/v1/entities/http://a.b.c/entity/E2
+Date: REGEX(.*)
+
+
+
+02. Checking mongo to see a correct context
+===========================================
+MongoDB shell version REGEX(.*)
+connecting to: REGEX(.*)
+MongoDB server version: REGEX(.*)
+{
+	"_id" : {
+		"id" : "http://a.b.c/entity/E2",
+		"type" : "https://uri.etsi.org/ngsi-ld/default-context/A",
+		"servicePath" : "/"
+	},
+	"attrNames" : [
+		"https://uri.etsi.org/ngsi-ld/name"
+	],
+	"attrs" : {
+		"https://uri=etsi=org/ngsi-ld/name" : {
+			"type" : "Property",
+			"creDate" : REGEX(.*),
+			"modDate" : REGEX(.*),
+			"value" : "John 2",
+			"mdNames" : [ ]
+		}
+	},
+	"creDate" : REGEX(.*),
+	"modDate" : REGEX(.*),
+	"lastCorrelator" : ""
+}
+bye
+
+
+--TEARDOWN--
+brokerStop CB
+dbDrop CB

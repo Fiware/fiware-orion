@@ -36,16 +36,17 @@
 
 /* ****************************************************************************
 *
-* mimeTypeToString - 
+* mimeTypeToString -
 */
 const char* mimeTypeToString(MimeType mimeType)
 {
   switch (mimeType)
-  {  
-  case JSON:     return "JSON";
-  case TEXT:     return "TEXT";
-  case HTML:     return "HTML";
-  case NOMIMETYPE: return "NOMIMETYPE";
+  {
+  case JSON:        return "JSON";
+  case TEXT:        return "TEXT";
+  case HTML:        return "HTML";
+  case JSONLD:      return "JSONLD";
+  case NOMIMETYPE:  return "NOMIMETYPE";
   }
 
   return "Unknown mimeType";
@@ -68,10 +69,51 @@ MimeType stringToMimeType(const std::string& s)
 }
 
 
+#ifdef ORIONLD
+/* ****************************************************************************
+*
+* longStringToMimeType
+*/
+MimeType longStringToMimeType(const std::string& s)
+{
+  if (s == "application/json")
+  {
+    return JSON;
+  }
+  else if (s == "application/ld+json")
+  {
+    return JSONLD;
+  }
+
+  return NOMIMETYPE;
+}
+#endif
+
+
 
 /* ****************************************************************************
 *
-* mimeTypeParse - 
+* mimeTypeToLongString -
+*/
+const char* mimeTypeToLongString(MimeType mimeType)
+{
+  switch (mimeType)
+  {
+  case JSON:        return "application/json";
+  case TEXT:        return "plain/text";
+  case HTML:        return "application/html";
+  case JSONLD:      return "application/ld+json";
+  case NOMIMETYPE:  return "NOMIMETYPE";
+  }
+
+  return "Unknown mimeType";
+}
+
+
+
+/* ****************************************************************************
+*
+* mimeTypeParse -
 */
 MimeType mimeTypeParse(const std::string& mimeTypeString, std::string* charsetP)
 {

@@ -130,6 +130,12 @@
 #define OPT_DATE_MODIFIED   DATE_MODIFIED
 #define OPT_NO_ATTR_DETAIL  "noAttrDetail"
 #define OPT_UPSERT          "upsert"
+#ifdef ORIONLD
+#define OPT_SYS_ATTRS       "sysAttrs"
+#define OPT_NO_OVERWRITE    "noOverwrite"
+#define OPT_UPDATE          "update"
+#define OPT_REPLACE         "replace"
+#endif
 
 
 
@@ -164,7 +170,8 @@ typedef enum ApiVersion
   NO_VERSION  = -1,
   ADMIN_API   = 0,
   V1          = 1,
-  V2          = 2
+  V2          = 2,
+  NGSI_LD_V1  = 3
 } ApiVersion;
 
 

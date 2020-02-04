@@ -21,7 +21,7 @@
 #
 # Project name and basic prerequisities
 #
-PROJECT(contextBroker)
+PROJECT(orionld)
 cmake_minimum_required(VERSION 2.6)
 
 #
@@ -50,8 +50,10 @@ execute_process(COMMAND            sh ../scripts/build/osDistro.sh
 #             The important ones: LM_W, LM_E, LM_X, LM_I are all kept as is ]
 #         comment the following line
 add_definitions(-DLM_ON)
+add_definitions(-DORIONLD)
 
 add_definitions(-fPIC)
+add_definitions(-std=c++11)
 
 # Baseline compiler flags, any change here will affect all build types
 
@@ -80,8 +82,12 @@ add_definitions(-fPIC)
 #
 IF (${DISTRO} MATCHES "Ubuntu_17.*")
  set (CMAKE_CXX_FLAGS "-Wall -Wno-unknown-pragmas -D_LARGEFILE64_SOURCE -D_GNU_SOURCE -Werror -Wno-deprecated-declarations -fno-var-tracking-assignments")
+ELSEIF (${DISTRO} MATCHES "Ubuntu_18.*")
+ set (CMAKE_CXX_FLAGS "-Wall -Wno-unknown-pragmas -D_LARGEFILE64_SOURCE -D_GNU_SOURCE -Werror -Wno-deprecated-declarations -fno-var-tracking-assignments")
+ELSEIF (${DISTRO} MATCHES "Debian_9.*")
+ set (CMAKE_CXX_FLAGS "-Wall -Wno-unknown-pragmas -D_LARGEFILE64_SOURCE -D_GNU_SOURCE -Werror -Wno-deprecated-declarations -fno-var-tracking-assignments")
 ELSE()
-  set (CMAKE_CXX_FLAGS "-Wall -Wno-unknown-pragmas -D_LARGEFILE64_SOURCE -D_GNU_SOURCE -Werror -fno-var-tracking-assignments")
+  set (CMAKE_CXX_FLAGS "-Wall -Wno-unknown-pragmas -D_LARGEFILE64_SOURCE -D_GNU_SOURCE -Werror -Wno-deprecated-declarations -fno-var-tracking-assignments")
 ENDIF ()
 
 #
@@ -167,10 +173,23 @@ endif (${CMAKE_BUILD_TYPE} STREQUAL DEBUG)
 
 SET (ORION_LIBS
     common
+    rest          # verbName(Verb) from setExtendedHttpInfo@MongoCommonSubscription.cpp.o; jsonRequestTreat from payloadParse@RestService.cpp.o;
+    orionld_rest
+    orionld_serviceRoutines
+    orionld_kjTree
+    orionld_context
+    orionld_common
+    orionld_context
+    orionld_db
+#    orionld_mongoc
+    orionld_mongoCppLegacy
+    orionld_db
+    orionld_mongoBackend
+
     serviceRoutines
     serviceRoutinesV2
     ngsiNotify
-    rest          # verbName(Verb) from setExtendedHttpInfo@MongoCommonSubscription.cpp.o; jsonRequestTreat from payloadParse@RestService.cpp.o;
+    orionld_kjTree
     jsonParse
     jsonParseV2
     rest          # this is repeated for linking str2Verb from parseSubscription@parseSubscription.cpp.o;
@@ -181,6 +200,9 @@ SET (ORION_LIBS
     ngsi
     cache
     mongoBackend
+    orionld_common       # mongoBackend calls geoJsonCreate from orionld_common
+    orionld_context      # Should not be necessary ... kjTreeFromNotification gets undefined reference to 'orionldAliasLookup' without this ...
+    orionld_mongoBackend # mongoBackend uses functions in orionld_mongoBackend
     parse
     apiTypesV2
     orionTypes
@@ -206,10 +228,16 @@ SET (BOOST_MT
     boost_regex-mt
 )
 
-# Static libs common to contextBroker and unitTest binaries
+# Static libs common to orionld and unitTest binaries
 SET (COMMON_STATIC_LIBS
     microhttpd.a
     mongoclient.a
+#    mongoc-static-1.0.a
+#    bson-static-1.0.a
+    kjson.a
+    khash.a
+    kalloc.a
+    kbase.a
 )
 
 SET (DYNAMIC_LIBS
@@ -218,9 +246,14 @@ SET (DYNAMIC_LIBS
     pthread
     gcrypt
     ssl
+    rt
     uuid
     crypto
     sasl2
+    icuuc
+    icudata
+    z
+    resolv
 )
 
 #
@@ -239,6 +272,9 @@ endif (UNIT_TEST)
 # Common include
 #
 include_directories("/usr/include")
+include_directories("/usr/local/include/libbson-1.0")
+#include_directories("/usr/local/include/libmongoc-1.0")
+include_directories("${PROJECT_SOURCE_DIR}/..")
 
 #
 # Library directories
@@ -249,7 +285,13 @@ if ("${BUILD_ARCH}" STREQUAL "x86_64")
 else (NOT "${BUILD_ARCH}" STREQUAL "x86_64")
     link_directories("/usr/lib")
 endif ("${BUILD_ARCH}" STREQUAL "x86_64")
+
 link_directories("/usr/lib/x86_64-linux-gnu")
+link_directories("${PROJECT_SOURCE_DIR}/../kjson")
+link_directories("${PROJECT_SOURCE_DIR}/../kalloc")
+link_directories("${PROJECT_SOURCE_DIR}/../kbase")
+link_directories("${PROJECT_SOURCE_DIR}/../khash")
+
 #
 # Enabling test harness
 #
@@ -282,12 +324,21 @@ if (error EQUAL 0)
   ADD_SUBDIRECTORY(src/lib/jsonParse)
   ADD_SUBDIRECTORY(src/lib/jsonParseV2)
   ADD_SUBDIRECTORY(src/lib/rest)
+  ADD_SUBDIRECTORY(src/lib/orionld/rest)
+  ADD_SUBDIRECTORY(src/lib/orionld/serviceRoutines)
+  ADD_SUBDIRECTORY(src/lib/orionld/common)
+  ADD_SUBDIRECTORY(src/lib/orionld/context)
+  ADD_SUBDIRECTORY(src/lib/orionld/kjTree)
+  ADD_SUBDIRECTORY(src/lib/orionld/db)
+  ADD_SUBDIRECTORY(src/lib/orionld/mongoBackend)
+  ADD_SUBDIRECTORY(src/lib/orionld/mongoCppLegacy)
+#  ADD_SUBDIRECTORY(src/lib/orionld/mongoc)
   ADD_SUBDIRECTORY(src/lib/mongoBackend)
   ADD_SUBDIRECTORY(src/lib/cache)
   ADD_SUBDIRECTORY(src/lib/alarmMgr)
   ADD_SUBDIRECTORY(src/lib/metricsMgr)
   ADD_SUBDIRECTORY(src/lib/logSummary)
-  ADD_SUBDIRECTORY(src/app/contextBroker)
+  ADD_SUBDIRECTORY(src/app/orionld)
 else ()
     MESSAGE("cmake: NOT OK")
 endif (error EQUAL 0)

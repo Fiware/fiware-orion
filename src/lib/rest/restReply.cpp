@@ -54,11 +54,20 @@
 #include "rest/OrionError.h"
 #include "rest/restReply.h"
 
+#ifdef ORIONLD
+#include "orionld/common/orionldState.h"                       // orionldState
+#endif
 #include "logMsg/traceLevels.h"
 
 
 
+/* ****************************************************************************
+*
+* replyIx - counter of the replies
+*/
 static int replyIx = 0;
+
+
 
 /* ****************************************************************************
 *
@@ -78,14 +87,30 @@ void restReply(ConnectionInfo* ciP, const std::string& answer)
   response = MHD_create_response_from_buffer(answerLen, (void*) answer.c_str(), MHD_RESPMEM_MUST_COPY);
   if (!response)
   {
-    metricsMgr.add(ciP->httpHeaders.tenant, spath, METRIC_TRANS_IN_ERRORS, 1);
+    if (ciP->apiVersion != NGSI_LD_V1)
+    {
+      metricsMgr.add(ciP->httpHeaders.tenant, spath, METRIC_TRANS_IN_ERRORS, 1);
+    }
+    
     LM_E(("Runtime Error (MHD_create_response_from_buffer FAILED)"));
+
+#ifdef ORIONLD
+    if (orionldState.responsePayloadAllocated == true)
+    {
+      free(orionldState.responsePayload);
+      orionldState.responsePayload = NULL;
+    }
+#endif    
+
     return;
   }
 
   if (answerLen > 0)
   {
-    metricsMgr.add(ciP->httpHeaders.tenant, spath, METRIC_TRANS_IN_RESP_SIZE, answerLen);
+    if (ciP->apiVersion != NGSI_LD_V1)
+    {
+      metricsMgr.add(ciP->httpHeaders.tenant, spath, METRIC_TRANS_IN_RESP_SIZE, answerLen);
+    }
   }
 
   for (unsigned int hIx = 0; hIx < ciP->httpHeader.size(); ++hIx)
@@ -95,10 +120,22 @@ void restReply(ConnectionInfo* ciP, const std::string& answer)
 
   if (answer != "")
   {
+    //
+    // For error-responses, never respond with application/ld+json
+    //
+    if ((ciP->httpStatusCode >= 400) && (ciP->outMimeType == JSONLD))
+      ciP->outMimeType = JSON;
+
     if (ciP->outMimeType == JSON)
     {
       MHD_add_response_header(response, HTTP_CONTENT_TYPE, "application/json");
     }
+#ifdef ORIONLD
+    else if ((ciP->outMimeType == JSONLD) || (ciP->httpHeaders.accept == "application/ld+json"))
+    {
+      MHD_add_response_header(response, HTTP_CONTENT_TYPE, "application/ld+json");
+    }
+#endif
     else if (ciP->outMimeType == TEXT)
     {
       MHD_add_response_header(response, HTTP_CONTENT_TYPE, "text/plain");
@@ -150,6 +187,14 @@ void restReply(ConnectionInfo* ciP, const std::string& answer)
 
   MHD_queue_response(ciP->connection, ciP->httpStatusCode, response);
   MHD_destroy_response(response);
+
+#ifdef ORIONLD
+  if ((orionldState.responsePayloadAllocated == true) && (orionldState.responsePayload != NULL))
+  {
+    free(orionldState.responsePayload);
+    orionldState.responsePayload = NULL;
+  }
+#endif    
 }
 
 
@@ -204,7 +249,7 @@ void restErrorReplyGet(ConnectionInfo* ciP, HttpStatusCode code, const std::stri
   else if (ciP->restServiceP->request == QueryContext)
   {
     QueryContextResponse  qcr(errorCode);
-    bool                  asJsonObject = (ciP->uriParam[URI_PARAM_ATTRIBUTE_FORMAT] == "object" && ciP->outMimeType == JSON);
+    bool                  asJsonObject = (ciP->uriParam[URI_PARAM_ATTRIBUTE_FORMAT] == "object") && ((ciP->outMimeType == JSON) || (ciP->outMimeType == JSONLD));
     *outStringP = qcr.render(ciP->apiVersion, asJsonObject);
   }
   else if (ciP->restServiceP->request == SubscribeContext)
@@ -225,7 +270,7 @@ void restErrorReplyGet(ConnectionInfo* ciP, HttpStatusCode code, const std::stri
   else if (ciP->restServiceP->request == UpdateContext)
   {
     UpdateContextResponse ucr(errorCode);
-    bool asJsonObject = (ciP->uriParam[URI_PARAM_ATTRIBUTE_FORMAT] == "object" && ciP->outMimeType == JSON);
+    bool asJsonObject = (ciP->uriParam[URI_PARAM_ATTRIBUTE_FORMAT] == "object") && ((ciP->outMimeType == JSON) || (ciP->outMimeType == JSONLD));
     *outStringP = ucr.render(ciP->apiVersion, asJsonObject);
   }
   else if (ciP->restServiceP->request == NotifyContext)

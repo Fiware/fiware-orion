@@ -115,7 +115,7 @@ size_t writeMemoryCallback(void* contents, size_t size, size_t nmemb, void* user
   mem->size += realsize;
   mem->memory[mem->size] = 0;
 
-  return realsize;
+ return realsize;
 }
 
 
@@ -417,6 +417,7 @@ int httpRequestSendWithCurl
 
   snprintf(userAgentHeaderValue, sizeof(userAgentHeaderValue), "orion/%s libcurl/%s", versionGet(), curlVersionGet(cvBuf, sizeof(cvBuf)));
   LM_T(LmtHttpHeaders, ("HTTP-HEADERS: '%s'", (userAgentHeaderName + ": " + userAgentHeaderValue).c_str()));
+
   httpHeaderAdd(&headers, userAgentHeaderName, userAgentHeaderValue, &outgoingMsgSize, extraHeaders, usedExtraHeaders);
 
   // ----- Host
@@ -476,7 +477,6 @@ int httpRequestSendWithCurl
   //
   unsigned long long payloadSize = content.size();
   outgoingMsgSize += payloadSize;
-
 
   // ----- Content-type
   std::string contentTypeHeaderValue = content_type;
@@ -549,7 +549,6 @@ int httpRequestSendWithCurl
     url = ip;
   }
   url = protocol + url + ":" + portAsString + (resource.at(0) == '/'? "" : "/") + resource;
-
   if (insecureNotif)
   {
     curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L); // ignore self-signed certificates for SSL end-points
@@ -600,6 +599,7 @@ int httpRequestSendWithCurl
     // NOTE: This log line is used by the functional tests in cases/880_timeout_for_forward_and_notifications/
     //       So, this line should not be removed/altered, at least not without also modifying the functests.
     //
+    LM_E(("curl_easy_perform failed: %d", res));
     alarmMgr.notificationError(url, "(curl_easy_perform failed: " + std::string(curl_easy_strerror(res)) + ")");
     *outP = "notification failure";
 

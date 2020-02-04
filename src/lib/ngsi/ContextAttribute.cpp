@@ -275,7 +275,7 @@ ContextAttribute::ContextAttribute(ContextAttribute* caP, bool useDefaultType)
   // Cloning metadata
   for (unsigned int mIx = 0; mIx < caP->metadataVector.size(); ++mIx)
   {
-    LM_T(LmtClone, ("Copying metadata %d", mIx));
+    LM_T(LmtClone, ("Copying metadata %d ('%s' of type '%s')", mIx, caP->metadataVector[mIx]->name.c_str(),  valueTypeName(caP->metadataVector[mIx]->valueType)));
     Metadata* mP = new Metadata(caP->metadataVector[mIx], useDefaultType);
     metadataVector.push_back(mP);
   }
@@ -784,13 +784,54 @@ std::string ContextAttribute::toJson
   // Add special metadata representing attribute dates
   if ((creDate != 0) && (std::find(metadataFilter.begin(), metadataFilter.end(), NGSI_MD_DATECREATED) != metadataFilter.end()))
   {
-    Metadata* mdP = new Metadata(NGSI_MD_DATECREATED, DATE_TYPE, creDate);
-    metadataVector.push_back(mdP);
+    // Lookup Metadata NGSI_MD_DATECREATED
+    Metadata* dateCreatedMetadataP = NULL;
+    for (unsigned int mIx = 0; mIx < metadataVector.size(); mIx++)
+    {
+      Metadata* mdP = metadataVector[mIx];
+
+      if (mdP->name == NGSI_MD_DATECREATED)
+      {
+        dateCreatedMetadataP = mdP;
+        break;
+      }
+    }
+
+    if (dateCreatedMetadataP == NULL)
+    {
+      Metadata* mdP = new Metadata(NGSI_MD_DATECREATED, DATE_TYPE, creDate);
+      metadataVector.push_back(mdP);
+    }
+    else
+    {
+      dateCreatedMetadataP->numberValue = creDate;
+    }
   }
+
   if ((modDate != 0) && (std::find(metadataFilter.begin(), metadataFilter.end(), NGSI_MD_DATEMODIFIED) != metadataFilter.end()))
   {
-    Metadata* mdP = new Metadata(NGSI_MD_DATEMODIFIED, DATE_TYPE, modDate);
-    metadataVector.push_back(mdP);
+    // Lookup Metadata NGSI_MD_DATEMODIFIED
+    Metadata* dateModifiedMetadataP = NULL;
+    for (unsigned int mIx = 0; mIx < metadataVector.size(); mIx++)
+    {
+      Metadata* mdP = metadataVector[mIx];
+
+      if (mdP->name == NGSI_MD_DATEMODIFIED)
+      {
+        dateModifiedMetadataP = mdP;
+        break;
+      }
+    }
+
+    if (dateModifiedMetadataP == NULL)
+    {
+      Metadata* mdP = new Metadata(NGSI_MD_DATEMODIFIED, DATE_TYPE, modDate);
+      metadataVector.push_back(mdP);
+    }
+    else
+    {
+      dateModifiedMetadataP->numberValue = modDate;
+    }
   }
 
   if ((renderFormat == NGSI_V2_VALUES) || (renderFormat == NGSI_V2_KEYVALUES) || (renderFormat == NGSI_V2_UNIQUE_VALUES))

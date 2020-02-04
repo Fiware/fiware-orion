@@ -102,11 +102,11 @@ CompoundValueNode::CompoundValueNode
   numberValue (0.0),
   boolValue   (false),
   container   (_container),
-  rootP       (container->rootP),
+  rootP       (NULL),
   siblingNo   (_siblingNo),
   renderName  (false),
   path        (_path),
-  level       (container->level + 1)
+  level       (0)
 {
   LM_T(LmtCompoundValue, ("Created compound node '%s' at level %d, sibling number %d, type %s at %p",
                           name.c_str(),
@@ -114,8 +114,13 @@ CompoundValueNode::CompoundValueNode
                           siblingNo,
                           orion::valueTypeName(valueType),
                           this));
+  if (container != NULL)
+  {
+    rootP = container->rootP;
+    level = container->level + 1;
+  }
 }
-
+  
 
 
 /* ****************************************************************************
@@ -138,11 +143,11 @@ CompoundValueNode::CompoundValueNode
   numberValue (0.0),
   boolValue   (false),
   container   (_container),
-  rootP       (container->rootP),
+  rootP       (NULL),
   siblingNo   (_siblingNo),
   renderName  (false),
   path        (_path),
-  level       (container->level + 1)
+  level       (0)
 {
   LM_T(LmtCompoundValue, ("Created compound node '%s' at level %d, sibling number %d, type %s at %p",
                           name.c_str(),
@@ -150,6 +155,12 @@ CompoundValueNode::CompoundValueNode
                           siblingNo,
                           orion::valueTypeName(valueType),
                           this));
+
+  if (container != NULL)
+  {
+    rootP = container->rootP;
+    level = container->level + 1;
+  }
 }
 
 
@@ -174,11 +185,11 @@ CompoundValueNode::CompoundValueNode
   numberValue (_value),
   boolValue   (false),
   container   (_container),
-  rootP       (container->rootP),
+  rootP       (NULL),
   siblingNo   (_siblingNo),
   renderName  (false),
   path        (_path),
-  level       (container->level + 1)
+  level       (0)
 {
   LM_T(LmtCompoundValue, ("Created compound node '%s' at level %d, sibling number %d, type %s at %p",
                           name.c_str(),
@@ -186,6 +197,12 @@ CompoundValueNode::CompoundValueNode
                           siblingNo,
                           orion::valueTypeName(valueType),
                           this));
+
+  if (_container != NULL)
+  {
+    rootP = container->rootP;
+    level = container->level + 1;
+  }
 }
 
 
@@ -210,11 +227,11 @@ CompoundValueNode::CompoundValueNode
   numberValue (0.0),
   boolValue   (_value),
   container   (_container),
-  rootP       (container->rootP),
+  rootP       (NULL),
   siblingNo   (_siblingNo),
   renderName  (false),
   path        (_path),
-  level       (container->level + 1)
+  level       (0)
 {
   LM_T(LmtCompoundValue, ("Created compound node '%s' at level %d, sibling number %d, type %s at %p",
                           name.c_str(),
@@ -222,6 +239,12 @@ CompoundValueNode::CompoundValueNode
                           siblingNo,
                           orion::valueTypeName(valueType),
                           this));
+
+  if (_container != NULL)
+  {
+    rootP = container->rootP;
+    level = container->level + 1;
+  }
 }
 
 

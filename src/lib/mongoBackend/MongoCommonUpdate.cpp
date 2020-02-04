@@ -50,6 +50,17 @@
 #include "ngsi/Scope.h"
 #include "rest/uriParamNames.h"
 
+#ifdef ORIONLD
+extern "C"
+{
+#include "kjson/KjNode.h"                                      // KjNode, kjValueType
+#include "kjson/kjLookup.h"                                    // kjLookup
+}
+
+#include "orionld/common/orionldState.h"                       // orionldState
+#include "orionld/common/geoJsonCreate.h"                      // geoJsonCreate
+#endif
+
 #include "mongoBackend/connectionOperations.h"
 #include "mongoBackend/safeMongo.h"
 #include "mongoBackend/dbConstants.h"
@@ -804,7 +815,17 @@ static bool appendAttribute
   /* APPEND with existing attribute equals to UPDATE */
   if (attrs.hasField(effectiveName.c_str()))
   {
-    updateAttribute(attrs, toSet, toPush, caP, actualUpdate, false, apiVersion);
+    if (orionldState.uriParamOptions.noOverwrite == true)
+    {
+      return false;
+    }
+
+    //
+    // If updateAttribute fails, the name of the attribute caP is added to the list of erroneous attributes
+    //
+    if (updateAttribute(attrs, toSet, toPush, caP, actualUpdate, false, apiVersion) == false)
+      orionldStateErrorAttributeAdd(caP->name.c_str());
+
     return false;
   }
 
@@ -847,6 +868,7 @@ static bool appendAttribute
 
   /* 4. Dates */
   int now = getCurrentTime();
+
   ab.append(ENT_ATTRS_CREATION_DATE, now);
   ab.append(ENT_ATTRS_MODIFICATION_DATE, now);
 
@@ -1126,6 +1148,11 @@ static bool addTriggeredSubscriptions_withCache
     aList.fill(cSubP->attributes);
 
     // Throttling
+    LM_T(LmtSubCache, ("---------------- Throttling check ------------------"));
+    LM_T(LmtSubCache, ("cSubP->throttling:           %d", cSubP->throttling));
+    LM_T(LmtSubCache, ("cSubP->lastNotificationTime: %d", cSubP->lastNotificationTime));
+    LM_T(LmtSubCache, ("Now:                         %d", now));
+
     if ((cSubP->throttling != -1) && (cSubP->lastNotificationTime != 0))
     {
       if ((now - cSubP->lastNotificationTime) < cSubP->throttling)
@@ -1768,8 +1795,17 @@ static void setActionTypeMetadata(ContextElementResponse* notifyCerP)
      * notification, so no metadata must be added */
     if (caP->actionType != "")
     {
-      Metadata* mdP = new Metadata(NGSI_MD_ACTIONTYPE, DEFAULT_ATTR_STRING_TYPE, caP->actionType);
-      caP->metadataVector.push_back(mdP);
+      Metadata* actionTypeMdP = caP->metadataVector.lookupByName(NGSI_MD_ACTIONTYPE);
+
+      if (actionTypeMdP == NULL)
+      {
+        Metadata* mdP = new Metadata(NGSI_MD_ACTIONTYPE, DEFAULT_ATTR_STRING_TYPE, caP->actionType);
+        caP->metadataVector.push_back(mdP);
+      }
+      else
+      {
+        actionTypeMdP->stringValue = caP->actionType;
+      }
     }
   }
 }
@@ -1849,8 +1885,19 @@ static void setDateCreatedAttribute(ContextElementResponse* notifyCerP)
 {
   if (notifyCerP->contextElement.entityId.creDate != 0)
   {
-    ContextAttribute* caP = new ContextAttribute(DATE_CREATED, DATE_TYPE, notifyCerP->contextElement.entityId.creDate);
-    notifyCerP->contextElement.contextAttributeVector.push_back(caP);
+    ContextAttribute* creDateAttrP = notifyCerP->contextElement.contextAttributeVector.lookup(DATE_CREATED);
+
+    if (creDateAttrP == NULL)
+    {
+      // If not found - create it
+      ContextAttribute* caP = new ContextAttribute(DATE_CREATED, DATE_TYPE, notifyCerP->contextElement.entityId.creDate);
+      notifyCerP->contextElement.contextAttributeVector.push_back(caP);
+    }
+    else
+    {
+      // If found - modify it?
+      // creDateAttrP->numberValue = notifyCerP->contextElement.entityId.creDate;
+    }
   }
 }
 
@@ -1864,8 +1911,19 @@ static void setDateModifiedAttribute(ContextElementResponse* notifyCerP)
 {
   if (notifyCerP->contextElement.entityId.modDate != 0)
   {
-    ContextAttribute* caP = new ContextAttribute(DATE_MODIFIED, DATE_TYPE, notifyCerP->contextElement.entityId.modDate);
-    notifyCerP->contextElement.contextAttributeVector.push_back(caP);
+    ContextAttribute* modDateAttrP = notifyCerP->contextElement.contextAttributeVector.lookup(DATE_MODIFIED);
+
+    if (modDateAttrP == NULL)
+    {
+      // If not found - create it
+      ContextAttribute* caP = new ContextAttribute(DATE_MODIFIED, DATE_TYPE, notifyCerP->contextElement.entityId.modDate);
+      notifyCerP->contextElement.contextAttributeVector.push_back(caP);
+    }
+    else
+    {
+      // If found - modify it?
+      // modDateAttrP->numberValue = notifyCerP->contextElement.entityId.modDate;
+    }
   }
 }
 
@@ -1883,8 +1941,30 @@ static void setDateCreatedMetadata(ContextElementResponse* notifyCerP)
 
     if (caP->creDate != 0)
     {
-      Metadata* mdP = new Metadata(NGSI_MD_DATECREATED, DATE_TYPE, caP->creDate);
-      caP->metadataVector.push_back(mdP);
+      //
+      // Lookup Metadata NGSI_MD_DATECREATED. If it exists, modify it, else create and add it
+      //
+      Metadata* dateCreatedMetadataP = NULL;
+      for (unsigned int mIx = 0; mIx < caP->metadataVector.size(); mIx++)
+      {
+        Metadata* mdP = caP->metadataVector[mIx];
+
+        if (mdP->name == NGSI_MD_DATECREATED)
+        {
+          dateCreatedMetadataP = mdP;
+          break;
+        }
+      }
+
+      if (dateCreatedMetadataP == NULL)
+      {
+        Metadata* mdP = new Metadata(NGSI_MD_DATECREATED, DATE_TYPE, caP->creDate);
+        caP->metadataVector.push_back(mdP);
+      }
+      else
+      {
+        dateCreatedMetadataP->numberValue = caP->creDate;
+      }
     }
   }
 }
@@ -1903,8 +1983,30 @@ static void setDateModifiedMetadata(ContextElementResponse* notifyCerP)
 
     if (caP->modDate != 0)
     {
-      Metadata* mdP = new Metadata(NGSI_MD_DATEMODIFIED, DATE_TYPE, caP->modDate);
-      caP->metadataVector.push_back(mdP);
+      //
+      // Lookup Metadata NGSI_MD_DATEMODIFIED. If it exists, modify it, else create and add it
+      //
+      Metadata* dateModifiedMetadataP = NULL;
+      for (unsigned int mIx = 0; mIx < caP->metadataVector.size(); mIx++)
+      {
+        Metadata* mdP = caP->metadataVector[mIx];
+
+        if (mdP->name == NGSI_MD_DATEMODIFIED)
+        {
+          dateModifiedMetadataP = mdP;
+          break;
+        }
+      }
+
+      if (dateModifiedMetadataP == NULL)
+      {
+        Metadata* mdP = new Metadata(NGSI_MD_DATEMODIFIED, DATE_TYPE, caP->modDate);
+        caP->metadataVector.push_back(mdP);
+      }
+      else
+      {
+        dateModifiedMetadataP->numberValue = caP->modDate;
+      }
     }
   }
 }
@@ -1934,7 +2036,6 @@ static bool processSubscriptions
     std::string             mapSubId  = it->first;
     TriggeredSubscription*  tSubP     = it->second;
 
-
     /* There are some checks to perform on TriggeredSubscription in order to see if the notification has to be actually sent. Note
      * that checks are done in increasing cost order (e.g. georel check is done at the end).
      *
@@ -1952,7 +2053,6 @@ static bool processSubscriptions
       {
         LM_T(LmtMongo, ("blocked due to throttling, current time is: %l", current));
         LM_T(LmtSubCache, ("ignored '%s' due to throttling, current time is: %l", tSubP->cacheSubId.c_str(), current));
-
         continue;
       }
     }
@@ -2338,7 +2438,7 @@ static void updateAttrInNotifyCer
           }
         }
 
-        /* If the attribute in target attr was not found, then it has to be added*/
+        /* If the attribute in target attr was not found, then it has to be added */
         if (!matchMd)
         {
           Metadata* newMdP = new Metadata(targetMdP, useDefaultType);
@@ -2354,6 +2454,7 @@ static void updateAttrInNotifyCer
   ContextAttribute* caP = new ContextAttribute(targetAttr, useDefaultType);
 
   int now = getCurrentTime();
+
   caP->creDate = now;
   caP->modDate = now;
 
@@ -2480,7 +2581,6 @@ static bool updateContextAttributeItem
 /* ****************************************************************************
 *
 * appendContextAttributeItem -
-*
 */
 static bool appendContextAttributeItem
 (
@@ -2808,18 +2908,6 @@ static bool processContextAttributeVector
     return false;
   }
 
-#if 0
-  if (!entityModified)
-  {
-    /* In this case, there wasn't any failure, but ceP was not set. We need to do it ourselves, as the function caller will
-     * do a 'continue' without setting it.
-     */
-
-    // FIXME P5: this is ugly, our code should be improved to set cerP in a common place for the "happy case"
-
-    cerP->statusCode.fill(SccOk);
-  }
-#endif
 
   /* If the status code was not touched (filled with an error), then set it with Ok */
   if (cerP->statusCode.code == SccNone)
@@ -2967,7 +3055,21 @@ static bool createEntity
   insertedDoc.append("_id", bsonId.obj());
   insertedDoc.append(ENT_ATTRNAMES, attrNamesToAdd.arr());
   insertedDoc.append(ENT_ATTRS, attrsToAdd.obj());
+
+#ifdef ORIONLD
+  KjNode* savedCreDateP;
+
+  if ((orionldState.creDatesP != NULL) && ((savedCreDateP = kjLookup(orionldState.creDatesP, eP->id.c_str())) != NULL))
+  {
+    eP->creDate = (double) savedCreDateP->value.i;
+    insertedDoc.append(ENT_CREATION_DATE, eP->creDate);
+  }
+  else
+    insertedDoc.append(ENT_CREATION_DATE, now);
+#else
   insertedDoc.append(ENT_CREATION_DATE, now);
+#endif
+
   insertedDoc.append(ENT_MODIFICATION_DATE, now);
 
   /* Add location information in the case it was found */
@@ -2976,6 +3078,25 @@ static bool createEntity
     insertedDoc.append(ENT_LOCATION, BSON(ENT_LOCATION_ATTRNAME << locAttr <<
                                           ENT_LOCATION_COORDS   << geoJson.obj()));
   }
+
+  //
+  // Location attributes for NGSI-LD
+  //
+#ifdef ORIONLD
+  if (orionldState.locationAttributeP != NULL)
+  {
+    char* errorString;
+
+    if (geoJsonCreate(orionldState.locationAttributeP, &geoJson, &errorString) ==  false)
+    {
+      oeP->fill(SccReceiverInternalError, errorString, "InternalError");
+      return false;
+    }
+
+    insertedDoc.append(ENT_LOCATION, BSON(ENT_LOCATION_ATTRNAME << orionldState.locationAttributeP->name <<
+                                          ENT_LOCATION_COORDS   << geoJson.obj()));
+  }
+#endif
 
   /* Add date expiration in the case it was found */
   if (dateExpiration != NO_EXPIRATION_DATE)
@@ -3257,7 +3378,6 @@ static void updateEntity
         // processContextAttributeVector looks at the 'skip' field
         //
         ceP->contextAttributeVector[ix]->skip = true;
-
         // Add to the list of existing attributes - for the error response
         if (*attributeAlreadyExistsList != "[ ")
         {
@@ -3595,7 +3715,7 @@ static bool contextElementPreconditionsCheck
 *
 * setActionType -
 */
-static void setActionType(ContextElementResponse* notifyCerP, std::string actionType)
+static void setActionType(ContextElementResponse* notifyCerP, const std::string& actionType)
 {
   for (unsigned int ix = 0; ix < notifyCerP->contextElement.contextAttributeVector.size(); ix++)
   {
@@ -3905,7 +4025,7 @@ void processContextElement
         // Set action type
         setActionType(notifyCerP, NGSI_MD_ACTIONTYPE_APPEND);
 
-        // Set creaDate and modDate times
+        // Set creDate and modDate times
         notifyCerP->contextElement.entityId.creDate = now;
         notifyCerP->contextElement.entityId.modDate = now;
 

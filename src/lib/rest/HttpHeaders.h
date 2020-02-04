@@ -1,5 +1,5 @@
-#ifndef HTTP_HEADERS_H
-#define HTTP_HEADERS_H
+#ifndef SRC_LIB_REST_HTTPHEADERS_H_
+#define SRC_LIB_REST_HTTPHEADERS_H_
 
 /*
 *
@@ -54,11 +54,15 @@
 #define HTTP_HOST                          "Host"
 #define HTTP_NGSIV2_ATTRSFORMAT            "Ngsiv2-AttrsFormat"
 #define HTTP_RESOURCE_LOCATION             "Location"
+#define HTTP_LINK                          "Link"
 #define HTTP_ORIGIN                        "Origin"
 #define HTTP_USER_AGENT                    "User-Agent"
 #define HTTP_X_AUTH_TOKEN                  "X-Auth-Token"
 #define HTTP_X_REAL_IP                     "X-Real-IP"
 #define HTTP_X_FORWARDED_FOR               "X-Forwarded-For"
+#ifdef ORIONLD
+#define HTTP_LINK                          "Link"
+#endif
 
 
 
@@ -134,11 +138,9 @@ typedef struct HttpHeaders
   std::string   xforwardedFor;
   std::string   correlator;
   std::string   ngsiv2AttrsFormat;
-
   bool          servicePathReceived;
-
   unsigned int  contentLength;
   std::string   connection;
 } HttpHeaders;
 
-#endif
+#endif  // SRC_LIB_REST_HTTPHEADERS_H_

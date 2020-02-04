@@ -142,6 +142,11 @@ void setHttpInfo(const Subscription& sub, BSONObjBuilder* b)
   b->append(CSUB_REFERENCE, sub.notification.httpInfo.url);
   b->append(CSUB_CUSTOM,    sub.notification.httpInfo.custom);
 
+#ifdef ORIONLD
+  b->append("mimeType", mimeTypeToLongString(sub.notification.httpInfo.mimeType));
+  LM_T(LmtMongo, ("Subscription mimeType: %d", sub.notification.httpInfo.mimeType));
+#endif
+
   LM_T(LmtMongo, ("Subscription reference: %s", sub.notification.httpInfo.url.c_str()));
   LM_T(LmtMongo, ("Subscription custom:    %s", sub.notification.httpInfo.custom? "true" : "false"));
 
@@ -453,3 +458,63 @@ void setMetadata(const Subscription& sub, BSONObjBuilder* b)
   b->append(CSUB_METADATA, metadataArr);
   LM_T(LmtMongo, ("Subscription metadata: %s", metadataArr.toString().c_str()));
 }
+
+
+#ifdef ORIONLD
+/* ****************************************************************************
+*
+* setContext -
+*/
+void setContext(const ngsiv2::Subscription& sub, mongo::BSONObjBuilder* bobP)
+{
+  if (sub.ldContext != "")
+  {
+    bobP->append(CSUB_LDCONTEXT, sub.ldContext);
+    LM_T(LmtMongo, ("Subscription context: %s", sub.ldContext.c_str()));
+  }
+}
+
+
+
+/* ****************************************************************************
+*
+* setSubscriptionId -
+*/
+std::string setSubscriptionId(const ngsiv2::Subscription& sub, mongo::BSONObjBuilder* bobP)
+{
+  if (sub.id.empty())
+    return setNewSubscriptionId(bobP);
+
+  bobP->append("_id", sub.id);
+
+  return sub.id;
+}
+
+
+
+/* ****************************************************************************
+*
+* setName -
+*/
+void setName(const ngsiv2::Subscription& sub, mongo::BSONObjBuilder* bobP)
+{
+  if (sub.name != "")
+  {
+    bobP->append(CSUB_NAME, sub.name);
+    LM_T(LmtMongo, ("Subscription name: %s", sub.name.c_str()));
+  }
+}
+
+
+
+/* ****************************************************************************
+*
+* setMimeType -
+*/
+void setMimeType(const ngsiv2::Subscription& sub, mongo::BSONObjBuilder* bobP)
+{
+  bobP->append(CSUB_MIMETYPE, sub.notification.httpInfo.mimeType);
+  LM_T(LmtMongo, ("Subscription mimeType: %s", mimeTypeToLongString(sub.notification.httpInfo.mimeType)));
+}
+
+#endif

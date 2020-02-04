@@ -1,0 +1,106 @@
+# Copyright 2018 FIWARE Foundation e.V.
+#
+# This file is part of Orion-LD Context Broker.
+#
+# Orion-LD Context Broker is free software: you can redistribute it and/or
+# modify it under the terms of the GNU Affero General Public License as
+# published by the Free Software Foundation, either version 3 of the
+# License, or (at your option) any later version.
+#
+# Orion-LD Context Broker is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero
+# General Public License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with Orion-LD Context Broker. If not, see http://www.gnu.org/licenses/.
+#
+# For those usages not covered by this license please contact with
+# orionld at fiware dot org
+
+# VALGRIND_READY - to mark the test ready for valgrindTestSuite.sh
+
+--NAME--
+Big Integer Test
+
+--SHELL-INIT--
+export BROKER=orionld
+dbInit CB
+brokerStart CB 212-249
+
+--SHELL--
+
+#
+# 01. Create an Entity with a BIG Integer value
+# 02. See the BIG Integer value in mongo
+# 03. Get the entity from broker, check that the BIG Integer value is correct
+#
+
+
+echo "01. Create an Entity with a BIG Integer value"
+echo "============================================="
+payload='{
+  "id": "http://a.b.c/xxx",
+  "type": "T",
+  "P1": {
+    "type": "Property",
+    "value": 1543924800.0
+  }
+}'
+orionCurl --url /ngsi-ld/v1/entities -X POST --payload "$payload"
+echo
+echo
+
+
+echo "02. See the BIG Integer value in mongo"
+echo "======================================"
+mongoCmd2 ftest "db.entities.findOne()" | grep '"value" : '
+echo
+echo
+
+
+echo "03. Get the entity from broker, check that the BIG Integer value is correct"
+echo "==========================================================================="
+orionCurl --url '/ngsi-ld/v1/entities/http://a.b.c/xxx?prettyPrint=yes&spaces=2' --noPayloadCheck
+echo
+echo
+
+
+--REGEXPECT--
+01. Create an Entity with a BIG Integer value
+=============================================
+HTTP/1.1 201 Created
+Content-Length: 0
+Link: <https://uri.etsi.org/ngsi-ld/v1/ngsi-ld-core-context.jsonld>; rel="http://www.w3.org/ns/json-ld#context"; type="application/ld+json"
+Location: /ngsi-ld/v1/entities/http://a.b.c/xxx
+Date: REGEX(.*)
+
+
+
+02. See the BIG Integer value in mongo
+======================================
+			"value" : 1543924800,
+
+
+03. Get the entity from broker, check that the BIG Integer value is correct
+===========================================================================
+HTTP/1.1 200 OK
+Content-Length: 109
+Content-Type: application/json
+Link: <https://uri.etsi.org/ngsi-ld/v1/ngsi-ld-core-context.jsonld>; rel="http://www.w3.org/ns/json-ld#context"; type="application/ld+json"
+Date: REGEX(.*)
+
+{
+  "id": "http://a.b.c/xxx",
+  "type": "T",
+  "P1": {
+    "type": "Property",
+    "value": 1543924800
+  }
+}
+
+
+
+--TEARDOWN--
+brokerStop CB
+dbDrop CB

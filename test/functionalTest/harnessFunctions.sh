@@ -57,42 +57,6 @@ function harnessExit()
 
 # ------------------------------------------------------------------------------
 #
-# vMsg - verbose output
-#
-# Remember that if the '--verbose' flag is used, the verboser messages pollute
-# the total answer and the harness test will fail.
-#
-# Verbose mode is only meant to troubleshoot harness tests that fail.
-#
-function vMsg()
-{
-  if [ "$_verbose" == "on" ]
-  then
-    echo $*
-  fi
-}
-
-
-
-# ------------------------------------------------------------------------------
-#
-# dMsg - debug output
-#
-function dMsg()
-{
-  if [ "$ORION_FT_DEBUG" == 1 ] || [ "$_debug" == "on"  ]
-  then
-    echo $* >> /tmp/orionFuncTestDebug.log
-  fi
-}
-
-
-# ------------------------------------------------------------------------------
-#
-# dbInit - 
-#
-# ------------------------------------------------------------------------------
-#
 # dbInit - 
 #
 function dbInit()
@@ -112,7 +76,7 @@ function dbInit()
     port="27017"
   fi
   
-  dMsg initializing database;
+  logMsg initializing database for $role
 
   if [ "$role" == "CB" ]
   then
@@ -144,7 +108,7 @@ function dbInit()
     db=$baseDbName
   fi
 
-  dMsg "database to drop: <$db>" 
+  logMsg "database to drop: <$db>" 
   echo 'db.dropDatabase()' | mongo mongodb://$host:$port/$db --quiet
 }
 
@@ -234,17 +198,21 @@ function brokerStopAwait
   loopNo=0
   loops=50
 
+  logMsg "Awaiting broker to stop (broker on port $port)"
   while [ $loopNo -lt $loops ]
   do
-    nc -w 2 localhost $port &>/dev/null </dev/null
-    if [ "$?" != "0" ]
+    logMsg "Calling nc: nc -w 2 localhost $port"
+    nc -zv localhost $port &>/dev/null </dev/null
+    r=$? # 0 == OK
+    logMsg "nc returned $r"
+    if [ "$r" != "0" ]
     then
-      vMsg The orion context broker on port $port has stopped
+      logMsg The orion context broker on port $port has stopped
       sleep 1
       break;
     fi
 
-    vMsg Awaiting orion context broker to fully stop '('$loopNo')' ...
+    logMsg Awaiting orion context broker to fully stop '('$loopNo')' ...
     sleep .2
     loopNo=$loopNo+1
   done
@@ -301,15 +269,15 @@ function brokerStartAwait
 
   while [ $loopNo -lt $loops ]
   do
-    nc -w 2 localhost $port &>/dev/null </dev/null
+    nc -zv localhost $port &>/dev/null </dev/null
     if [ "$?" == "0" ]
     then
-      vMsg The orion context broker has started, listening on port $port
+      logMsg The orion context broker has started, listening on port $port
       echo "Broker started after $loopNo checks" >> /tmp/brokerStartCounter
       break;
     fi
 
-    vMsg Awaiting valgrind to fully start the orion context broker '('$loopNo')' ...
+    logMsg Awaiting valgrind to fully start the orion context broker '('$loopNo')' ...
     sleep .2
     loopNo=$loopNo+1
   done
@@ -350,7 +318,12 @@ function localBrokerStart()
   fi
 
   IPvOption=""
-  
+
+  #
+  # In case a previous broker died in a bad manner and the PID file has not been removed
+  #
+  \rm -f /tmp/orion_*.pid
+
   dbHost="${CB_DATABASE_HOST}"
   if [ "$dbHost" == "" ]
   then
@@ -363,7 +336,7 @@ function localBrokerStart()
     dbPort="27017"
   fi
 
-  dMsg starting broker for role $role
+  logMsg starting broker for role $role
 
   if [ "$ipVersion" == "IPV4" ]
   then
@@ -373,7 +346,7 @@ function localBrokerStart()
     IPvOption="-ipv6"
   fi
 
-  CB_START_CMD_PREFIX="contextBroker -harakiri"
+  CB_START_CMD_PREFIX="$BROKER -harakiri"
   if [ "$role" == "CB" ]
   then
     port=$CB_PORT
@@ -405,6 +378,8 @@ function localBrokerStart()
     CB_START_CMD="$CB_START_CMD_PREFIX -port $CP5_PORT -pidpath $CP5_PID_FILE -dbhost $dbHost:$dbPort -db $CP5_DB_NAME -dbPoolSize $POOL_SIZE -t $traceLevels $IPvOption -logDir $CP5_LOG_DIR $extraParams"
   fi
 
+  # In case the PID file still exists ... (happens after crashes)
+  \rm -f /tmp/orion_${port}.pid
 
   #  
   # Start broker under valgrind if VALGRIND set to 1 and if it's the 'main' broker
@@ -431,20 +406,20 @@ function localBrokerStart()
   brokerStartAwait $port
   if [ "$result" != 0 ]
   then
-    echo "Unable to start contextBroker"
+    echo "Unable to start $BROKER as $role"
     exit 1
   fi
 
   # Test to see whether we have a broker running on $port. If not raise an error
-  brokerPidLines=$(ps -fe | grep contextBroker | grep $port | wc -l)
+  brokerPidLines=$(ps -fe | grep $BROKER | grep $port | wc -l)
   if [ $brokerPidLines != 1 ]
   then
-    echo "Unable to start contextBroker"
+    echo "Unable to start $BROKER as $role"
     exit 1
   fi
 
-  ps=$(ps aux | grep contextBroker)
-  dMsg $ps
+  ps=$(ps aux | grep $BROKER)
+  logMsg $ps
 
   # Sometimes (especially when using remote DB) CB needs some time to connect DB and
   # the test execution needs to a guard time. The righ value for CB_WAIT_AFTER_START
@@ -455,6 +430,8 @@ function localBrokerStart()
   if [ "$CB_WAIT_AFTER_START" != "" ]; then
     sleep $CB_WAIT_AFTER_START
   fi
+
+  logMsg Started $BROKER as $role
 }
 
 
@@ -488,28 +465,30 @@ function localBrokerStop
   fi
 
   # Test to see if we have a broker running on $port if so kill it!
-  brokerPidLines=$(ps -fe | grep contextBroker | grep $port | wc -l)
+  brokerPidLines=$(ps -fe | grep $BROKER | grep $port | wc -l)
   if [ $brokerPidLines != 0 ]
   then
-    kill $(ps -fe | grep contextBroker | grep $port | awk '{print $2}') 2> /dev/null
+    kill $(ps -fe | grep $BROKER | grep $port | awk '{print $2}') 2> /dev/null
 
     # Wait some time so the broker can finish properly
     sleep .5
-    brokerPidLines=$(ps -fe | grep contextBroker | grep $port | wc -l)
+    brokerPidLines=$(ps -fe | grep $BROKER | grep $port | wc -l)
 
     if [ $brokerPidLines != 0 ]
     then
       # If the broker refuses to stop politely, kill the process by brute force
-      kill -9 $(ps -fe | grep contextBroker | grep $port | awk '{print $2}') 2> /dev/null
+      kill -9 $(ps -fe | grep $BROKER | grep $port | awk '{print $2}') 2> /dev/null
       sleep .5
-      brokerPidLines=$(ps -fe | grep contextBroker | grep $port | wc -l)
+      brokerPidLines=$(ps -fe | grep $BROKER | grep $port | wc -l)
       if [ $brokerPidLines != 0 ]
       then
-        echo "Existing contextBroker is immortal, can not be killed!"
+        echo "Existing $BROKER is immortal, can not be killed!"
         exit 1
       fi
     fi
   fi
+
+  \rm -f /tmp/orion_*.pid
 }
 
 
@@ -523,6 +502,11 @@ function brokerStart()
   role=$1
   traceLevels=$2
   ipVersion=$3
+
+  if [ "$CB_EXTERNAL_BROKER" == "ON" ]
+  then
+    return
+  fi
 
   shift
   shift
@@ -582,7 +566,6 @@ function brokerStart()
 
   localBrokerStop $role
   localBrokerStart $role $traceLevels $ipVersion $xParams
-
 }
 
 
@@ -593,6 +576,7 @@ function brokerStart()
 #
 function brokerStop
 {
+  logMsg "In brokerStop"
   if [ "$1" == "-v" ]
   then
     _verbose=1
@@ -605,7 +589,7 @@ function brokerStop
     role=CB
   fi
  
-  vMsg "Stopping broker $1"
+  logMsg "Stopping broker $1"
 
   if [ "$role" == "CB" ]
   then
@@ -635,14 +619,17 @@ function brokerStop
 
   if [ "$VALGRIND" == "" ]
   then
-    vMsg "killing with PID from pidFile"
+    logMsg "killing with PID from pidFile"
     kill $(cat $pidFile 2> /dev/null) 2> /dev/null
-    vMsg "should be dead"
+    logMsg "should be dead"
     rm -f /tmp/orion_${port}.pid 2> /dev/null
   else
+    logMsg "killing broker by sending /exit/harakiri request"
     curl localhost:${port}/exit/harakiri 2> /dev/null >> ${TEST_BASENAME}.valgrind.stop.out
     # Waiting for valgrind to terminate (sleep a max of 10)
+    logMsg "waiting broker to stop"
     brokerStopAwait $port
+    logMsg "broker seems to have stopped"
   fi
 }
 
@@ -744,7 +731,7 @@ function accumulatorStart()
    sleep 1
 
    time=$time+1
-   nc -w 2 $bindIp $port &>/dev/null </dev/null
+   nc -zv $bindIp $port &>/dev/null </dev/null
    port_not_ok=$?
   done
 }
@@ -920,6 +907,32 @@ function mongoCmd()
 
 # ------------------------------------------------------------------------------
 #
+# mongoCmd2 - like mongoCmd but showing all the output, not just the last line.
+#             Meant to be used in conjunction with 'grep'
+#
+function mongoCmd2()
+{
+  host="${CB_DATABASE_HOST}"
+  if [ "$host" == "" ]
+  then
+    host="localhost"
+  fi
+
+  port="${CB_DATABASE_PORT}"
+  if [ "$port" == "" ]
+  then
+    port="27017"
+  fi
+
+  db=$1
+  cmd=$2
+  echo $cmd | mongo mongodb://$host:$port/$db | grep -v "Implicit session: session" | sed 's/?gssapiServiceName=mongodb//'
+}
+
+
+
+# ------------------------------------------------------------------------------
+#
 # dbInsertEntity -
 #
 # Insert a crafted entity with an "inflated" attribute. The database is passed
@@ -995,6 +1008,7 @@ function dbInsertEntity()
 #   --correlator  <correlatorId>   (default: no correlator ID)
 #   --noPayloadCheck               (don't check the payload)
 #   --payloadCheck <format>        (force specific treatment of payload)
+#   --linkHeaderFix                (replace hostname and port in Link HTTP header with "IP:PORT")
 #   --header      <HTTP header>    (more headers)
 #   -H            <HTTP header>    (more headers)
 #   --verbose                      (verbose output)
@@ -1007,9 +1021,9 @@ function orionCurl()
 {
   payloadCheckFormat='json'
 
-  dMsg
-  dMsg $(date)
-  dMsg orionCurl $*
+  logMsg
+  logMsg $(date)
+  logMsg orionCurl $*
 
   _host='localhost'
   _port=$CB_PORT
@@ -1031,6 +1045,7 @@ function orionCurl()
   _urlParams=''
   _xauthToken=''
   _payloadCheck=''
+  _linkHeaderFix=''
 
   #
   # Parsing parameters
@@ -1054,6 +1069,7 @@ function orionCurl()
     elif [ "$1" == "--in" ]; then              _in="$2"; shift;
     elif [ "$1" == "--out" ]; then             _out="$2"; shift;
     elif [ "$1" == "--xauthToken" ]; then      _xauthToken='--header "X-Auth-Token: '${2}'"'; shift;
+    elif [ "$1" == "--linkHeaderFix" ]; then   _linkHeaderFix='on'
     elif [ "$1" == "-v" ]; then                _verbose=on;
     elif [ "$1" == "--verbose" ]; then         _verbose=on;
     elif [ "$1" == "--debug" ]; then           _debug=on;
@@ -1063,9 +1079,19 @@ function orionCurl()
     shift
   done
 
+  #
+  # Remove the old HTTP header file
+  #
+  \rm -f /tmp/httpHeaders2.out /tmp/httpHeaders.out
+
   if [ "$_payload" != "" ]
   then
-    _inFormat='--header "Content-Type: application/json"'
+    if [ "$_in" == "jsonld" ]
+    then
+      _inFormat='--header "Content-Type: application/ld+json"'
+    else
+      _inFormat='--header "Content-Type: application/json"'
+    fi
   fi
 
   #
@@ -1093,16 +1119,19 @@ function orionCurl()
   fi
 
   # 3. Fix for 'Content-Type' and 'Accept' short names 'xml' and 'json'
-  if   [ "$_in"   == "application/xml" ];  then _in='xml';   fi
-  if   [ "$_in"   == "application/json" ]; then _in='json';  fi
-  if   [ "$_out"  == "application/xml" ];  then _out='xml';  fi
-  if   [ "$_out"  == "application/json" ]; then _out='json'; fi
-  if   [ "$_out"  == "text/plain" ];       then _out='text'; fi
+  if   [ "$_in"   == "application/xml"     ]; then _in='xml';     fi
+  if   [ "$_in"   == "application/json"    ]; then _in='json';    fi
+  if   [ "$_in"   == "application/ld+json" ]; then _in='jsonld';  fi
+  if   [ "$_out"  == "application/xml"     ]; then _out='xml';    fi
+  if   [ "$_out"  == "application/json"    ]; then _out='json';   fi
+  if   [ "$_out"  == "application/ld+json" ]; then _out='jsonld'; fi
+  if   [ "$_out"  == "text/plain"          ]; then _out='text';   fi
 
-  if   [ "$_in"  == "xml" ];   then _inFormat='--header "Content-Type: application/xml"'
-  elif [ "$_in"  == "json" ];  then _inFormat='--header "Content-Type: application/json"'
-  elif [ "$_in"  == "text" ];  then _inFormat='--header "Content-Type: text/plain"'
-  elif [ "$_in"  != "" ];      then _inFormat='--header "Content-Type: '${_in}'"'
+  if   [ "$_in"  == "xml"    ];  then _inFormat='--header "Content-Type: application/xml"'
+  elif [ "$_in"  == "json"   ];  then _inFormat='--header "Content-Type: application/json"'
+  elif [ "$_in"  == "jsonld" ];  then _inFormat='--header "Content-Type: application/ld+json"'
+  elif [ "$_in"  == "text"   ];  then _inFormat='--header "Content-Type: text/plain"'
+  elif [ "$_in"  != ""       ];  then _inFormat='--header "Content-Type: '${_in}'"'
   fi
 
   # Note that payloadCheckFormat is also json in the case of --in xml, as the CB also returns error in JSON in this case
@@ -1125,12 +1154,12 @@ function orionCurl()
     _noPayloadCheck='on'
   fi
 
-  dMsg $_in: $_in
-  dMsg _out: $_out
-  dMsg _outFormat: $_outFormat
-  dMsg _inFormat: $_inFormat
-  dMsg payloadCheckFormat: $payloadCheckFormat
-  dMsg _noPayloadCheck: $_noPayloadCheck
+  logMsg $_in: $_in
+  logMsg _out: $_out
+  logMsg _outFormat: $_outFormat
+  logMsg _inFormat: $_inFormat
+  logMsg payloadCheckFormat: $payloadCheckFormat
+  logMsg _noPayloadCheck: $_noPayloadCheck
 
 
   #
@@ -1153,13 +1182,13 @@ function orionCurl()
 
   command=${command}' --header "Expect:"'
   command=${command}' -s -S --dump-header /tmp/httpHeaders.out'
-  dMsg command: $command
+  logMsg command: $command
 
 
   #
   # Execute the command
   #
-  dMsg Executing the curl-command
+  logMsg Executing the curl-command
   eval $command > /tmp/orionCurl.response 2> /dev/null
   _response=$(cat /tmp/orionCurl.response)
 
@@ -1168,18 +1197,33 @@ function orionCurl()
     echo "Broker seems to have died ..."
   else
     _responseHeaders=$(cat /tmp/httpHeaders.out)
+
+    #
+    # Substitute the IP of the host where the test is running for the string IP
+    # Why?
+    # Ran into troubles matching the Link HTTP Header using Python REGEX:
+    #
+    # Link: <http://REGEX(.*):9999/ngsi-ld/ex/v1/contexts/urn:ngsi-ld:T:12:13:14>; rel="http://www.w3.org/ns/json-ld#context"; type="application/ld+json"
+    #
+    # Some of the chars <"<; probably fucks REGEX up.
+    # I tried everything, like replacing these chars for something else, ('<' => '-LT-', etc) etc but nothing worked.
+    # Removing the hostname removed the need for a REGEX, so ...
+    #
+    if [ "$_linkHeaderFix" == "on" ]
+    then
+      hostName=$(hostname)
+      sed "s/$hostName/IP/" /tmp/httpHeaders.out > /tmp/httpHeaders2.out
+      sed "s/$CB_PORT/PORT/" /tmp/httpHeaders2.out > /tmp/httpHeaders.out
+    fi
+
     #
     # Remove "Connection: Keep-Alive" and "Connection: close" headers
     #
     sed '/Connection: Keep-Alive/d' /tmp/httpHeaders.out  > /tmp/httpHeaders2.out
     sed '/Connection: close/d'      /tmp/httpHeaders2.out > /tmp/httpHeaders.out
     sed '/Connection: Close/d'      /tmp/httpHeaders.out
-  fi
 
-  #
-  # Unless we remove the HTTP header file, it will remain for the next execution
-  #
-  \rm -f /tmp/httpHeaders2.out /tmp/httpHeaders.out
+  fi
 
   #
   # Print and beautify response body, if any - and if option --noPayloadCheck hasn't been set
@@ -1192,11 +1236,11 @@ function orionCurl()
   else
     if [ "$_response" != "" ]
     then
-      dMsg buffer to $payloadCheckFormat beautify: $_response
+      logMsg buffer to $payloadCheckFormat beautify: $_response
 
       if [ "$payloadCheckFormat" == json ] || [ "$payloadCheckFormat" == "" ]
       then
-        vMsg Running python tool for $_response
+        logMsg Running python tool for $_response
         #
         # We need to apply pretty-print on _response. Otherwise positional processing used in .test
         # (e.g. to get SUB_ID typically grep and awk are used) will break
@@ -1204,10 +1248,32 @@ function orionCurl()
         _response=$(echo $_response | python -mjson.tool)
         echo "$_response"
       else
-        dMsg Unknown payloadCheckFormat
+        logMsg Unknown payloadCheckFormat
       fi
     fi
   fi
+}
+
+
+
+# -----------------------------------------------------------------------------
+#
+# dateDiff - calculate diff in seconds between two date strings
+#
+function dateDiff()
+{
+  typeset -i t1
+  typeset -i t2
+  typeset -i diff
+
+  t1=$(date -d"$1" +%s)
+  t2=$(date -d"$2" +%s)
+
+  diff=$t1-$t2
+
+  if [ $diff -lt 0 ]; then diff=-$diff; fi
+
+  echo $diff
 }
 
 
@@ -1231,8 +1297,9 @@ export -f accumulatorReset
 export -f orionCurl
 export -f dbInsertEntity
 export -f mongoCmd
-export -f vMsg
-export -f dMsg
+export -f mongoCmd2
+export -f logMsg
 export -f valgrindSleep
 export -f brokerStartAwait
 export -f brokerStopAwait
+export -f dateDiff

@@ -1,0 +1,85 @@
+# Copyright 2018 FIWARE Foundation e.V.
+#
+# This file is part of Orion-LD Context Broker.
+#
+# Orion-LD Context Broker is free software: you can redistribute it and/or
+# modify it under the terms of the GNU Affero General Public License as
+# published by the Free Software Foundation, either version 3 of the
+# License, or (at your option) any later version.
+#
+# Orion-LD Context Broker is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero
+# General Public License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with Orion-LD Context Broker. If not, see http://www.gnu.org/licenses/.
+#
+# For those usages not covered by this license please contact with
+# orionld at fiware dot org
+
+# VALGRIND_READY - to mark the test ready for valgrindTestSuite.sh
+
+--NAME--
+Context as Array
+
+--SHELL-INIT--
+export BROKER=orionld
+dbInit CB
+brokerStart CB 0-255
+
+--SHELL--
+
+#
+# 01. Create Entity with a context that is an Array with at least one item that gives an error when downloaded
+#
+
+
+echo "01. Create Entity with a context that is an Array with at least one item that gives an error when downloaded"
+echo "============================================================================================================"
+payload='{
+  "id": "urn:ngsi-ld:Vehicle:A4567",
+  "type": "Vehicle",
+  "brandName": {
+    "type": "Property",
+    "value": "Mercedes"
+  },
+  "isParked": {
+    "type": "Relationship",
+    "object": "urn:ngsi-ld:OffStreetParking:Downtown1",
+    "observedAt": "2017-07-29T12:00:04Z",
+    "providedBy": {
+      "type": "Relationship",
+      "object": "urn:ngsi-ld:Person:Bob"
+    }
+  },
+  "@context": [
+    "https://uri.etsi.org/ngsi-ld/v1/ngsi-ld-core-context.jsonld",
+    "http://example.org/cim/commonTerms.jsonld",
+    "http://example.org/cim/vehicle.jsonld",
+    "http://example.org/cim/parking.jsonld"
+  ]
+}'
+orionCurl --url /ngsi-ld/v1/entities -X POST --payload "$payload" -H "Content-Type: application/ld+json" -H "Accept: application/ld+json"
+echo
+echo
+
+
+--REGEXPECT--
+01. Create Entity with a context that is an Array with at least one item that gives an error when downloaded
+============================================================================================================
+HTTP/1.1 503 Service Unavailable
+Content-Length: 158
+Content-Type: application/json
+Date: REGEX(.*)
+
+{
+    "detail": "http://example.org/cim/commonTerms.jsonld",
+    "title": "Unable to download context",
+    "type": "https://uri.etsi.org/ngsi-ld/errors/LdContextNotAvailable"
+}
+
+
+--TEARDOWN--
+brokerStop CB
+dbDrop CB

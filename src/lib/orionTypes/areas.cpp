@@ -484,7 +484,11 @@ int Georel::parse(const char* in, std::string* errorString)
   {
     const char* item = items[ix].c_str();
 
+#ifdef ORIONLD
+    if ((items[ix] == "near") || (items[ix] == "coveredBy") || (items[ix] == "intersects") || (items[ix] == "equals") || (items[ix] == "disjoint") || (items[ix] == "within"))
+#else
     if ((items[ix] == "near") || (items[ix] == "coveredBy") || (items[ix] == "intersects") || (items[ix] == "equals") || (items[ix] == "disjoint"))
+#endif
     {
       if (type != "")
       {
@@ -526,9 +530,44 @@ int Georel::parse(const char* in, std::string* errorString)
 
       minDistanceSet = true;
     }
+#ifdef ORIONLD
+    else if (strncmp(item, "maxDistance==", 13) == 0)
+    {
+      if (maxDistanceSet)
+      {
+        *errorString = "maxDistance present more than once";
+        return -1;
+      }
+
+      if (str2double(&item[13], &maxDistance) == false)
+      {
+        *errorString = "invalid number for maxDistance";
+        return -1;
+      }
+
+      maxDistanceSet = true;
+    }
+    else if (strncmp(item, "minDistance==", 13) == 0)
+    {
+      if (minDistanceSet)
+      {
+        *errorString = "minDistance present more than once";
+        return -1;
+      }
+
+      if (str2double(&item[13], &minDistance) == false)
+      {
+        *errorString = "invalid number for minDistance";
+        return -1;
+      }
+
+      minDistanceSet = true;
+    }
+#endif
     else
     {
       *errorString = "Invalid modifier in georel parameter";
+      LM_E(("Invalid modifier in georel parameter: '%s'", item));
       return -1;
     }
   }
@@ -595,6 +634,15 @@ int Geometry::parse(ApiVersion apiVersion, const char* in, std::string* errorStr
 
   for (unsigned int ix = 0; ix < items.size(); ++ix)
   {
+#ifdef ORIONLD
+    if (apiVersion == NGSI_LD_V1)
+    {
+      if (items[ix] == "Point")
+        items[ix] = "point";
+      else if (items[ix] == "Polygon")
+        items[ix] = "polygon";
+    }
+#endif    
     if ((apiVersion == V1) && ((items[ix] == "polygon") || (items[ix] == "circle")))
     {
       if (areaType != "")
@@ -604,7 +652,7 @@ int Geometry::parse(ApiVersion apiVersion, const char* in, std::string* errorStr
       }
       areaType = items[ix];
     }
-    else if ((apiVersion == V2) && ((items[ix] == "point") || (items[ix] == "line") || (items[ix] == "box") || (items[ix] == "polygon")))
+    else if ((apiVersion != V1) && ((items[ix] == "point") || (items[ix] == "line") || (items[ix] == "box") || (items[ix] == "polygon")))
     {
       if (areaType != "")
       {
@@ -630,6 +678,7 @@ int Geometry::parse(ApiVersion apiVersion, const char* in, std::string* errorStr
     }
     else
     {
+      LM_E(("items[ix] == '%s' - invalid selector in geometry specification", items[ix].c_str()));
       *errorString = "Invalid selector in geometry specification";
       return -1;
     }

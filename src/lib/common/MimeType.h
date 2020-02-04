@@ -44,11 +44,20 @@
 */
 typedef enum MimeType
 {
-  JSON     = 1,
-  TEXT     = 2,
-  HTML     = 3,
-  NOMIMETYPE = 4
+  JSON       = 1,
+  TEXT       = 2,
+  HTML       = 3,
+  JSONLD     = 4,
+  NOMIMETYPE = 5
 } MimeType;
+
+
+
+/* ****************************************************************************
+*
+* mimeTypeToLongString - 
+*/
+extern const char* mimeTypeToLongString(MimeType mimeType);
 
 
 
@@ -65,6 +74,7 @@ extern const char* mimeTypeToString(MimeType mimeType);
 * stringToMimeType
 */
 extern MimeType stringToMimeType(const std::string& s);
+extern MimeType longStringToMimeType(const std::string& s);
 
 
 

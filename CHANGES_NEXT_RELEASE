@@ -1,5 +1,8 @@
-- Fix: GET /v2/subscriptions and GET /v2/subscriptions/{id} crashes for permanent subscriptions created before version 1.13.0 (#3256)
-- Hardening: Mongo driver now compiled using --use-sasl-client --ssl to enable proper DB authentication mechanisms
-- Fix: correct error payload using errorCode (previously orionError was used) in POST /v1/queryContext and POST /v1/updateContext in some cases
-- Hardening: modification of the URL parsing mechanism, making it more efficient, and the source code easier to follow (#3109, step 1)
-- Fix: Missing or empty metadata values were not allowed in NGSIv2 create/update operations (#3121)
+* Issue #310 - Arrays of one element must be reduced to a single item, unless the @context states otherwise
+* Issue #307 - Check validity of property-of-property
+* Issue #XXX - NGSI-LD style forwarding of GET /ngsi-ld/v1/entities/{EID}
+* Issue #XXX - Registrations with empty arrays inside information are now rejected, as per spec.
+* Issue #342 - Empty arrays for properties when creating entities crashes the broker
+* Issue #329 - Incorrect storage of Subscription Q-filter when more than one part-filter (;-separated)
+* Issue #340 - If ?options=count, then an HTTP header (Fiware-Total-Count) is added to the response
+* Issue #XXX - Crash in GET /csourceRegistrations if the @context of a registration isn't found

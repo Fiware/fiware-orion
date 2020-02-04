@@ -1,0 +1,117 @@
+# Copyright 2018 FIWARE Foundation e.V.
+#
+# This file is part of Orion-LD Context Broker.
+#
+# Orion-LD Context Broker is free software: you can redistribute it and/or
+# modify it under the terms of the GNU Affero General Public License as
+# published by the Free Software Foundation, either version 3 of the
+# License, or (at your option) any later version.
+#
+# Orion-LD Context Broker is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero
+# General Public License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with Orion-LD Context Broker. If not, see http://www.gnu.org/licenses/.
+#
+# For those usages not covered by this license please contact with
+# orionld at fiware dot org
+
+# VALGRIND_READY - to mark the test ready for valgrindTestSuite.sh
+
+--NAME--
+No URI expansion if found in Core Context
+
+--SHELL-INIT--
+export BROKER=orionld
+dbInit CB
+brokerStart CB 212-249
+
+--SHELL--
+
+#
+# 01. POST /ngsi-ld/v1/entities, with a context that has an attribute called 'detail' and another one called 'detail2'
+# 02. Checking mongo to see that 'detail' has not been expanded but 'detail2' has the default URI Expansion
+#
+
+
+echo "01. POST /ngsi-ld/v1/entities, with a context that has an attribute called 'detail' and another one called 'detail2'"
+echo "===================================================================================================================="
+payload='{
+  "id": "http://a.b.c/entity/E1",
+  "type": "A",
+  "detail": {
+    "type": "Property",
+    "value": "detail - no expansion"
+  },
+  "detail2": {
+    "type": "Property",
+    "value": "detail2 - expanded to default"
+  }
+}'
+orionCurl --url /ngsi-ld/v1/entities -X POST --payload "$payload"
+echo
+echo
+
+
+
+echo "02. Checking mongo to see that 'detail' has not been expanded but 'detail2' has the default URI Expansion"
+echo "========================================================================================================="
+mongoCmd2 ftest "db.entities.findOne()"
+echo
+echo
+
+
+--REGEXPECT--
+01. POST /ngsi-ld/v1/entities, with a context that has an attribute called 'detail' and another one called 'detail2'
+====================================================================================================================
+HTTP/1.1 201 Created
+Content-Length: 0
+Link: <https://uri.etsi.org/ngsi-ld/v1/ngsi-ld-core-context.jsonld>; rel="http://www.w3.org/ns/json-ld#context"; type="application/ld+json"
+Location: /ngsi-ld/v1/entities/http://a.b.c/entity/E1
+Date: REGEX(.*)
+
+
+
+02. Checking mongo to see that 'detail' has not been expanded but 'detail2' has the default URI Expansion
+=========================================================================================================
+MongoDB shell version REGEX(.*)
+connecting to: REGEX(.*)
+MongoDB server version: REGEX(.*)
+{
+	"_id" : {
+		"id" : "http://a.b.c/entity/E1",
+		"type" : "https://uri.etsi.org/ngsi-ld/default-context/A",
+		"servicePath" : "/"
+	},
+	"attrNames" : [
+		"https://uri.etsi.org/ngsi-ld/detail",
+		"https://uri.etsi.org/ngsi-ld/default-context/detail2"
+	],
+	"attrs" : {
+		"https://uri=etsi=org/ngsi-ld/detail" : {
+			"type" : "Property",
+			"creDate" : REGEX(.*),
+			"modDate" : REGEX(.*),
+			"value" : "detail - no expansion",
+			"mdNames" : [ ]
+		},
+		"https://uri=etsi=org/ngsi-ld/default-context/detail2" : {
+			"type" : "Property",
+			"creDate" : REGEX(.*),
+			"modDate" : REGEX(.*),
+			"value" : "detail2 - expanded to default",
+			"mdNames" : [ ]
+		}
+	},
+	"creDate" : REGEX(.*),
+	"modDate" : REGEX(.*),
+	"lastCorrelator" : ""
+}
+bye
+
+
+--TEARDOWN--
+brokerStop CB
+dbDrop CB

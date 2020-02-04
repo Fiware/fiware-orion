@@ -50,7 +50,11 @@ namespace ngsiv2
 *
 * HttpInfo::HttpInfo - 
 */
+#ifdef ORIONLD
+HttpInfo::HttpInfo() : verb(NOVERB), custom(false), mimeType(DEFAULT_MIMETYPE)
+#else
 HttpInfo::HttpInfo() : verb(NOVERB), custom(false)
+#endif
 {
 }
 
@@ -60,7 +64,11 @@ HttpInfo::HttpInfo() : verb(NOVERB), custom(false)
 *
 * HttpInfo::HttpInfo - 
 */
+#ifdef ORIONLD
+HttpInfo::HttpInfo(const std::string& _url) : url(_url), verb(NOVERB), custom(false), mimeType(DEFAULT_MIMETYPE)
+#else
 HttpInfo::HttpInfo(const std::string& _url) : url(_url), verb(NOVERB), custom(false)
+#endif
 {
 }
 
@@ -112,6 +120,13 @@ void HttpInfo::fill(const BSONObj& bo)
 {
   this->url    = bo.hasField(CSUB_REFERENCE)? getStringFieldF(bo, CSUB_REFERENCE) : "";
   this->custom = bo.hasField(CSUB_CUSTOM)?    getBoolFieldF(bo,   CSUB_CUSTOM)    : false;
+
+#ifdef ORIONLD
+  std::string mimeTypeString;
+
+  mimeTypeString = bo.hasField(CSUB_MIMETYPE)? getStringFieldF(bo, CSUB_MIMETYPE) : "application/json";  // Default
+  this->mimeType = longStringToMimeType(mimeTypeString);
+#endif
 
   if (this->custom)
   {

@@ -29,6 +29,10 @@
 #include "common/globals.h"
 #include "rest/ConnectionInfo.h"
 
+#ifdef ORIONLD
+#include "orionld/common/orionldState.h"                    // orionldState
+#endif
+
 
 
 /* ****************************************************************************
@@ -49,7 +53,132 @@ static const char* validOptions[] =
   OPT_DATE_MODIFIED,
   OPT_NO_ATTR_DETAIL,
   OPT_UPSERT
+#ifdef ORIONLD
+  , OPT_SYS_ATTRS
+  , OPT_NO_OVERWRITE
+  , OPT_UPDATE
+  , OPT_REPLACE
+#endif
 };
+
+
+
+/* ****************************************************************************
+*
+* ConnectionInfo::ConnectionInfo - 
+*/
+ConnectionInfo::ConnectionInfo():
+  connection             (NULL),
+  verb                   (NOVERB),
+  badVerb                (false),
+  inMimeType             (JSON),
+  outMimeType            (JSON),
+  tenant                 (""),
+  restServiceP           (NULL),
+  payload                (NULL),
+  payloadSize            (0),
+  callNo                 (1),
+  parseDataP             (NULL),
+  port                   (0),
+  ip                     (""),
+  apiVersion             (V1),
+  transactionStart       { 0, 0 },
+  inCompoundValue        (false),
+  compoundValueP         (NULL),
+  compoundValueRoot      (NULL),
+  httpStatusCode         (SccOk)
+{
+}
+
+
+
+/* ****************************************************************************
+*
+* ConnectionInfo::ConnectionInfo - 
+*/
+ConnectionInfo::ConnectionInfo(MimeType _outMimeType):
+  connection             (NULL),
+  verb                   (NOVERB),
+  badVerb                (false),
+  inMimeType             (JSON),
+  outMimeType            (_outMimeType),
+  tenant                 (""),
+  restServiceP           (NULL),
+  payload                (NULL),
+  payloadSize            (0),
+  callNo                 (1),
+  parseDataP             (NULL),
+  port                   (0),
+  ip                     (""),
+  apiVersion             (V1),
+  transactionStart       { 0, 0 },
+  inCompoundValue        (false),
+  compoundValueP         (NULL),
+  compoundValueRoot      (NULL),
+  httpStatusCode         (SccOk)
+{
+}
+
+
+
+/* ****************************************************************************
+*
+* ConnectionInfo::ConnectionInfo - 
+*/
+ConnectionInfo::ConnectionInfo(std::string _url, std::string _method, std::string _version, MHD_Connection* _connection):
+  connection             (_connection),
+  verb                   (NOVERB),
+  badVerb                (false),
+  inMimeType             (JSON),
+  outMimeType            (JSON),
+  url                    (_url),
+  method                 (_method),
+  version                (_version),
+  tenant                 (""),
+  restServiceP           (NULL),
+  payload                (NULL),
+  payloadSize            (0),
+  callNo                 (1),
+  parseDataP             (NULL),
+  port                   (0),
+  ip                     (""),
+  apiVersion             (V1),
+  transactionStart       { 0, 0 },
+  inCompoundValue        (false),
+  compoundValueP         (NULL),
+  compoundValueRoot      (NULL),
+  httpStatusCode         (SccOk)
+{
+  if      (_method == "POST")    verb = POST;
+  else if (_method == "PUT")     verb = PUT;
+  else if (_method == "GET")     verb = GET;
+  else if (_method == "DELETE")  verb = DELETE;
+  else if (_method == "PATCH")   verb = PATCH;
+  else if (_method == "OPTIONS") verb = OPTIONS;
+  else
+  {
+    badVerb = true;
+    verb    = NOVERB;
+  }
+}
+
+
+
+/* ****************************************************************************
+*
+* ConnectionInfo::~ConnectionInfo - 
+*/
+ConnectionInfo::~ConnectionInfo()
+{
+  if (compoundValueRoot != NULL)
+  {
+    delete compoundValueRoot;
+    compoundValueRoot = NULL;
+  }
+
+  servicePathV.clear();
+  httpHeaders.release();
+}
 
 
 
@@ -94,6 +223,15 @@ int uriParamOptionsParse(ConnectionInfo* ciP, const char* value)
     }
 
     ciP->uriParamOptions[vec[ix]] = true;
+
+#ifdef ORIONLD
+    if (strcmp(vec[ix].c_str(), "noOverwrite") == 0)
+      orionldState.uriParamOptions.noOverwrite = true;
+    else if (strcmp(vec[ix].c_str(), "update") == 0)
+      orionldState.uriParamOptions.update = true;
+    else if (strcmp(vec[ix].c_str(), "replace") == 0)
+      orionldState.uriParamOptions.replace = true;
+#endif
   }
 
   //

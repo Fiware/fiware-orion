@@ -110,6 +110,10 @@ static void insertInCache
                      stringFilterP,
                      mdStringFilterP,
                      sub.status,
+#ifdef ORIONLD
+                     sub.name,
+                     sub.ldContext,
+#endif
                      sub.subject.condition.expression.q,
                      sub.subject.condition.expression.geometry,
                      sub.subject.condition.expression.coords,
@@ -138,6 +142,9 @@ std::string mongoCreateSubscription
   const std::vector<std::string>&  servicePathV,
   const std::string&               xauthToken,
   const std::string&               fiwareCorrelator
+#ifdef ORIONLD
+  , const std::string&             ldContext
+#endif
 )
 {
   bool reqSemTaken = false;
@@ -147,7 +154,11 @@ std::string mongoCreateSubscription
   BSONObjBuilder     b;
   std::string        servicePath      = servicePathV[0] == "" ? SERVICE_PATH_ALL : servicePathV[0];
   bool               notificationDone = false;
+#ifdef ORIONLD
+  const std::string  subId            = setSubscriptionId(sub, &b);
+#else
   const std::string  subId            = setNewSubscriptionId(&b);
+#endif
 
   // Build the BSON object to insert
   setExpiration(sub, &b);
@@ -161,6 +172,11 @@ std::string mongoCreateSubscription
   setMetadata(sub, &b);
   setBlacklist(sub, &b);
 
+#ifdef ORIONLD
+  setName(sub, &b);
+  setContext(sub, &b);
+#endif
+
   std::string status = sub.status == ""?  STATUS_ACTIVE : sub.status;
 
   // We need to insert the csub in the cache before (potentially) sending the
@@ -169,6 +185,7 @@ std::string mongoCreateSubscription
   {
     insertInCache(sub, subId, tenant, servicePath, false, 0, 0, 0);
   }
+
 
   setCondsAndInitialNotify(sub,
                            subId,

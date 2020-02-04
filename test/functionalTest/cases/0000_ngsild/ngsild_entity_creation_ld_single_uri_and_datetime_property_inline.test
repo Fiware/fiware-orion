@@ -1,0 +1,213 @@
+# Copyright 2018 FIWARE Foundation e.V.
+#
+# This file is part of Orion-LD Context Broker.
+#
+# Orion-LD Context Broker is free software: you can redistribute it and/or
+# modify it under the terms of the GNU Affero General Public License as
+# published by the Free Software Foundation, either version 3 of the
+# License, or (at your option) any later version.
+#
+# Orion-LD Context Broker is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero
+# General Public License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with Orion-LD Context Broker. If not, see http://www.gnu.org/licenses/.
+#
+# For those usages not covered by this license please contact with
+# orionld at fiware dot org
+
+# VALGRIND_READY - to mark the test ready for valgrindTestSuite.sh
+
+--NAME--
+Entity Creation - should create an entity with JSON-LD @context as single URI, DateTime Property inline
+
+--SHELL-INIT--
+export BROKER=orionld
+dbInit CB
+brokerStart CB 0-255 --prettyPrint
+
+--SHELL--
+
+#
+# 01. POST /ngsi-ld/v1/entities with JSON-LD @context and DateTime Property inline
+# 02. See entity in database
+# 03. GET entity
+#
+
+echo "01. POST /ngsi-ld/v1/entities with JSON-LD @context and DateTime Property inline"
+echo "================================================================================"
+payload='{
+  "id": "urn:ngsi-ld:T:12:13:14",
+  "type": "T",
+  "DateProp": {
+    "type":  "Property",
+    "value": {
+      "@type": "DateTime",
+      "@value": "2018-12-04T12:00:00"
+    }
+  },
+  "P2": {
+    "type": "GeoProperty",
+    "value": {
+      "type": "Point",
+      "coordinates": [-8, 40]
+    }
+  },
+  "P3": {
+    "type": "Property",
+    "value": "Hola"
+  },
+  "R1": {
+    "type": "Relationship",
+    "object": "urn:ngsi-ld:T2:6789"
+  },
+  "@context": "https://fiware.github.io/NGSI-LD_TestSuite/ldContext/testFullContext.jsonld"
+}'
+orionCurl --url /ngsi-ld/v1/entities -X POST --payload "$payload" -H "Content-Type: application/ld+json"
+echo
+echo
+
+
+echo "02. See entity in database"
+echo "=========================="
+mongoCmd2 ftest "db.entities.findOne()"
+echo
+echo
+
+
+echo "03. GET entity"
+echo "=============="
+orionCurl --url '/ngsi-ld/v1/entities/urn:ngsi-ld:T:12:13:14?prettyPrint=yes&spaces=2' --noPayloadCheck  -H "Accept: application/ld+json" -H 'Link: <https://fiware.github.io/NGSI-LD_TestSuite/ldContext/testFullContext.jsonld>; rel="http://www.w3.org/ns/json-ld#context"; type="application/ld+json"'
+echo
+echo
+
+
+--REGEXPECT--
+01. POST /ngsi-ld/v1/entities with JSON-LD @context and DateTime Property inline
+================================================================================
+HTTP/1.1 201 Created
+Content-Length: 0
+Link: <https://fiware.github.io/NGSI-LD_TestSuite/ldContext/testContext.jsonld>; rel="http://www.w3.org/ns/json-ld#context"; type="application/ld+json"
+Location: /ngsi-ld/v1/entities/urn:ngsi-ld:T:12:13:14
+Date: REGEX(.*)
+
+
+
+02. See entity in database
+==========================
+MongoDB shell version REGEX(.*)
+connecting to: mongodb://localhost:27017/ftest
+MongoDB server version: REGEX(.*)
+{
+	"_id" : {
+		"id" : "urn:ngsi-ld:T:12:13:14",
+		"type" : "http://example.org/T",
+		"servicePath" : "/"
+	},
+	"attrNames" : [
+		"http://example.org/DateProp",
+		"http://example.org/P2",
+		"http://example.org/P3",
+		"http://example.org/R1"
+	],
+	"attrs" : {
+		"http://example=org/DateProp" : {
+			"type" : "Property",
+			"creDate" : REGEX(.*),
+			"modDate" : REGEX(.*),
+			"value" : {
+				"@type" : "DateTime",
+				"@value" : "2018-12-04T12:00:00"
+			},
+			"mdNames" : [ ]
+		},
+		"http://example=org/P2" : {
+			"type" : "GeoProperty",
+			"creDate" : REGEX(.*),
+			"modDate" : REGEX(.*),
+			"value" : {
+				"type" : "Point",
+				"coordinates" : [
+					-8,
+					40
+				]
+			},
+			"mdNames" : [ ]
+		},
+		"http://example=org/P3" : {
+			"type" : "Property",
+			"creDate" : REGEX(.*),
+			"modDate" : REGEX(.*),
+			"value" : "Hola",
+			"mdNames" : [ ]
+		},
+		"http://example=org/R1" : {
+			"type" : "Relationship",
+			"creDate" : REGEX(.*),
+			"modDate" : REGEX(.*),
+			"value" : "urn:ngsi-ld:T2:6789",
+			"mdNames" : [ ]
+		}
+	},
+	"creDate" : REGEX(.*),
+	"modDate" : REGEX(.*),
+	"location" : {
+		"attrName" : "http://example.org/P2",
+		"coords" : {
+			"type" : "Point",
+			"coordinates" : [
+				-8,
+				40
+			]
+		}
+	},
+	"lastCorrelator" : ""
+}
+bye
+
+
+03. GET entity
+==============
+HTTP/1.1 200 OK
+Content-Length: 550
+Content-Type: application/ld+json
+Date: REGEX(.*)
+
+{
+  "@context": "https://fiware.github.io/NGSI-LD_TestSuite/ldContext/testContext.jsonld",
+  "id": "urn:ngsi-ld:T:12:13:14",
+  "type": "T",
+  "DateProp": {
+    "type": "Property",
+    "value": {
+      "@type": "DateTime",
+      "@value": "2018-12-04T12:00:00"
+    }
+  },
+  "P2": {
+    "type": "GeoProperty",
+    "value": {
+      "type": "Point",
+      "coordinates": [
+        -8,
+        40
+      ]
+    }
+  },
+  "P3": {
+    "type": "Property",
+    "value": "Hola"
+  },
+  "R1": {
+    "type": "Relationship",
+    "object": "urn:ngsi-ld:T2:6789"
+  }
+}
+
+
+
+--TEARDOWN--
+brokerStop CB
+dbDrop CB

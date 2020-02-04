@@ -1,6 +1,6 @@
 /*
 *
-* Copyright 2018 Telefonica Investigacion y Desarrollo, S.A.U
+* Copyright 2013 Telefonica Investigacion y Desarrollo, S.A.U
 *
 * This file is part of Orion Context Broker.
 *
@@ -510,7 +510,7 @@ static RestService badVerbV[] =
   { InvalidRequest,                                2, { "ngsi9",   "*"                                                                 }, badNgsi9Request           },
   { InvalidRequest,                                2, { "ngsi10",  "*"                                                                 }, badNgsi10Request          },
   { InvalidRequest,                                0, { "*", "*", "*", "*", "*", "*"                                                   }, badRequest                },
-  { InvalidRequest,                                0, {                                                                                }, NULL                      },
+  { InvalidRequest,                                0, {                                                                                }, badRequest                },
 
   ORION_REST_SERVICE_END
 };

@@ -25,6 +25,12 @@
 #include <string>
 #include <vector>
 
+extern "C"
+{
+#include "kbase/kFloatTrim.h"                       // kFloatTrim
+#include "kalloc/kaStrdup.h"                        // kaStrdup
+}
+
 #include "mongo/client/dbclient.h"
 
 #include "logMsg/logMsg.h"
@@ -34,11 +40,17 @@
 #include "common/errorMessages.h"
 #include "parse/forbiddenChars.h"
 #include "parse/CompoundValueNode.h"
-#include "rest/StringFilter.h"
 #include "ngsi/ContextElementResponse.h"
 #include "ngsi/ContextAttribute.h"
 #include "ngsi/Metadata.h"
 #include "mongoBackend/dbConstants.h"
+
+#ifdef ORIONLD
+#include "orionld/common/orionldState.h"                         // orionldState
+#include "orionld/common/eqForDot.h"                             // eqForDot
+#include "orionld/context/orionldContextItemExpand.h"            // orionldContextItemExpand
+#endif
+#include "rest/StringFilter.h"
 
 using namespace mongo;
 
@@ -127,10 +139,10 @@ bool StringFilterItem::valueParse(char* s, std::string* errorStringP)
   bool b;
 
   b = valueGet(s, &valueType, &numberValue, &stringValue, &boolValue, errorStringP);
-
   if (b == false)
   {
-    return b;
+    LM_E(("valueGet FAILED!"));
+    return false;
   }
 
   //
@@ -147,6 +159,8 @@ bool StringFilterItem::valueParse(char* s, std::string* errorStringP)
       *errorStringP = std::string("values of type /") + valueTypeName() + "/ not supported for operator /" + opName() + "/";
       return false;
     }
+
+    return true;
   }
 
   if (op == SfopMatchPattern)
@@ -345,7 +359,7 @@ bool StringFilterItem::listParse(char* s, std::string* errorStringP)
   {
     if (*cP == '\'')
     {
-      inString = (inString)? false :true;
+      inString = (inString)? false : true;
     }
 
     if ((*cP == ',') && (inString == false))
@@ -449,8 +463,9 @@ bool StringFilterItem::valueGet
 
   if ((*valueTypeP == SfvtString) && (op != SfopMatchPattern))
   {
-    if (forbiddenChars(s, ""))
+    if (forbiddenChars(s, "="))  // For NGSI-LD, attr long names have had the dots replaced by '='
     {
+      LM_E(("forbidden characters in String Filter '%s'", s));
       *errorStringP = std::string("forbidden characters in String Filter");
       return false;
     }
@@ -508,7 +523,14 @@ static StringFilterOp opFind(char* expression, char** lhsP, char** rhsP)
       }
       else   if (*eP == '<') { *rhsP = &eP[1]; op = SfopLessThan;           }
       else   if (*eP == '>') { *rhsP = &eP[1]; op = SfopGreaterThan;        }
-      else   if (*eP == ':') { *rhsP = &eP[1]; op = SfopEquals;             }
+      else   if (*eP == ':')
+      {
+        if ((orionldState.apiVersion != NGSI_LD_V1) && (eP[1] != '/') && (eP[2] != '/'))  // Don't if xxx://
+        {
+          *rhsP = &eP[1];
+          op = SfopEquals;
+        }
+      }
 
       if (op != SfopExists)  // operator found, RHS already set
       {
@@ -523,6 +545,7 @@ static StringFilterOp opFind(char* expression, char** lhsP, char** rhsP)
   }
 
   *rhsP = expression;
+
   return SfopExists;
 }
 
@@ -591,7 +614,6 @@ bool StringFilterItem::parse(char* qItem, std::string* errorStringP, StringFilte
   lhs  = wsStrip(lhs);
   rhs  = wsStrip(rhs);
 
-
   //
   // Check for invalid LHS
   // LHS can be empty ONLY if UNARY OP, i.e. SfopNotExists OR SfopExists
@@ -602,6 +624,9 @@ bool StringFilterItem::parse(char* qItem, std::string* errorStringP, StringFilte
     free(toFree);
     return false;
   }
+
+  // Replace '=' back to '.'
+  eqForDot(lhs);
 
   if (forbiddenChars(lhs, "'"))
   {
@@ -628,6 +653,33 @@ bool StringFilterItem::parse(char* qItem, std::string* errorStringP, StringFilte
   //
   lhsParse();
 
+#ifdef ORIONLD
+  //
+  // URI-expand the attribute name
+  //
+  if (orionldState.apiVersion == NGSI_LD_V1)
+  {
+    char* expanded = orionldContextItemExpand(orionldState.contextP, attributeName.c_str(), NULL, true, NULL);
+
+    //
+    // After expanding we need to replace all dots ('.') with equal signs ('='), because, that is how the attribute name is stored in mongo
+    // But, we need to do this in a copy, to not destroy its real name, as 'expanded' points to the value inside the Context-Cache
+    //
+    expanded = kaStrdup(&orionldState.kalloc, expanded);
+
+    char* cP = expanded;
+
+    while (*cP != 0)
+    {
+      if (*cP == '.')
+        *cP = '=';
+      ++cP;
+    }
+
+    attributeName = expanded;
+  }
+
+#endif
 
   //
   // Check for empty RHS
@@ -709,6 +761,151 @@ bool StringFilterItem::parse(char* qItem, std::string* errorStringP, StringFilte
 
 /* ****************************************************************************
 *
+* StringFilterItem::valueAsString -
+*/
+void StringFilterItem::valueAsString(char* buf, int bufLen)
+{
+  switch (valueType)
+  {
+  case SfvtString:
+    strncpy(buf, stringValue.c_str(), bufLen);
+    break;
+
+  case SfvtBool:
+    if (SfvtBool)
+      strncpy(buf, "true", bufLen);
+    else
+      strncpy(buf, "false", bufLen);
+    break;
+
+  case SfvtNumber:
+    snprintf(buf, bufLen, "%f", numberValue);
+    kFloatTrim(buf);
+    break;
+
+  case SfvtNull:
+    strncpy(buf, "null", bufLen);
+    break;
+
+  case SfvtDate:
+    snprintf(buf, bufLen, "%f", numberValue);
+    break;
+
+  case SfvtNumberRange:
+  case SfvtDateRange:
+  case SfvtStringRange:
+    snprintf(buf, bufLen, "Ranges not implemented");
+    break;
+
+  case SfvtNumberList:
+  case SfvtDateList:
+  case SfvtStringList:
+    snprintf(buf, bufLen, "Lists not implemented");
+    break;
+  }
+}
+
+
+
+/* ****************************************************************************
+*
+* StringFilterItem::render
+*/
+int StringFilterItem::render(char* buf, int bufLen)
+{
+  int  needChars        = 0;
+  int  attributeNameLen = strlen(attributeName.c_str());
+  char valueBuf[256];
+  int  valueLen = 0;
+
+  if (attributeNameLen >= bufLen)
+  {
+    LM_E(("Not enough room in rendering output buffer"));
+    return -1;
+  }
+
+  if ((op != SfopExists) && (op != SfopNotExists))
+  {
+    valueAsString(valueBuf, sizeof(valueBuf));
+    valueLen = strlen(valueBuf);
+  }
+
+  switch (op)
+  {
+  case SfopExists:
+    needChars = attributeNameLen;
+    break;
+
+  case SfopNotExists:
+    needChars =	attributeNameLen + 1;
+    break;
+
+  case SfopEquals:
+  case SfopDiffers:
+  case SfopGreaterThanOrEqual:
+  case SfopLessThanOrEqual:
+  case SfopMatchPattern:
+    needChars = attributeNameLen + 2 + valueLen;
+    break;
+
+  case SfopGreaterThan:
+  case SfopLessThan:
+    needChars = attributeNameLen + 1 + valueLen;
+    break;
+  }
+
+  if (needChars >= bufLen)
+  {
+    LM_E(("Not enough room in rendering output buffer"));
+    return -1;
+  }
+
+  switch (op)
+  {
+  case SfopExists:
+    snprintf(buf, bufLen, "%s", attributeName.c_str());
+    break;
+
+  case SfopNotExists:
+    snprintf(buf, bufLen, "!%s", attributeName.c_str());
+    break;
+
+  case SfopEquals:
+    snprintf(buf, bufLen, "%s==%s", attributeName.c_str(), valueBuf);
+    break;
+
+  case SfopDiffers:
+    snprintf(buf, bufLen, "%s!=%s", attributeName.c_str(), valueBuf);
+    break;
+
+  case SfopGreaterThanOrEqual:
+    snprintf(buf, bufLen, "%s>=%s", attributeName.c_str(), valueBuf);
+    break;
+
+  case SfopLessThanOrEqual:
+    snprintf(buf, bufLen, "%s<=%s", attributeName.c_str(), valueBuf);
+    break;
+
+  case SfopMatchPattern:
+    snprintf(buf, bufLen, "%s=%s", attributeName.c_str(), valueBuf);
+    break;
+
+  case SfopGreaterThan:
+    snprintf(buf, bufLen, "%s>%s", attributeName.c_str(), valueBuf);
+    break;
+
+  case SfopLessThan:
+    snprintf(buf, bufLen, "%s<%s", attributeName.c_str(), valueBuf);
+    break;
+  }
+
+  return needChars;
+}
+
+
+
+/* ****************************************************************************
+*
 * lhsDotToEqualIfInsideQuote - change dots for equals, then remove all quotes
 */
 static char* lhsDotToEqualIfInsideQuote(char* s)
@@ -754,6 +951,7 @@ static char* lhsDotToEqualIfInsideQuote(char* s)
   s[sIx] = 0;
 
   free(scopyP);
+
   return s;
 }
 
@@ -780,6 +978,7 @@ void StringFilterItem::lhsParse(void)
     attributeName = start;
     metadataName  = "";
     compoundPath  = "";
+
     return;
   }
 
@@ -1730,6 +1929,47 @@ bool StringFilter::parse(const char* q, std::string* errorStringP)
 
 /* ****************************************************************************
 *
+* StringFilter::render -
+*/
+bool StringFilter::render(char* buf, int bufLen, std::string* errorStringP)
+{
+  char* bufP       = buf;
+  int   charsUsed  = 0;
+  int   chars;
+
+  for (unsigned int ix = 0; ix < filters.size(); ++ix)
+  {
+    StringFilterItem*  itemP = filters[ix];
+
+    if (ix != 0)
+    {
+      *bufP = ';';
+      ++bufP;
+      *bufP = 0;
+      ++charsUsed;
+    }
+
+    chars = itemP->render(bufP, bufLen - charsUsed);
+
+    if (chars == -1)
+    {
+      *errorStringP = "Internal error - Not enough room in rendering output buffer of StringFilter";
+      LM_E((errorStringP->c_str()));
+      return false;
+    }
+
+    bufP = &bufP[chars];
+    charsUsed += chars;
+    buf[charsUsed] = 0;
+  }
+
+  return true;
+}
+
+
+
+/* ****************************************************************************
+*
 * StringFilter::mongoFilterPopulate -
 */
 bool StringFilter::mongoFilterPopulate(std::string* errorStringP)
@@ -1813,7 +2053,10 @@ bool StringFilter::mongoFilterPopulate(std::string* errorStringP)
     }
     else
     {
-      k = std::string(ENT_ATTRS) + "." + left + "." ENT_ATTRS_VALUE;
+      if (itemP->metadataName != "")
+        k = std::string(ENT_ATTRS) + "." + left + "." ENT_ATTRS_VALUE;
+      else
+        k = std::string(ENT_ATTRS) + "." + itemP->attributeName + "." ENT_ATTRS_VALUE;
     }
 
     switch (itemP->op)

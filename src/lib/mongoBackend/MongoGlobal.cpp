@@ -58,6 +58,10 @@
 #include "apiTypesV2/Subscription.h"
 #include "apiTypesV2/ngsiWrappers.h"
 
+#ifdef ORIONLD
+#include "orionld/common/orionldState.h"
+#endif
+
 #include "mongoBackend/mongoConnectionPool.h"
 #include "mongoBackend/connectionOperations.h"
 #include "mongoBackend/safeMongo.h"
@@ -1200,14 +1204,54 @@ static void addDatesForAttrs(ContextElementResponse* cerP, bool includeCreDate, 
 
     if (includeCreDate && caP->creDate != 0)
     {
-      Metadata*   mdP = new Metadata(NGSI_MD_DATECREATED, DATE_TYPE, caP->creDate);
-      caP->metadataVector.push_back(mdP);
+      // Lookup Metadata NGSI_MD_DATECREATED
+      Metadata* dateCreatedMetadataP = NULL;
+      for (unsigned int mIx = 0; mIx < caP->metadataVector.size(); mIx++)
+      {
+        Metadata* mdP = caP->metadataVector[mIx];
+
+        if (mdP->name == NGSI_MD_DATECREATED)
+        {
+          dateCreatedMetadataP = mdP;
+          break;
+        }
+      }
+
+      if (dateCreatedMetadataP == NULL)
+      {
+        Metadata*   mdP = new Metadata(NGSI_MD_DATECREATED, DATE_TYPE, caP->creDate);
+        caP->metadataVector.push_back(mdP);
+      }
+      else
+      {
+        dateCreatedMetadataP->numberValue = caP->creDate;
+      }
     }
 
     if (includeModDate && caP->modDate != 0)
     {
-      Metadata*   mdP = new Metadata(NGSI_MD_DATEMODIFIED, DATE_TYPE, caP->modDate);
-      caP->metadataVector.push_back(mdP);
+      // Lookup Metadata NGSI_MD_DATEMODIFIED
+      Metadata* dateModifiedMetadataP = NULL;
+      for (unsigned int mIx = 0; mIx < caP->metadataVector.size(); mIx++)
+      {
+        Metadata* mdP = caP->metadataVector[mIx];
+
+        if (mdP->name == NGSI_MD_DATEMODIFIED)
+        {
+          dateModifiedMetadataP = mdP;
+          break;
+        }
+      }
+
+      if (dateModifiedMetadataP == NULL)
+      {
+        Metadata*   mdP = new Metadata(NGSI_MD_DATEMODIFIED, DATE_TYPE, caP->modDate);
+        caP->metadataVector.push_back(mdP);
+      }
+      else
+      {
+        dateModifiedMetadataP->numberValue = caP->modDate;
+      }
     }
   }
 }
@@ -1291,10 +1335,13 @@ bool entitiesQuery
   /* The result of orEnt is appended to the final query */
   finalQuery.append("$or", orEnt.arr());
 
-  /* Part 2: service path */
-  const std::string  servicePathString = "_id." ENT_SERVICE_PATH;
+  if (apiVersion != NGSI_LD_V1)
+  {
+    /* Part 2: service path */
+    const std::string  servicePathString = "_id." ENT_SERVICE_PATH;
 
-  finalQuery.append(servicePathString, fillQueryServicePath(servicePath));
+    finalQuery.append(servicePathString, fillQueryServicePath(servicePath));
+  }
 
   /* Part 3: attributes */
   BSONArrayBuilder attrs;
@@ -1314,11 +1361,14 @@ bool entitiesQuery
 
   if (attrs.arrSize() > 0)
   {
-    /* If we don't do this checking, the {$in: [] } in the attribute name part will
-     * make the query fail*/
+    // If we don't do this check, the {$in: [] } in the attribute name part will make the query fail
     finalQuery.append(ENT_ATTRNAMES, BSON("$in" << attrs.arr()));
   }
 
+#ifdef ORIONLD
+  if (orionldState.qMongoFilterP != NULL)
+    finalQuery.appendElements(*orionldState.qMongoFilterP);
+#endif
   /* Part 5: scopes */
   std::vector<BSONObj>  filters;
   unsigned int          geoScopes = 0;
@@ -1398,6 +1448,7 @@ bool entitiesQuery
 
   /* Do the query on MongoDB */
   std::auto_ptr<DBClientCursor>  cursor;
+  // LM_TMP(("Q: finalQuery: %s (DESTRUCTIVE)", finalQuery.obj().toString().c_str()));  // Calling obj() destroys finalQuery
   Query                          query(finalQuery.obj());
 
   if (sortOrderList == "")
@@ -1456,6 +1507,7 @@ bool entitiesQuery
   while (moreSafe(cursor))
   {
     BSONObj  r;
+
     try
     {
       // nextSafeOrError cannot be used here, as AssertionException has a special treatment in this case
@@ -2105,7 +2157,6 @@ static void setOnSubscriptionMetadata(ContextElementResponseVector* cerVP)
 #endif
 
 
-
 /* ****************************************************************************
 *
 * processOnChangeConditionForSubscription -
@@ -2150,11 +2201,11 @@ static bool processOnChangeConditionForSubscription
   StringList                    metadataList;
 
   metadataList.fill(metadataV);
+
   if (!blacklist && !entitiesQuery(enV, attrL, metadataList, *resP, &rawCerV, &err, true, tenant, servicePathV))
   {
     ncr.contextElementResponseVector.release();
     rawCerV.release();
-
     return false;
   }
   else if (blacklist && !entitiesQuery(enV, emptyList, metadataList, *resP, &rawCerV, &err, true, tenant, servicePathV))
@@ -2164,6 +2215,37 @@ static bool processOnChangeConditionForSubscription
 
     return false;
   }
+
+#ifdef ORIONLD
+  //
+  // Special case: no entity/attribute found.
+  //               If this happens, we'll notify with only entity info
+  //
+  if (orionldState.apiVersion == NGSI_LD_V1)
+  {
+    if (rawCerV.size() == 0)
+    {
+      if (!entitiesQuery(enV, emptyList, metadataList, *resP, &rawCerV, &err, true, tenant, servicePathV))
+      {
+        ncr.contextElementResponseVector.release();
+        rawCerV.release();
+        return false;
+      }
+
+      //
+      // Now strip the rawCerV of all attributes
+      //
+      for (unsigned int cerIx = 0; cerIx < rawCerV.size(); cerIx++)
+      {
+        ContextElement* ceP = &rawCerV[cerIx]->contextElement;
+
+        ceP->contextAttributeVector.release();
+        ceP->attributeDomainName.release();
+        ceP->domainMetadataVector.release();
+      }
+    }
+  }
+#endif
 
   /* Prune "not found" CERs */
   pruneContextElements(rawCerV, &ncr.contextElementResponseVector);
@@ -2196,7 +2278,6 @@ static bool processOnChangeConditionForSubscription
       /* Check if some of the attributes in the NotifyCondition values list are in the entity.
        * Note that in this case we do a query for all the attributes, not restricted to attrV */
       ContextElementResponseVector  allCerV;
-
 
       if (!entitiesQuery(enV, emptyList, metadataList, *resP, &rawCerV, &err, false, tenant, servicePathV))
       {
@@ -2304,23 +2385,25 @@ static BSONArray processConditionVector
         conds.append(nc->condValueList[jx]);
       }
 
-      if ((status == STATUS_ACTIVE) &&
-          (processOnChangeConditionForSubscription(enV,
-                                                   attrL,
-                                                   metadataV,
-                                                   &(nc->condValueList),
-                                                   subId,
-                                                   httpInfo,
-                                                   renderFormat,
-                                                   tenant,
-                                                   xauthToken,
-                                                   servicePathV,
-                                                   resP,
-                                                   fiwareCorrelator,
-                                                   attrsOrder,
-                                                   blacklist)))
+      if (status == STATUS_ACTIVE)
       {
-        *notificationDone = true;
+        if (processOnChangeConditionForSubscription(enV,
+                                                    attrL,
+                                                    metadataV,
+                                                    &(nc->condValueList),
+                                                    subId,
+                                                    httpInfo,
+                                                    renderFormat,
+                                                    tenant,
+                                                    xauthToken,
+                                                    servicePathV,
+                                                    resP,
+                                                    fiwareCorrelator,
+                                                    attrsOrder,
+                                                    blacklist))
+        {
+          *notificationDone = true;
+        }
       }
     }
     else
@@ -2367,6 +2450,7 @@ BSONArray processConditionVector
 
   attrsStdVector2NotifyConditionVector(condAttributesV, &ncV);
   entIdStdVector2EntityIdVector(entitiesV, &enV);
+
   attrL.fill(notifAttributesV);
 
   BSONArray arr = processConditionVector(&ncV,
@@ -2675,3 +2759,24 @@ void cprLookupByAttribute
     }
   }
 }
+
+
+
+#ifdef ORIONLD
+/* ****************************************************************************
+*
+* mongoIdentifier - create a unique identifier using OID
+*
+* NOTE
+* 'buffer' must point to a buffer of at least 25 bytes
+*/
+char* mongoIdentifier(char* buffer)
+{
+  OID oid;
+
+  oid.init();
+  strcpy(buffer, oid.toString().c_str());
+
+  return buffer;
+}
+#endif  // ORIONLD

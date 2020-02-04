@@ -34,10 +34,11 @@
 #include "common/statistics.h"
 #include "common/idCheck.h"
 #include "common/errorMessages.h"
+#include "rest/ConnectionInfo.h"
 #include "cache/subCache.h"
 #include "apiTypesV2/Subscription.h"
-
 #include "mongoBackend/MongoGlobal.h"
+#include "mongoBackend/MongoCommonSubscription.h"
 #include "mongoBackend/connectionOperations.h"
 #include "mongoBackend/safeMongo.h"
 #include "mongoBackend/dbConstants.h"
@@ -47,7 +48,7 @@
 
 /* ****************************************************************************
 *
-* USING - 
+* USING -
 */
 using mongo::BSONObj;
 using mongo::BSONElement;
@@ -135,11 +136,11 @@ static void setSubject(Subscription* s, const BSONObj& r)
     std::string  coords = expression.hasField(CSUB_EXPR_COORDS) ? getStringFieldF(expression, CSUB_EXPR_COORDS) : "";
     std::string  georel = expression.hasField(CSUB_EXPR_GEOREL) ? getStringFieldF(expression, CSUB_EXPR_GEOREL) : "";
 
-    s->subject.condition.expression.q        = q;
-    s->subject.condition.expression.mq       = mq;
-    s->subject.condition.expression.geometry = geo;
-    s->subject.condition.expression.coords   = coords;
-    s->subject.condition.expression.georel   = georel;
+    if (q  != "")      s->subject.condition.expression.q        = q;
+    if (mq != "")      s->subject.condition.expression.mq       = mq;
+    if (geo != "")     s->subject.condition.expression.geometry = geo;
+    if (coords != "")  s->subject.condition.expression.coords   = coords;
+    if (georel != "")  s->subject.condition.expression.georel   = georel;
   }
 }
 
@@ -242,6 +243,57 @@ static void setStatus(Subscription* s, const BSONObj& r)
   }
 }
 
+
+
+#ifdef ORIONLD
+/* ****************************************************************************
+*
+* setSubscriptionId -
+*/
+static void setSubscriptionId(Subscription* s, const BSONObj& r)
+{
+  s->id = getStringFieldF(r, "_id");
+}
+
+
+
+/* ****************************************************************************
+*
+* setName -
+*/
+static void setName(Subscription* s, const BSONObj& r)
+{
+  s->name = r.hasField(CSUB_NAME) ? getStringFieldF(r, CSUB_NAME) : "";
+}
+
+
+
+/* ****************************************************************************
+*
+* setContext -
+*/
+static void setContext(Subscription* s, const BSONObj& r)
+{
+  s->ldContext = r.hasField(CSUB_LDCONTEXT) ? getStringFieldF(r, CSUB_LDCONTEXT) : "";
+}
+
+
+
+/* ****************************************************************************
+*
+* setMimeType -
+*/
+static void setMimeType(Subscription* s, const BSONObj& r)
+{
+  if (r.hasField(CSUB_NAME))
+  {
+    std::string mimeTypeString = getStringFieldF(r, CSUB_MIMETYPE);
+
+    s->notification.httpInfo.mimeType = longStringToMimeType(mimeTypeString);
+  }
+}
+
+#endif
 
 
 /* ****************************************************************************
@@ -426,3 +478,203 @@ void mongoGetSubscription
 
   *oe = OrionError(SccOk);
 }
+
+
+
+#ifdef ORIONLD
+/* ****************************************************************************
+*
+* mongoGetLdSubscription -
+*/
+bool mongoGetLdSubscription
+(
+  ngsiv2::Subscription*  subP,
+  const char*            subId,
+  const char*            tenant,
+  HttpStatusCode*        statusCodeP,
+  char**                 detailsP
+)
+{
+  bool                           reqSemTaken = false;
+  std::string                    err;
+  std::auto_ptr<DBClientCursor>  cursor;
+  BSONObj                        q     = BSON("_id" << subId);
+
+  reqSemTake(__FUNCTION__, "Mongo Get Subscription", SemReadOp, &reqSemTaken);
+
+  LM_T(LmtMongo, ("Mongo Get Subscription"));
+
+  TIME_STAT_MONGO_READ_WAIT_START();
+  DBClientBase* connection = getMongoConnection();
+  if (!collectionQuery(connection, getSubscribeContextCollectionName(tenant), q, &cursor, &err))
+  {
+    releaseMongoConnection(connection);
+    TIME_STAT_MONGO_READ_WAIT_STOP();
+    reqSemGive(__FUNCTION__, "Mongo Get Subscription", reqSemTaken);
+    *detailsP    = (char*) "Internal Error during DB-query";
+    *statusCodeP = SccReceiverInternalError;
+    return false;
+  }
+  TIME_STAT_MONGO_READ_WAIT_STOP();
+
+  /* Process query result */
+  if (moreSafe(cursor))
+  {
+    BSONObj r;
+
+    if (!nextSafeOrErrorF(cursor, &r, &err))
+    {
+      releaseMongoConnection(connection);
+      LM_E(("Runtime Error (exception in nextSafe(): %s - query: %s)", err.c_str(), q.toString().c_str()));
+      reqSemGive(__FUNCTION__, "Mongo Get Subscription", reqSemTaken);
+      *detailsP    = (char*) "Runtime Error (exception in nextSafe)";
+      *statusCodeP = SccReceiverInternalError;
+      return false;
+    }
+    LM_T(LmtMongo, ("retrieved document: '%s'", r.toString().c_str()));
+
+    setSubscriptionId(subP, r);
+    setDescription(subP, r);
+    setMimeType(subP, r);
+    setSubject(subP, r);
+    setNotification(subP, r, tenant);
+    setStatus(subP, r);
+    setName(subP, r);
+    setContext(subP, r);
+
+    if (moreSafe(cursor))
+    {
+      releaseMongoConnection(connection);
+
+      // Ooops, we expected only one
+      LM_T(LmtMongo, ("more than one subscription: '%s'", subId));
+      reqSemGive(__FUNCTION__, "Mongo Get Subscription", reqSemTaken);
+      *detailsP    = (char*) "more than one subscription matched";
+      *statusCodeP = SccConflict;
+      return false;
+    }
+  }
+  else
+  {
+    releaseMongoConnection(connection);
+    LM_T(LmtMongo, ("subscription not found: '%s'", subId));
+    reqSemGive(__FUNCTION__, "Mongo Get Subscription", reqSemTaken);
+    *detailsP    = (char*) "subscription not found";
+    *statusCodeP = SccContextElementNotFound;
+    return false;
+  }
+
+  releaseMongoConnection(connection);
+  reqSemGive(__FUNCTION__, "Mongo Get Subscription", reqSemTaken);
+
+  *statusCodeP = SccOk;
+  return true;
+}
+
+
+
+/* ****************************************************************************
+*
+* mongoGetLdSubscriptions - 
+*/
+bool mongoGetLdSubscriptions
+(
+  ConnectionInfo*                     ciP,
+  std::vector<ngsiv2::Subscription>*  subVecP,
+  const char*                         tenant,
+  long long*                          countP,
+  OrionError*                         oeP
+)
+{
+  bool      reqSemTaken = false;
+  int       offset      = atoi(ciP->uriParam[URI_PARAM_PAGINATION_OFFSET].c_str());
+  int       limit;
+
+  if (ciP->uriParam[URI_PARAM_PAGINATION_LIMIT] != "")
+  {
+    limit = atoi(ciP->uriParam[URI_PARAM_PAGINATION_LIMIT].c_str());
+    if (limit <= 0)
+      limit = DEFAULT_PAGINATION_LIMIT_INT;
+  }
+  else
+    limit = DEFAULT_PAGINATION_LIMIT_INT;
+
+  reqSemTake(__FUNCTION__, "Mongo GET Subscriptions", SemReadOp, &reqSemTaken);
+
+  LM_T(LmtMongo, ("Mongo GET Subscriptions"));
+
+  /* ONTIMEINTERVAL subscriptions are not part of NGSIv2, so they are excluded.
+   * Note that expiration is not taken into account (in the future, a q= query
+   * could be added to the operation in order to filter results)
+   */
+  std::auto_ptr<DBClientCursor>  cursor;
+  std::string                    err;
+  Query                          q;
+
+  // FIXME P6: This here is a bug ... See #3099 for more info
+  if (!ciP->servicePathV[0].empty() && (ciP->servicePathV[0] != "/#"))
+  {
+    q = Query(BSON(CSUB_SERVICE_PATH << ciP->servicePathV[0]));
+  }
+
+  q.sort(BSON("_id" << 1));
+
+  TIME_STAT_MONGO_READ_WAIT_START();
+  DBClientBase* connection = getMongoConnection();
+  if (!collectionRangedQuery(connection,
+                             getSubscribeContextCollectionName(tenant),
+                             q,
+                             limit,
+                             offset,
+                             &cursor,
+                             countP,
+                             &err))
+  {
+    releaseMongoConnection(connection);
+    TIME_STAT_MONGO_READ_WAIT_STOP();
+    reqSemGive(__FUNCTION__, "Mongo List Subscriptions", reqSemTaken);
+
+    oeP->code    = SccReceiverInternalError;
+    oeP->details = err;
+    return false;
+  }
+  TIME_STAT_MONGO_READ_WAIT_STOP();
+
+  /* Process query result */
+  unsigned int docs = 0;
+
+  while (moreSafe(cursor))
+  {
+    BSONObj  r;
+
+    if (!nextSafeOrErrorF(cursor, &r, &err))
+    {
+      LM_E(("Runtime Error (exception in nextSafe(): %s - query: %s)", err.c_str(), q.toString().c_str()));
+      continue;
+    }
+
+    docs++;
+    LM_T(LmtMongo, ("retrieved document [%d]: '%s'", docs, r.toString().c_str()));
+
+    Subscription s;
+
+    setSubscriptionId(&s, r);
+    setDescription(&s, r);
+    setMimeType(&s, r);
+    setSubject(&s, r);
+    setNotification(&s, r, tenant);
+    setStatus(&s, r);
+    setName(&s, r);
+    setContext(&s, r);
+
+    subVecP->push_back(s);
+  }
+
+  releaseMongoConnection(connection);
+  reqSemGive(__FUNCTION__, "Mongo List Subscriptions", reqSemTaken);
+
+  oeP->code = SccOk;
+  return true;
+}
+
+#endif
