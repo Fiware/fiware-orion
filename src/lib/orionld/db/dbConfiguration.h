@@ -63,6 +63,7 @@ typedef bool    (*DbSubscriptionMatchCallback)(const char* entityId, KjNode* sub
 typedef KjNode* (*DbEntityLookupFunction)(const char* entityId);
 typedef KjNode* (*DbEntityLookupManyFunction)(KjNode* requestTree);
 typedef KjNode* (*DbEntityAttributeLookupFunction)(const char* entityId, const char* attributeName);
+typedef bool    (*DbEntityAttributesDeleteFunction)(const char* entityId, char** attrNameV, int vecSize);
 typedef bool    (*DbEntityUpdateFunction)(const char* entityId, KjNode* requestTree);
 typedef bool    (*DbEntityBatchDeleteFunction)(KjNode* entityIdsArray);
 typedef KjNode* (*DbDataToKjTreeFunction)(const void* dbData, char** titleP, char** detailsP);
@@ -70,6 +71,8 @@ typedef void    (*DbDataFromKjTreeFunction)(KjNode* nodeP, void* dbDataP);
 typedef void    (*DbSubscriptionMatchEntityIdAndAttributes)(const char* entityId, KjNode* currentEntityTree, KjNode* incomingRequestTree, DbSubscriptionMatchCallback callback);
 typedef KjNode* (*DbEntityListLookupWithIdTypeCreDate)(KjNode* entityIdsArray);
 typedef KjNode* (*DbRegistrationLookup)(const char* entityId, const char* attribute, int* noOfRegsP);
+typedef bool    (*DbRegistrationExists)(const char* registrationId);
+typedef bool    (*DbRegistrationDelete)(const char* registrationId);
 
 
 
@@ -80,6 +83,7 @@ typedef KjNode* (*DbRegistrationLookup)(const char* entityId, const char* attrib
 extern DbEntityLookupFunction                    dbEntityLookup;
 extern DbEntityLookupManyFunction                dbEntityLookupMany;
 extern DbEntityAttributeLookupFunction           dbEntityAttributeLookup;
+extern DbEntityAttributesDeleteFunction          dbEntityAttributesDelete;
 extern DbEntityUpdateFunction                    dbEntityUpdate;
 extern DbEntityBatchDeleteFunction               dbEntityBatchDelete;
 extern DbDataToKjTreeFunction                    dbDataToKjTree;
@@ -87,5 +91,7 @@ extern DbDataFromKjTreeFunction                  dbDataFromKjTree;
 extern DbSubscriptionMatchEntityIdAndAttributes  dbSubscriptionMatchEntityIdAndAttributes;
 extern DbEntityListLookupWithIdTypeCreDate       dbEntityListLookupWithIdTypeCreDate;  // FIXME: Name must change - what does it to really?
 extern DbRegistrationLookup                      dbRegistrationLookup;
+extern DbRegistrationExists                      dbRegistrationExists;
+extern DbRegistrationDelete                      dbRegistrationDelete;
 
 #endif  // SRC_LIB_ORIONLD_DB_DBCONFIGURATION_H_

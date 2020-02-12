@@ -31,6 +31,9 @@ SET (SOURCES
     mongoCppLegacySubscriptionMatchEntityIdAndAttributes.cpp
     mongoCppLegacyEntityListLookupWithIdTypeCreDate.cpp
     mongoCppLegacyRegistrationLookup.cpp
+    mongoCppLegacyRegistrationExists.cpp
+    mongoCppLegacyRegistrationDelete.cpp
+    mongoCppLegacyEntityAttributesDelete.cpp
 )
 
 # Include directories

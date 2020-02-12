@@ -39,6 +39,7 @@ extern "C"
 DbEntityLookupFunction                    dbEntityLookup;
 DbEntityLookupManyFunction                dbEntityLookupMany;
 DbEntityAttributeLookupFunction           dbEntityAttributeLookup;
+DbEntityAttributesDeleteFunction          dbEntityAttributesDelete;
 DbEntityUpdateFunction                    dbEntityUpdate;
 DbEntityBatchDeleteFunction               dbEntityBatchDelete;
 DbDataToKjTreeFunction                    dbDataToKjTree;
@@ -46,6 +47,8 @@ DbDataFromKjTreeFunction                  dbDataFromKjTree;
 DbSubscriptionMatchEntityIdAndAttributes  dbSubscriptionMatchEntityIdAndAttributes;
 DbEntityListLookupWithIdTypeCreDate       dbEntityListLookupWithIdTypeCreDate;  // FIXME: Name must change - what does it to really?
 DbRegistrationLookup                      dbRegistrationLookup;
+DbRegistrationExists                      dbRegistrationExists;
+DbRegistrationDelete                      dbRegistrationDelete;
 
 //
 // FIXME
