@@ -4,9 +4,10 @@ In order to write this guide, Debian 9 (Desktop image) was downloaded from [here
 
 ## Sudo user installation
 
-For use _sudo_ command.
+In many of the following steps, commands need to be executed as superuser (root).
+To be able to use the _sudo_ command in Debian, do the following:
 
-```
+```bash
 apt-get update
 apt-get install sudo
 adduser <USERNAME> sudo
@@ -39,7 +40,7 @@ sudo aptitude install build-essential cmake scons curl
 Libraries that aren't built from source code:
 
 ```bash
-sudo aptitude install libssl1.0-dev libssl-dev gnutls-dev  libcurl4-gnutls-dev libsasl2-dev \                     libgcrypt-dev uuid-dev libboost-dev libboost-regex-dev libboost-thread-dev \                     libboost-filesystem-dev
+sudo aptitude install libssl1.0-dev libssl-dev gnutls-dev libcurl4-gnutls-dev libsasl2-dev libgcrypt-dev uuid-dev libboost-dev libboost-regex-dev libboost-thread-dev libboost-filesystem-dev
 ```
 
 ## Download and build dependency libraries from source code
