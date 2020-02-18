@@ -16,7 +16,7 @@ There are also a number of tutorials about NGSI-LD:
 
 
 Apart from learning about the context, this quick-start guide will show how to:
-- Use `curl` to send HTTP requests to Orion-LD
+- Use `curl`, `JavaScript` and `Python` to send HTTP requests to Orion-LD
 - Use the `mongo` command tool to inspect the contents of the database
 - Create entities with contexts
 - Retrieve entities with different contexts - to see "different results" for the very same entity retrieval !!!
@@ -29,7 +29,7 @@ Now that we know how the context works, let's get our hands dirty and create an 
 Start three terminal windows:
 * broker
 * mongo
-* curl
+* curl (if you want)
 
 In the **broker terminal**, start the Orion-LD context broker, and start it in the foreground (the `-fg` option):
 ```bash
@@ -53,6 +53,8 @@ If not, make sure you have `curl` installed before proceeding.
 Here goes:
 
 ### Entity Creation Example 1 - without context
+
+#### CURL
 ```bash
 payload={'
   "id": "urn:entities:E1",
@@ -69,6 +71,60 @@ payload={'
 curl localhost:1026/ngsi-ld/v1/entities -d "$payload" -H "Content-Type: application/json"
 ```
 
+#### Python
+```bash
+import json
+import requests
+
+payload={
+  "id": "urn:entities:E1",
+  "type": "T",
+  "status": {
+    "type": "Property",
+    "value": "OK"
+  },
+  "state": {
+    "type": "Property",
+    "value": "OK"
+  }
+}
+response = requests.post(url='http://localhost:1026/ngsi-ld/v1/entities', headers={
+    "content-type": "application/json"},  data=json.dumps(payload))
+print(response.status_code)
+```
+
+#### JavaScript (NodeJS)
+For make requests with JavaScript you need to install, before all, [NodeJS and NPM](https://nodejs.org/en/download/package-manager/) and create a NPM project:
+```bash
+mkdir myproject
+cd myproject
+npm init -y
+touch index.js
+```
+And finally, install [axios](https://github.com/axios/axios) for make HTTP requests.
+```
+npm install axios
+```
+Let's go for the example.
+```
+const axios = require('axios')
+const payload = {
+    "id": "urn:entities:E2",
+    "type": "T",
+    "status": {
+        "type": "Property",
+        "value": "OK"
+    },
+    "state": {
+        "type": "Property",
+        "value": "OK"
+    }
+}
+axios.post('http://localhost:1026/ngsi-ld/v1/entities', payload, 
+            { headers: { "content-type": "application/json" } })
+            .then(res => console.log(res.status))
+            .catch(err => console.log(err))
+```
 A few notes about the payload:
 * The entity `"id"` field **must** be a URI.
 * The entity `"type"` field is **mandatory** - will be expanded.
@@ -148,6 +204,7 @@ The entity to be created will contain three attribute, one for each type of expa
 * state  (expanded according to the user context)
 * state2 (expanded according to the default URL)
 
+### CURL
 ```bash
 payload='{
   "@context": {
@@ -171,7 +228,63 @@ payload='{
 }'
 curl localhost:1026/ngsi-ld/v1/entities -d "$payload" -H "Content-Type: application/ld+json"
 ```
+### Python
+```bash
+import json
+import requests
 
+payload={
+  "@context": {
+    "status": "http://a.b.c/attrs/status",
+    "state":  "http://a.b.c/attrs/state"
+  },
+  "id": "urn:entities:E2",
+  "type": "T",
+  "status": {
+    "type": "Property",
+    "value": "From Core Context"
+  },
+  "state": {
+    "type": "Property",
+    "value": "From User Context"
+  },
+  "state2": {
+    "type": "Property",
+    "value": "From Default URL"
+  }
+}
+response = requests.post(url='http://localhost:1026/ngsi-ld/v1/entities', headers={
+    "content-type": "application/ld+json"}, data=json.dumps(payload))
+print(response.status_code)
+```
+### JavaScript(NodeJS)
+```bash
+const axios = require('axios')
+const payload = {
+  "@context": {
+    "status": "http://a.b.c/attrs/status",
+    "state":  "http://a.b.c/attrs/state"
+  },
+  "id": "urn:entities:E2",
+  "type": "T",
+  "status": {
+    "type": "Property",
+    "value": "From Core Context"
+  },
+  "state": {
+    "type": "Property",
+    "value": "From User Context"
+  },
+  "state2": {
+    "type": "Property",
+    "value": "From Default URL"
+  }
+}
+axios.post('http://localhost:1026/ngsi-ld/v1/entities', payload, 
+            { headers: { "content-type": "application/ld+json" } })
+            .then(res => console.log(res.status))
+            .catch(err => console.log(err))
+```
 Note that the Content-Type is now `application/ld+json`, as the payload data carries a context.
 Let's see the database content after issuing this request:
 ```bash
@@ -214,6 +327,8 @@ Let's retrieve the entities and see what exact attribute names we get.
 
 ### Entity Retrieval Example 1 - without context
 No context will be used (== the Core context will be used):
+
+#### CURL
 ```bash
 curl localhost:1026/ngsi-ld/v1/entities?type=T
 ```
@@ -295,6 +410,21 @@ curl 'localhost:1026/ngsi-ld/v1/entities?type=T&prettyPrint=yes&spaces=2' -H "Ac
 Orion-LD responds with mime-type *application/json* if no Accept header is given.
 Orion-LD responds with mime-type *application/json* whenever possible (for example, for accept header `*/*` or `application/*`.
 
+#### Python
+```bash
+import requests
+
+response = requests.get(url='http://localhost:1026/ngsi-ld/v1/entities?type=T')
+print(response.json())
+```
+#### JavaScript (NodeJS)
+```bash
+const axios = require('axios')
+axios.get('http://localhost:1026/ngsi-ld/v1/entities?type=T')
+        .then(res => console.log(res.data))
+        .catch(err => console.log(err))
+```
+
 Back on track ...
 The entity "urn:entities:E1" was created without any context, i.e. the Core Context, but when creating "urn:entities:E2" we gave a context.
 So, why do both entities come back with the Core context???
@@ -353,6 +483,7 @@ A context cache is already maintained inside the broker, to avoid to download th
 So, in this situation, the incoming complex context is created inside the broker's context cache and it is given a name.
 The full URL to reach this context is then included in the HTTP headers of the response, in the Link header, of course.
 
+#### CURL
 The context can later be retrieved with the following command:
 ```bash
 GET /ngsi-ld/ex/v1/contexts<context-id>
@@ -462,7 +593,78 @@ Here's the response:
 }
 ```
 
+#### Python
+```
+payload = {
+    "@context": {
+        "status": "http://a.b.c/attrs/status",
+        "state":  "http://a.b.c/attrs/state"
+    },
+    "id": "urn:entities:E3",
+    "type": "T",
+    "status": {
+        "type": "Property",
+        "value": "From Core Context"
+    },
+    "state": {
+        "type": "Property",
+        "value": "From User Context"
+    },
+    "state2": {
+        "type": "Property",
+        "value": "From Default URL"
+    }
+}
 
+response = requests.post(url="http://localhost:1026/ngsi-ld/v1/entities", headers={
+    "content-type": "application/ld+json"}, data=json.dumps(payload))
+print(response.headers)
+```
+
+Result: 
+```
+{'Connection': 'Keep-Alive', 'Content-Length': '0', 'Location': '/ngsi-ld/v1/entities/urn:entities:E3', 'Date': 'Tue, 18 Feb 2020 
+18:42:24 GMT'}
+```
+
+#### JavaScript (NodeJS)
+```
+const axios = require('axios')
+const payload = {
+    "@context": {
+        "status": "http://a.b.c/attrs/status",
+        "state": "http://a.b.c/attrs/state"
+    },
+    "id": "urn:entities:E3",
+    "type": "T",
+    "status": {
+        "type": "Property",
+        "value": "From Core Context"
+    },
+    "state": {
+        "type": "Property",
+        "value": "From User Context"
+    },
+    "state2": {
+        "type": "Property",
+        "value": "From Default URL"
+    }
+}
+axios
+    .post("http://localhost:1026/ngsi-ld/v1/entities", payload, 
+    { headers: { "content-type": "application/ld+json" } })
+    .then(res => console.log(res.headers))
+    .catch(err => console.log(err))
+```
+Result:
+```
+{ 
+  connection: 'close',
+  'content-length': '0',
+  location: '/ngsi-ld/v1/entities/urn:entities:E3',
+  date: 'Tue, 18 Feb 2020 18:52:47 GMT'
+}
+```
 
 ### Reducing of a context
 As explained, any NGSI-LD broker has the Core Context "omnipresent". No way to get rid of it. No way to override it.
@@ -523,28 +725,89 @@ Fortunately, there is a trivial fix to this problem - the entities are sorted by
 So, if new entities come in, they are added to the "end of the list".
 
 Pagination example to retrieve entities 12-52:
+
+#### CURL
 ```
 curl localhost:1026/ngsi-ld/v1/entities?type=T&offset=12&limit=40
+```
+#### Python
+```bash
+import requests
+
+response = requests.get(url='http://localhost:1026/ngsi-ld/v1/entities?type=T&offset=12&limit=40')
+print(response.json())
+```
+#### JavaScript (NodeJS)
+```bash
+const axios = require('axios')
+axios.get('http://localhost:1026/ngsi-ld/v1/entities?type=T&offset=12&limit=40')
+        .then(res => console.log(res.data))
+        .catch(err => console.log(err))
 ```
 
 Note the `type=T` ... as I said earlier, some limitation of the total number of entities is required by the NGSI-LD spec.
 
 ### Filtering by Entity Type
 This is already mentioned in examples, but, using the URI parameter *type*, you can tell the broker to return only entities of a specific entity type:
+#### CURL
 ```
 curl localhost:1026/ngsi-ld/v1/entities?type=T
 ```
+#### Python
+```bash
+import requests
+
+response = requests.get(url='http://localhost:1026/ngsi-ld/v1/entities?type=T')
+print(response.json())
+```
+#### JavaScript (NodeJS)
+```bash
+const axios = require('axios')
+axios.get('http://localhost:1026/ngsi-ld/v1/entities?type=T')
+        .then(res => console.log(res.data))
+        .catch(err => console.log(err))
+```
 Also mentioned is that you can supply the fully qualified name of the type:
+#### CURL
 ```
 curl localhost:1026/ngsi-ld/v1/entities?type=http:/www.mypage.org/entityTypes/T
+```
+#### Python
+```bash
+import requests
+
+response = requests.get(url='http://localhost:1026/ngsi-ld/v1/entities?type=http:/www.mypage.org/entityTypes/T')
+print(response.json())
+```
+#### JavaScript (NodeJS)
+```bash
+const axios = require('axios')
+axios.get('http://localhost:1026/ngsi-ld/v1/entities?type=http:/www.mypage.org/entityTypes/T')
+        .then(res => console.log(res.data))
+        .catch(err => console.log(err))
 ```
 The advantage with this is that you no longer need to supply the context (which would otherwise be necessary to expand T to http:/www.mypage.org/entityTypes/T)
 
 ### Restricting attributes
 Perhaps an entity you are interested in has plenty of attributes and you only want to see attributes A1 and A6.
 There is a URI parameter to do this. It is called `attrs` and it is a list of attribute names:
+#### CURL
 ```
 curl localhost:1026/ngsi-ld/v1/entities?attrs=A1,A6
+```
+#### Python
+```bash
+import requests
+
+response = requests.get(url='http://localhost:1026/ngsi-ld/v1/entities?attrs=A1,A6')
+print(response.json())
+```
+#### JavaScript (NodeJS)
+```bash
+const axios = require('axios')
+axios.get('http://localhost:1026/ngsi-ld/v1/entities?attrs=A1,A6')
+        .then(res => console.log(res.data))
+        .catch(err => console.log(err))
 ```
 
 ### Query Language
