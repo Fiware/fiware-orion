@@ -12,3 +12,4 @@
 * Issue #364 - Attribute value compaction not done when 'keyValues' option is set - now it is!
 * Issue #XXX - Implemented PATCH /ngsi-ld/v1/subscriptions/{subscriptionId}
 * Issue #370 - Compaction of attribute names and entity types in GET /ngsi-ld/v1/csourceRegistrations
+* Issue #371 - Forwarded GET does not respect options=keyValues
