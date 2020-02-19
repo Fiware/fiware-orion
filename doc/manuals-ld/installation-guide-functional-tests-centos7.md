@@ -1,8 +1,10 @@
 # Installation Guide for the Orion-LD Functional Test Suite on CentOS 7
 
 The functional test suite for Orion-LD, found in the Orion-LD repository, under `test/functionalTests`, needs some installation in order to work.
-Especially, a python script (`scripts/accumulator-server.py`) is used as receptor of notifications to exercise that part and a few packages need to be installed 
-for this _accumulator_.
+
+First of all, there is a python script (`scripts/accumulator-server.py`) that is used as the receptor of the notifications during the functional tests.
+
+This python script needs a few packages to be installed:
 
 1. Install **pip**
 As `pip` is not available in CentOS 7 core repositories, you need to enable the EPEL repository to be able to install `pip`.
@@ -45,7 +47,7 @@ The output of the `which` command should be:
 ~/git/context.Orion-LD/scripts/accumulator-server.py
 ```
 
-Also, the test script uses `nc` (Netcat) to verify that the broker has started, and `bc` (Basic Calculator) for simple calculations.
+Also, the test script uses `nc` to verify that the broker has started, and `bc` for simple calculations.
 Install both of them:
 ```bash
 sudo yum install nc
@@ -58,7 +60,7 @@ test/functionalTest/testHarness.sh
 ```
 
 There are over 1250 test cases (each with a number of steps), so, it will take a while.
-Orion-LD has inherited the functional test suite from `orion` and added some 250 test cases only for NGSI-LD
+Orion-LD has inherited the functional test suite from `orion` and added some 250 test cases only for NGSI-LD.
 If you want to run only the NGSi-LD test cases, run the suite with the `-ld` option:
 
 ```bash
@@ -76,7 +78,7 @@ For example, to disable the test case 'direct_https_notifications.test' (you don
 export CB_SKIP_FUNC_TESTS=0706_direct_https_notifications/direct_https_notifications.test
 ```
 Note that not only the name of the test case file, but also the directoy where it resides is part of the "identifier".
-This is so, because different functional test case directories can have test case files with the same name.
+This is so because different functional test case directories can have test case files with the same name.
 
 FYI: after following myself the instructions in the installation guides, the following functional tests failed for me:
 
