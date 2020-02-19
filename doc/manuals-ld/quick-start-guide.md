@@ -3,7 +3,7 @@
 Welcome to the Quick Start Guide to Orion-LD, the NGSI-LD context broker!
 
 This guide is a brief guide to the most common characteristics of Orion-LD, with examples.
-It's imperative to have a running instance of Orion-LD and MongoDB to play with for this exercise.
+It is imperative to have a running instance of Orion-LD and MongoDB to play with for this exercise.
 
 Orion-LD is an enhanced [Orion](https://github.com/telefonicaid/fiware-orion) and implements (apart from what Orion offers) the NGSI-LD API.
 The NGSI-LD API is specified [here](https://www.etsi.org/deliver/etsi_gs/CIM/001_099/009/01.01.01_60/gs_CIM009v010101p.pdf) and while it's a pretty extensive
@@ -11,8 +11,8 @@ document, anybody that is really going to work with NGSI-LD should definitely re
 
 The first thing to do is to thoroughly read [this quick guide to the @context](doc/manuals-ld/the-context.md).
 There are also a number of tutorials about NGSI-LD:
-* [tutorial X](http://xxx)   - JASON!
-* [tutorial Y](http://xxx)   - JASON!
+* [FIWARE 601: Introduction to Linked Data](https://fiware-tutorials.readthedocs.io/en/latest/linked-data)
+* [FIWARE 602: Linked Data Relationships and Data Models](https://fiware-tutorials.readthedocs.io/en/latest/relationships-linked-data)
 
 
 Apart from learning about the context, this quick-start guide will show how to:
@@ -29,7 +29,7 @@ Now that we know how the context works, let's get our hands dirty and create an 
 Start three terminal windows:
 * broker
 * mongo
-* curl (if you want)
+* requests
 
 In the **broker terminal**, start the Orion-LD context broker, and start it in the foreground (the `-fg` option):
 ```bash
@@ -39,24 +39,25 @@ orionld -fg
 In the **mongo terminal**, first make sure that mongo is running. If not - start it.
 The terminal will be used later to look at the contents of the database.
 
-In the **curl terminal** we will issue HTTP requests to the broker.
+In the **request terminal** we will issue HTTP requests to the broker.
 
 The first example will not supply and user context => only the Core Context will be applied.
 
 Let's create an entity with two attributes:
-* status (is part of the Core Context)
-* state  (is **not** part of the Core Context)
+* status (which is part of the Core Context)
+* state  (which is **not** part of the Core Context)
 
 We will be using `curl` which you have already installed if you have followed the [installation guide](doc/manuals-ld/installation-guide.md).
 If not, make sure you have `curl` installed before proceeding.
+However, there are code snippets also for Python and JavaScript (node.js), so if you prefer those ... 
 
 Here goes:
 
 ### Entity Creation Example 1 - without context
 
-#### CURL
+#### curl
 ```bash
-payload={'
+payload='{
   "id": "urn:entities:E1",
   "type": "T",
   "status": {
@@ -93,15 +94,15 @@ response = requests.post(url='http://localhost:1026/ngsi-ld/v1/entities', header
 print(response.status_code)
 ```
 
-#### JavaScript (NodeJS)
-For make requests with JavaScript you need to install, before all, [NodeJS and NPM](https://nodejs.org/en/download/package-manager/) and create a NPM project:
+#### JavaScript (Node.js)
+To make requests with JavaScript you need to install [Node.js and NPM](https://nodejs.org/en/download/package-manager/) and create a NPM project:
 ```bash
 mkdir myproject
 cd myproject
 npm init -y
 touch index.js
 ```
-And finally, install [axios](https://github.com/axios/axios) for make HTTP requests.
+And finally, install [axios](https://github.com/axios/axios) to make HTTP requests.
 ```
 npm install axios
 ```
@@ -134,7 +135,7 @@ A few notes about the payload:
     * GeoProperty
   The attribute names will be expanded.
 * Attributes that are of type *Property* **must** have a "value" field
-* Attributes that are of type *Relationship* **must** have an "object" field and the value of that field **must** he a URI.
+* Attributes that are of type *Relationship* **must** have an "object" field and the value of that field **must** be a URI.
 
 After issuing this command, the broker responds with a **201 Created** (which you won't see unless you ask `curl` to show the HTTP headers - how to do this is explained later)
 and we can now look inside the mongo database to see what exactly has been stored:
@@ -160,38 +161,38 @@ mongo orion
 }
 ```
 
-The aim of this guide is not to teach about the data model or Orion/Orion-LD, so lots of stuff from the mongo output has been cut out to save lines.
+The aim of this guide is not to teach about the data model or Orion/Orion-LD, so lots of stuff from the mongo content has been cut out to save lines.
 What we will concentrate on here is the expansion of the entity type and the two attributes "state" and "status".
-[ If you issue this command yourselves, you will see more fields, especially "creDate/modDate" that are timestamps to store creation date and last modification date. ]
+[ If you issue this command yourself, you will see more fields, especially "creDate/modDate" that are timestamps to store creation date and last modification date. ]
 
 The entity type was "T".
-"T" is not part of the core context, and no user context has been supplied, so, "T" hasn't been found in the context.
+"T" is not part of the core context, and no user context has been supplied, so, "T" wasn't found in the context.
 What happens if a term to be expanded is not found in the context?  
-It is expanded according to the value of the "@vocab" key of the core context.
+It is expanded according to the value of the "@vocab" key of the core context. This is called the "Default URL".
 
 The same has happened to the property "state".
 
-"status" on the other hand is part of the core context, and it has been expanded according the core context.
+"status" on the other hand is part of the Core Context, and it has been expanded accordingly.
 
 But look at the expansions of the properties.
 They aren't as the core context defines them!!!
 All dots have been replaced with '=' !!!
 
-This is part of the data model. Dots can't be part of any attribute name in the database as that would complicate filtering over sub-attributes.
+This is part of the database model. Dots can't be part of any attribute name in the database as that would complicate filtering over sub-attributes.
 We have to look at things in advance here, to understand this.
-There is a mechanism to filter on properties-of-properties and the dot '.' is used as separator.
-Imagine you have an entity with a Property "P1" with a sub-property "P11" with the value 127.
+There is a mechanism to filter on properties-of-properties and the dot '.' is used as separator for property names.
+Imagine you have an entity with a Property "P1" that in turn has a sub-property "P11" with the value 127.
 This is how you find that entity:
 ```bash
 GET /ngsi-ld/v1/entities?q=P1.P11==127
 ```
 
-Now, if the dot '.' were to be allowed as part of the property name inside the database, thisd would be really difficult to implement, boarderline impossible.
-So, we made the decision to use replace all dots with '=' before storing in the database.
+Now, if the dot '.' were to be allowed as part of the property name inside the database, this would be really difficult to implement, boarderline impossible.
+So, we made the decision to use replace all dots with '=' before storing the name in the database.
 We picked '=' as it's a forbidden character for attribute names and can't be used anyway.
 
 By the way, the "P1.P11" in the q-expression would be expanded to something like "https://uri=etsi=org/ngsi-ld/default-context/P1.https://uri=etsi=org/ngsi-ld/default-context/P11",
-if the Core context were used. And yes, it looks ugly, but it works :)
+if the Core context were used. And yes, it may look ugly, but it works :)
 
 ### Entity Creation Example 2 - with a user context in the payload
 Now let's play a little with expansions, by using our own context that tries to overload the Core context (which is not possible, as you will see).
@@ -257,7 +258,7 @@ response = requests.post(url='http://localhost:1026/ngsi-ld/v1/entities', header
     "content-type": "application/ld+json"}, data=json.dumps(payload))
 print(response.status_code)
 ```
-### JavaScript(NodeJS)
+### JavaScript (Node.js)
 ```bash
 const axios = require('axios')
 const payload = {
@@ -285,7 +286,7 @@ axios.post('http://localhost:1026/ngsi-ld/v1/entities', payload,
             .then(res => console.log(res.status))
             .catch(err => console.log(err))
 ```
-Note that the Content-Type is now `application/ld+json`, as the payload data carries a context.
+Note that the Content-Type now must be `application/ld+json`, as the payload data carries a context.
 Let's see the database content after issuing this request:
 ```bash
 mongo orion
@@ -410,30 +411,17 @@ curl 'localhost:1026/ngsi-ld/v1/entities?type=T&prettyPrint=yes&spaces=2' -H "Ac
 Orion-LD responds with mime-type *application/json* if no Accept header is given.
 Orion-LD responds with mime-type *application/json* whenever possible (for example, for accept header `*/*` or `application/*`.
 
-#### Python
-```bash
-import requests
-
-response = requests.get(url='http://localhost:1026/ngsi-ld/v1/entities?type=T')
-print(response.json())
-```
-#### JavaScript (NodeJS)
-```bash
-const axios = require('axios')
-axios.get('http://localhost:1026/ngsi-ld/v1/entities?type=T')
-        .then(res => console.log(res.data))
-        .catch(err => console.log(err))
-```
-
 Back on track ...
 The entity "urn:entities:E1" was created without any context, i.e. the Core Context, but when creating "urn:entities:E2" we gave a context.
 So, why do both entities come back with the Core context???
 
-Simple. The context of the **GET request** was the core context, and that is what has been used to assemble the response.
+Simple.
+The context of the **GET request** was the core context, and that is what has been used to assemble the response.
+It doesn't matter what context was used when creating/modifying the entities.
 
 This is important:
 
-**Each request uses the current context, the context used when issuing the request. Never mind what context was used before.**
+**Each request uses the current context - the context used when issuing the request. Never mind what context was used before.**
 
 After all, a context is nothing but a collection of aliases.
 The real names and values are the longnames, which is what is stored in the database.
@@ -627,7 +615,7 @@ Result:
 18:42:24 GMT'}
 ```
 
-#### JavaScript (NodeJS)
+#### JavaScript (Node.js)
 ```
 const axios = require('axios')
 const payload = {
@@ -666,15 +654,15 @@ Result:
 }
 ```
 
-### Reducing of a context
+### Reducing of a context (only valid for the non-ngsild-compliant version of Orion-LD)
 As explained, any NGSI-LD broker has the Core Context "omnipresent". No way to get rid of it. No way to override it.
 Also, no meaning whatsoever to send it as part of the user context.
 However, it seems to be common pravtice to include it, normally to have the request compatible to JSON-LD.
-Let me just sat one thing:
-**NGSI-LD is not JSON-LD**
+Let me just say one thing:
+**NGSI-LD is not 100% JSON-LD**
 It is similar, as similar as possible, but NGSI-LD has a default context, namely the Core context and there is no need to feed the broker with it.
 Doing that is just a waste of time.
-So, what Orion-LD doe sto minimize the waste of time is the following:
+So, what Orion-LD does to minimize the waste of time is the following:
 * If the user provided context is a simple string and the value of that string is the URL of the Core Context - then the request is treated as if it didn't have any user-provided context.
   The alternative would be to lookup inside the user context (that is the core context) and then lookup in the core context only to override what was just found.
   - TWO lookups in the Core context ... bad idea
@@ -705,6 +693,7 @@ One of the following URI parameters must be present for the request to be allowe
 
 This is to avoid *too many* entities to be returned by the broker (flooding the user).
 Personally, I don't agree to all this.
+The non-ngsild-compliant version of Orion-LD doesn't have this restriction.
 To avoid flooding, an NGSI-LD broker implements _pagination_.
 
 ### Pagination
@@ -737,7 +726,7 @@ import requests
 response = requests.get(url='http://localhost:1026/ngsi-ld/v1/entities?type=T&offset=12&limit=40')
 print(response.json())
 ```
-#### JavaScript (NodeJS)
+#### JavaScript (Node.js)
 ```bash
 const axios = require('axios')
 axios.get('http://localhost:1026/ngsi-ld/v1/entities?type=T&offset=12&limit=40')
@@ -745,7 +734,8 @@ axios.get('http://localhost:1026/ngsi-ld/v1/entities?type=T&offset=12&limit=40')
         .catch(err => console.log(err))
 ```
 
-Note the `type=T` ... as I said earlier, some limitation of the total number of entities is required by the NGSI-LD spec.
+Note the `type=T`.
+As was mentioned earlier, some limitation of the total number of entities is required by the NGSI-LD spec.
 
 ### Filtering by Entity Type
 This is already mentioned in examples, but, using the URI parameter *type*, you can tell the broker to return only entities of a specific entity type:
@@ -760,7 +750,7 @@ import requests
 response = requests.get(url='http://localhost:1026/ngsi-ld/v1/entities?type=T')
 print(response.json())
 ```
-#### JavaScript (NodeJS)
+#### JavaScript (Node.js)
 ```bash
 const axios = require('axios')
 axios.get('http://localhost:1026/ngsi-ld/v1/entities?type=T')
@@ -779,14 +769,14 @@ import requests
 response = requests.get(url='http://localhost:1026/ngsi-ld/v1/entities?type=http:/www.mypage.org/entityTypes/T')
 print(response.json())
 ```
-#### JavaScript (NodeJS)
+#### JavaScript (Node.js)
 ```bash
 const axios = require('axios')
 axios.get('http://localhost:1026/ngsi-ld/v1/entities?type=http:/www.mypage.org/entityTypes/T')
         .then(res => console.log(res.data))
         .catch(err => console.log(err))
 ```
-The advantage with this is that you no longer need to supply the context (which would otherwise be necessary to expand T to http:/www.mypage.org/entityTypes/T)
+The advantage with this is that you no longer need to supply the context (which would otherwise be necessary to expand T into http:/www.mypage.org/entityTypes/T)
 
 ### Restricting attributes
 Perhaps an entity you are interested in has plenty of attributes and you only want to see attributes A1 and A6.
@@ -802,7 +792,7 @@ import requests
 response = requests.get(url='http://localhost:1026/ngsi-ld/v1/entities?attrs=A1,A6')
 print(response.json())
 ```
-#### JavaScript (NodeJS)
+#### JavaScript (Node.js)
 ```bash
 const axios = require('axios')
 axios.get('http://localhost:1026/ngsi-ld/v1/entities?attrs=A1,A6')
