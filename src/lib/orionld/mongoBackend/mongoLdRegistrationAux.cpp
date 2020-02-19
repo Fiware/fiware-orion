@@ -34,6 +34,7 @@
 #include "mongoBackend/dbConstants.h"                                // REG_ATTRS, ...
 #include "mongoBackend/safeMongo.h"                                  // getFieldF
 #include "orionld/common/orionldState.h"                             // orionldState
+
 #include "orionld/context/orionldContextItemAliasLookup.h"           // orionldContextItemAliasLookup
 #include "orionld/mongoCppLegacy/mongoCppLegacyKjTreeFromBsonObj.h"  // mongoCppLegacyKjTreeFromBsonObj
 #include "orionld/mongoBackend/mongoLdRegistrationAux.h"             // Own interface
@@ -191,7 +192,7 @@ void mongoSetLdTimestamp(long long* timestampP, const char* name, const mongo::B
 
 // -----------------------------------------------------------------------------
 //
-// mongoSetLdTimeInterval -
+// mongoSetLdTimeInterval - extract TimeInterval from BSONObj
 //
 bool mongoSetLdTimeInterval(OrionldGeoLocation* geoLocationP, const char* name, const mongo::BSONObj& bobj, char** titleP, char** detailP)
 {
@@ -226,14 +227,17 @@ bool mongoSetLdTimeInterval(OrionldGeoLocation* geoLocationP, const char* name, 
 //
 bool mongoSetLdProperties(ngsiv2::Registration* regP, const char* name, const mongo::BSONObj& bobj, char** titleP, char** detailP)
 {
-  mongo::BSONObj  propertiesObj   = getObjectFieldF(bobj, name);
-
-  regP->properties = mongoCppLegacyKjTreeFromBsonObj(&propertiesObj, titleP, detailP);
-
-  if (regP->properties == NULL)
+  if (bobj.hasField(name))
   {
-    LM_E(("Internal Error (%s: %s)", *titleP, *detailP));
-    return false;
+    mongo::BSONObj  propertiesObj   = getObjectFieldF(bobj, name);
+
+    regP->properties = mongoCppLegacyKjTreeFromBsonObj(&propertiesObj, titleP, detailP);
+
+    if (regP->properties == NULL)
+    {
+      LM_E(("Internal Error (%s: %s)", *titleP, *detailP));
+      return false;
+    }
   }
 
   return true;

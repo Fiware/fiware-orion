@@ -56,10 +56,11 @@ jobs:
      
       before_script : >
         curl -LO https://github.com/FIWARE/NGSI-LD_TestSuite/archive/master.zip;
+        shasum -a 256 master.zip;
         unzip -q master.zip;
         rm master.zip;
         cd NGSI-LD_TestSuite-master;  
-        export EXCLUDED_TESTS="001|003|042|080|081|126|129|130|149|";
+        export EXCLUDED_TESTS="001|003|126|129|";
         npm install;
 
       script:  >

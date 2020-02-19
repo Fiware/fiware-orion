@@ -30,6 +30,7 @@
 #include "logMsg/logMsg.h"
 #include "logMsg/traceLevels.h"
 
+
 #include "apiTypesV2/Registration.h"                             // ngsiv2::Registration
 #include "rest/HttpStatusCode.h"                                 // HttpStatusCode
 #include "common/statistics.h"                                   // TIME_STAT_MONGO_READ_WAIT_START
@@ -152,6 +153,9 @@ void mongoSetEntities(ngsiv2::Registration* regP, const mongo::BSONObj& cr0)
     {
       typeGiven = true;
       entity.type = getStringFieldF(ce, REG_ENTITY_TYPE);
+
+      if (orionldState.apiVersion == NGSI_LD_V1)
+        entity.type = orionldContextItemAliasLookup(orionldState.contextP, entity.type.c_str(), NULL, NULL);
     }
 
     if ((typeGiven == true) && (entity.type != "") && (orionldState.apiVersion == NGSI_LD_V1))
