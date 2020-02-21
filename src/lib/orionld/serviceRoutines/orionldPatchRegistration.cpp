@@ -649,8 +649,8 @@ static bool orionldCheckObservationInterval(ConnectionInfo* ciP, KjNode* timeInt
 {
   KjNode* startP = NULL;
   KjNode* endP   = NULL;
-  int64_t start;
-  int64_t end;
+  int64_t start  = 0;
+  int64_t end    = 0;
 
   LM_TMP(("OI: examining an ObservationInterval named '%s'", timeIntervalNodeP));
   for (KjNode* tiItemP = timeIntervalNodeP->value.firstChildP; tiItemP != NULL; tiItemP = tiItemP->next)
@@ -717,8 +717,8 @@ static bool orionldCheckManagementInterval(ConnectionInfo* ciP, KjNode* timeInte
 {
   KjNode* startP = NULL;
   KjNode* endP   = NULL;
-  int64_t start;
-  int64_t end;
+  int64_t start  = 0;
+  int64_t end    = 0;
 
   for (KjNode* tiItemP = timeIntervalNodeP->value.firstChildP; tiItemP != NULL; tiItemP = tiItemP->next)
   {
