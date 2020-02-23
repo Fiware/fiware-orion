@@ -1,9 +1,9 @@
-#ifndef SRC_LIB_ORIONLD_SERVICEROUTINES_ORIONLDPOSTBATCHUPSERT_H_
-#define SRC_LIB_ORIONLD_SERVICEROUTINES_ORIONLDPOSTBATCHUPSERT_H_
+#ifndef SRC_LIB_ORIONLD_SERVICEROUTINES_ORIONLDPOSTBATCHCREATE_H_
+#define SRC_LIB_ORIONLD_SERVICEROUTINES_ORIONLDPOSTBATCHCREATE_H_
 
 /*
 *
-* Copyright 2019 FIWARE Foundation e.V.
+* Copyright 2020 FIWARE Foundation e.V.
 *
 * This file is part of Orion-LD Context Broker.
 *
@@ -31,8 +31,8 @@
 
 // ----------------------------------------------------------------------------
 //
-// orionldPostBatchUpsert -
+// orionldPostBatchCreate -
 //
-extern bool orionldPostBatchUpsert(ConnectionInfo* ciP);
+extern bool orionldPostBatchCreate(ConnectionInfo* ciP);
 
-#endif  // SRC_LIB_ORIONLD_SERVICEROUTINES_ORIONLDPOSTBATCHUPSERT_H_
+#endif  // SRC_LIB_ORIONLD_SERVICEROUTINES_ORIONLDPOSTBATCHCREATE_H_
