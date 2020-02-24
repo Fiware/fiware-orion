@@ -47,6 +47,12 @@ SET (SOURCES
     eqForDot.cpp
     OrionldProblemDetails.cpp
     entityErrorPush.cpp
+    entityIdCheck.cpp
+    entityTypeCheck.cpp
+    entityLookupById.cpp
+    removeArrayEntityLookup.cpp
+    typeCheckForNonExistingEntities.cpp
+    entityIdAndTypeGet.cpp
     # qTreeToBson.cpp
 )
 

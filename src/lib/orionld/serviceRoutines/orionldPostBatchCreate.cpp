@@ -1,6 +1,6 @@
 /*
 *
-* Copyright 2020 FIWARE Foundation e.V.
+* Copyright 2019 FIWARE Foundation e.V.
 *
 * This file is part of Orion-LD Context Broker.
 *
@@ -54,6 +54,13 @@ extern "C"
 #include "orionld/common/urlCheck.h"                           // urlCheck
 #include "orionld/common/urnCheck.h"                           // urnCheck
 #include "orionld/common/orionldState.h"                       // orionldState
+#include "orionld/common/entityErrorPush.h"                    // entityErrorPush
+#include "orionld/common/entityIdCheck.h"                      // entityIdCheck
+#include "orionld/common/entityTypeCheck.h"                    // entityTypeCheck
+#include "orionld/common/entityIdAndTypeGet.h"                 // entityIdAndTypeGet
+#include "orionld/common/entityLookupById.h"                   // entityLookupById
+#include "orionld/common/removeArrayEntityLookup.h"            // removeArrayEntityLookup
+#include "orionld/common/typeCheckForNonExistingEntities.h"    // typeCheckForNonExistingEntities
 #include "orionld/context/orionldCoreContext.h"                // orionldDefaultUrl, orionldCoreContext
 #include "orionld/context/orionldContextPresent.h"             // orionldContextPresent
 #include "orionld/context/orionldContextItemAliasLookup.h"     // orionldContextItemAliasLookup
@@ -66,53 +73,6 @@ extern "C"
 
 // ----------------------------------------------------------------------------
 //
-// entityErrorPush -
-//
-// The array "errors" in BatchOperationResult is an array of BatchEntityError.
-// BatchEntityError contains a string (the entity id) and an instance of ProblemDetails.
-//
-// ProblemDetails is described in https://www.etsi.org/deliver/etsi_gs/CIM/001_099/009/01.01.01_60/gs_CIM009v010101p.pdf
-// and contains:
-//
-// * type      (string) A URI reference that identifies the problem type
-// * title     (string) A short, human-readable summary of the problem
-// * detail    (string) A human-readable explanation specific to this occurrence of the problem
-// * status    (number) The HTTP status code
-// * instance  (string) A URI reference that identifies the specific occurrence of the problem
-//
-// Of these five items, only "type" seems to be mandatory.
-//
-// This implementation will treat "type", "title", and "status" as MANDATORY, and "detail" as OPTIONAL
-//
-static void entityErrorPush(KjNode* errorsArrayP, const char* entityId, OrionldResponseErrorType type, const char* title, const char* detail, int status)
-{
-  KjNode* objP            = kjObject(orionldState.kjsonP, NULL);
-  KjNode* eIdP            = kjString(orionldState.kjsonP,  "entityId", entityId);
-  KjNode* problemDetailsP = kjObject(orionldState.kjsonP,  "error");
-  KjNode* typeP           = kjString(orionldState.kjsonP,  "type",     orionldErrorTypeToString(type));
-  KjNode* titleP          = kjString(orionldState.kjsonP,  "title",    title);
-  KjNode* statusP         = kjInteger(orionldState.kjsonP, "status",   status);
-
-  kjChildAdd(problemDetailsP, typeP);
-  kjChildAdd(problemDetailsP, titleP);
-
-  if (detail != NULL)
-  {
-    KjNode* detailP = kjString(orionldState.kjsonP, "detail", detail);
-    kjChildAdd(problemDetailsP, detailP);
-  }
-
-  kjChildAdd(problemDetailsP, statusP);
-
-  kjChildAdd(objP, eIdP);
-  kjChildAdd(objP, problemDetailsP);
-
-  kjChildAdd(errorsArrayP, objP);
-}
-
-
-// ----------------------------------------------------------------------------
-//
 // entitySuccessPush -
 //
 static void entitySuccessPush(KjNode* successArrayP, const char* entityId)
@@ -120,140 +80,6 @@ static void entitySuccessPush(KjNode* successArrayP, const char* entityId)
   KjNode* eIdP = kjString(orionldState.kjsonP, "id", entityId);
 
   kjChildAdd(successArrayP, eIdP);
-}
-
-
-// -----------------------------------------------------------------------------
-//
-// entityIdCheck -
-//
-static bool entityIdCheck(KjNode* entityIdNodeP, bool duplicatedId, KjNode* errorsArrayP)
-{
-  // Entity ID is mandatory
-  if (entityIdNodeP == NULL)
-  {
-    LM_W(("Bad Input (UPSERT: mandatory field missing: entity::id)"));
-    entityErrorPush(errorsArrayP, "no entity::id", OrionldBadRequestData, "mandatory field missing", "entity::id", 400);
-    return false;
-  }
-
-  // Entity ID must be a string
-  if (entityIdNodeP->type != KjString)
-  {
-    LM_W(("Bad Input (UPSERT: entity::id not a string)"));
-    entityErrorPush(errorsArrayP, "invalid entity::id", OrionldBadRequestData, "field with invalid type", "entity::id", 400);
-    return false;
-  }
-
-  // Entity ID must be a valid URI
-  char* detail;
-  if (!urlCheck(entityIdNodeP->value.s, &detail) && !urnCheck(entityIdNodeP->value.s, &detail))
-  {
-    LM_W(("Bad Input (UPSERT: entity::id is a string but not a valid URI)"));
-    entityErrorPush(errorsArrayP, entityIdNodeP->value.s, OrionldBadRequestData, "Not a URI", entityIdNodeP->value.s, 400);
-    return false;
-  }
-
-  // Entity ID must not be duplicated
-  if (duplicatedId == true)
-  {
-    LM_W(("Bad Input (UPSERT: Duplicated entity::id)"));
-    entityErrorPush(errorsArrayP, entityIdNodeP->value.s, OrionldBadRequestData, "Duplicated field", "entity::id", 400);
-    return false;
-  }
-
-  return true;
-}
-
-
-// -----------------------------------------------------------------------------
-//
-// entityTypeCheck -
-//
-static bool entityTypeCheck(KjNode* entityTypeNodeP, bool duplicatedType, char* entityId, bool typeMandatory, KjNode* errorsArrayP)
-{
-  // Entity TYPE is mandatory?
-  if ((typeMandatory == true) && (entityTypeNodeP == NULL))
-  {
-    LM_W(("Bad Input (UPSERT: mandatory field missing: entity::type)"));
-    entityErrorPush(errorsArrayP, entityId, OrionldBadRequestData, "mandatory field missing", "entity::type", 400);
-    return false;
-  }
-
-  // Entity TYPE must not be duplicated
-  if (duplicatedType == true)
-  {
-    LM_W(("KZ: Bad Input (UPSERT: Duplicated entity::type)"));
-    entityErrorPush(errorsArrayP, entityId, OrionldBadRequestData, "Duplicated field", "entity::type", 400);
-    return false;
-  }
-
-  // Entity TYPE must be a string
-  if (entityTypeNodeP->type != KjString)
-  {
-    LM_W(("Bad Input (UPSERT: entity::type not a string)"));
-    entityErrorPush(errorsArrayP, entityId, OrionldBadRequestData, "field with invalid type", "entity::type", 400);
-    return false;
-  }
-
-  return true;
-}
-
-
-// -----------------------------------------------------------------------------
-//
-// entityIdAndTypeGet - lookup 'id' and 'type' in a KjTree
-//
-static bool entityIdAndTypeGet(KjNode* entityNodeP, char** idP, char** typeP, KjNode* errorsArrayP)
-{
-  KjNode*  idNodeP        = NULL;
-  KjNode*  typeNodeP      = NULL;
-  bool     idDuplicated   = false;
-  bool     typeDuplicated = false;
-
-  *idP   = NULL;
-  *typeP = NULL;
-
-  for (KjNode* itemP = entityNodeP->value.firstChildP; itemP != NULL; itemP = itemP->next)
-  {
-    if (SCOMPARE3(itemP->name, 'i', 'd', 0))
-    {
-      if (idNodeP != NULL)
-        idDuplicated = true;
-      else
-        idNodeP = itemP;
-    }
-    else if (SCOMPARE5(itemP->name, 't', 'y', 'p', 'e', 0))
-    {
-      if (typeNodeP != NULL)
-        typeDuplicated = true;
-      else
-        typeNodeP = itemP;
-    }
-  }
-
-  if (entityIdCheck(idNodeP, idDuplicated, errorsArrayP) == false)
-  {
-    LM_E(("UPSERT: entityIdCheck flagged error"));
-    return false;
-  }
-
-  *idP = idNodeP->value.s;
-
-  if (typeNodeP != NULL)
-  {
-    if (entityTypeCheck(typeNodeP, typeDuplicated, idNodeP->value.s, false, errorsArrayP) == false)
-    {
-      LM_E(("CREATE: entityTypeCheck flagged error"));
-      return false;
-    }
-
-    *typeP = typeNodeP->value.s;
-  }
-
-  LM_E(("CREATE: OK"));
-
-  return true;
 }
 
 
@@ -271,24 +97,6 @@ static void entityIdPush(KjNode* entityIdsArrayP, const char* entityId)
 
 // -----------------------------------------------------------------------------
 //
-// entityLookupById - lookup an entity in an array of entities, by its entity-id
-//
-static KjNode* entityLookupById(KjNode* entityArray, char* entityId)
-{
-  for (KjNode* entityP = entityArray->value.firstChildP; entityP != NULL; entityP = entityP->next)
-  {
-    KjNode* idNodeP = kjLookup(entityP, "id");
-
-    if ((idNodeP != NULL) && (strcmp(idNodeP->value.s, entityId) == 0))  // If NULL, something is really wrong!!!
-      return entityP;
-  }
-
-  return NULL;
-}
-
-
-// -----------------------------------------------------------------------------
-//
 // entityIdGet -
 //
 static void entityIdGet(KjNode* dbEntityP, char** idP)
@@ -298,61 +106,6 @@ static void entityIdGet(KjNode* dbEntityP, char** idP)
     if (SCOMPARE3(nodeP->name, 'i', 'd', 0))
       *idP = nodeP->value.s;
   }
-}
-
-
-// ----------------------------------------------------------------------------
-//
-// typeCheckForNonExistingEntities -
-//
-bool typeCheckForNonExistingEntities(KjNode* incomingTree, KjNode* idTypeAndCreDateFromDb, KjNode* errorsArrayP)
-{
-  KjNode* inNodeP = incomingTree->value.firstChildP;
-  KjNode* next;
-
-  while (inNodeP != NULL)
-  {
-    //
-    // entities that weren't found in the DB MUST contain entity::type
-    //
-    KjNode* inEntityIdNodeP = kjLookup(inNodeP, "id");
-
-    if (inEntityIdNodeP == NULL)  // Entity ID is mandatory
-    {
-      LM_E(("KZ: Invalid Entity: Mandatory field entity::id is missing"));
-      entityErrorPush(errorsArrayP, "No ID", OrionldBadRequestData, "Invalid Entity", "Mandatory field entity::id is missing", 400);
-      next = inNodeP->next;
-      kjChildRemove(incomingTree, inNodeP);
-      inNodeP = next;
-      continue;
-    }
-
-    KjNode* dbEntityId = NULL;
-
-    // Lookup the entity::id in what came from the database - if anything at all came
-    if (idTypeAndCreDateFromDb != NULL)
-      dbEntityId = entityLookupById(idTypeAndCreDateFromDb, inEntityIdNodeP->value.s);
-
-    if (dbEntityId == NULL)  // This Entity is to be created - "type" is mandatory!
-    {
-      KjNode* inEntityTypeNodeP = kjLookup(inNodeP, "type");
-
-      if (inEntityTypeNodeP == NULL)
-      {
-        LM_E(("KZ: Invalid Entity: Mandatory field entity::type is missing"));
-        entityErrorPush(errorsArrayP, inEntityIdNodeP->value.s, OrionldBadRequestData, "Invalid Entity", "Mandatory field entity::type is missing", 400);
-
-        next = inNodeP->next;
-        kjChildRemove(incomingTree, inNodeP);
-        inNodeP = next;
-        continue;
-      }
-    }
-
-    inNodeP = inNodeP->next;
-  }
-
-  return true;
 }
 
 
@@ -429,7 +182,7 @@ bool orionldPostBatchCreate(ConnectionInfo* ciP)
     }
   }
 
-  typeCheckForNonExistingEntities(incomingTree, idTypeAndCreDateFromDb, errorsArrayP);
+  typeCheckForNonExistingEntities(incomingTree, idTypeAndCreDateFromDb, errorsArrayP, NULL);
 
   UpdateContextRequest  mongoRequest;
 
