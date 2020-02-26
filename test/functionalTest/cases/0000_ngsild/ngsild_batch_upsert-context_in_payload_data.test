@@ -139,7 +139,7 @@ Date: REGEX(.*)
             "entityId": "urn:E1",
             "error": {
                 "status": 400,
-                "title": "Content-Type is 'application/json', and an @context in present in the payload data array item",
+                "title": "Content-Type is 'application/json', and an @context is present in the payload data array item",
                 "type": "https://uri.etsi.org/ngsi-ld/errors/BadRequestData"
             }
         }
@@ -174,9 +174,7 @@ Date: REGEX(.*)
 03. Batch Upsert, Content-Type is JSON, and no @context present in an item of the array - OK
 ============================================================================================
 HTTP/1.1 204 No Content
-Content-Length: 39
-Content-Type: application/json
-Link: <https://uri.etsi.org/ngsi-ld/v1/ngsi-ld-core-context.jsonld>; rel="http://www.w3.org/ns/json-ld#context"; type="application/ld+json"
+Content-Length: 0
 Date: REGEX(.*)
 
 
@@ -184,9 +182,7 @@ Date: REGEX(.*)
 04. Issue a Batch upsert command, creating 3 new entities, each with a different context
 ========================================================================================
 HTTP/1.1 204 No Content
-Content-Length: 34
-Content-Type: application/json
-Link: <https://uri.etsi.org/ngsi-ld/v1/ngsi-ld-core-context.jsonld>; rel="http://www.w3.org/ns/json-ld#context"; type="application/ld+json"
+Content-Length: 0
 Date: REGEX(.*)
 
 
