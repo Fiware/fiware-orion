@@ -35,7 +35,6 @@
 extern "C"
 {
 #include "kalloc/kaBufferReset.h"                                // kaBufferReset
-#include "kalloc/kaStrdup.h"                                     // kaStrdup
 #include "kjson/kjFree.h"                                        // kjFree
 }
 
@@ -635,7 +634,7 @@ int httpHeaderGet(void* cbDataP, MHD_ValueKind kind, const char* ckey, const cha
     headerP->servicePath         = value;
     headerP->servicePathReceived = true;
 #ifdef ORIONLD
-    orionldState.servicePath = kaStrdup(&orionldState.kalloc, value);
+    orionldState.servicePath = (char*) value;
 #endif
   }
 #ifdef ORIONLD
