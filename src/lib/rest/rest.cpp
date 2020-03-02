@@ -35,6 +35,7 @@
 extern "C"
 {
 #include "kalloc/kaBufferReset.h"                                // kaBufferReset
+#include "kalloc/kaStrdup.h"                                     // kaStrdup
 #include "kjson/kjFree.h"                                        // kjFree
 }
 
@@ -618,6 +619,12 @@ int httpHeaderGet(void* cbDataP, MHD_ValueKind kind, const char* ckey, const cha
     headerP->tenant = value;
     toLowercase((char*) headerP->tenant.c_str());
   }
+#ifdef ORIONLD
+  else if (strcasecmp(ckey, "NGSILD-Tenant") == 0)
+    orionldState.tenant = (char*) value;
+  else if (strcasecmp(ckey, "NGSILD-Path") == 0)
+    orionldState.servicePath = (char*) value;
+#endif
   else if (strcasecmp(key.c_str(), HTTP_X_AUTH_TOKEN) == 0)        headerP->xauthToken         = value;
   else if (strcasecmp(key.c_str(), HTTP_X_REAL_IP) == 0)           headerP->xrealIp            = value;
   else if (strcasecmp(key.c_str(), HTTP_X_FORWARDED_FOR) == 0)     headerP->xforwardedFor      = value;
@@ -627,6 +634,9 @@ int httpHeaderGet(void* cbDataP, MHD_ValueKind kind, const char* ckey, const cha
   {
     headerP->servicePath         = value;
     headerP->servicePathReceived = true;
+#ifdef ORIONLD
+    orionldState.servicePath = kaStrdup(&orionldState.kalloc, value);
+#endif
   }
 #ifdef ORIONLD
   else if (strcasecmp(key.c_str(), HTTP_LINK) == 0)
