@@ -88,7 +88,6 @@ static bool orionldForwardPatchAttribute
   if (kjTreeRegistrationInfoExtract(registrationP, protocol, sizeof(protocol), host, sizeof(host), &port, &uriDir, registrationAttrV, 100, &registrationAttrs, &detail) == false)
     return false;
 
-  LM_TMP(("PATCH: Forwarding payload '%s' to %s:%d - %s", orionldState.requestPayload, host, port, uriDir));
   const char*  contentType = (orionldState.ngsildContent == true)? "application/ld+json" : "application/json";
   int          payloadLen  = strlen(orionldState.requestPayload);
   bool         tryAgain;
@@ -96,14 +95,11 @@ static bool orionldForwardPatchAttribute
   bool         reqOk;
   char         uriPath[512];
 
-  LM_TMP(("FWD: Forwarding for PATCH Attribute '%s'", attrName));
-
   if (orionldState.forwardAttrsCompacted == true)
   {
     KjNode*         regContextNodeP;
     OrionldContext* regContextP = NULL;
 
-    LM_TMP(("FWD: Compacting Attribute Name '%s'", attrName));
     regContextNodeP = kjLookup(registrationP, "@context");
 
     //
@@ -112,23 +108,15 @@ static bool orionldForwardPatchAttribute
     //
     if (regContextNodeP != NULL)
     {
-      LM_TMP(("FWD: Found a context node in the registration - looking it up"));
       OrionldProblemDetails pd;
       regContextP = orionldContextFromTree(NULL, false, regContextNodeP, &pd);
     }
 
     if (regContextP == NULL)
-    {
-      LM_TMP(("FWD: regContextP == NULL - using the context of the current request"));
       regContextP = orionldState.contextP;
-    }
-
-    LM_TMP(("FWD: using @context '%s'", regContextP->url));
 
     if (regContextP != NULL)
       attrName = orionldContextItemAliasLookup(regContextP, attrName, NULL, NULL);
-
-    LM_TMP(("FWD: attrName: '%s'", attrName));
   }
 
 
@@ -148,21 +136,35 @@ static bool orionldForwardPatchAttribute
     snprintf(uriPath, sizeof(uriPath), "%s/ngsi-ld/v1/entities/%s/attrs/%s", uriDir, entityId, attrName);
   }
 
-  LM_TMP(("FWD: orionldState.requestPayload: '%s'", orionldState.requestPayload));
-  LM_TMP(("FWD: Forwarding with contentType '%s'", contentType));
+  //
+  // Prepare HTTP headers
+  //
+  OrionldHttpHeader headerV[5];
+  int               header = 0;
+
+  if ((orionldState.tenant != NULL) && (orionldState.tenant[0] != 0))
+  {
+    headerV[header].type  = HttpHeaderTenant;
+    headerV[header].value = orionldState.tenant;
+    ++header;
+  }
+  if ((orionldState.servicePath != NULL) && (orionldState.servicePath[0] != 0))
+  {
+    headerV[header].type  = HttpHeaderPath;
+    headerV[header].value = orionldState.servicePath;
+    ++header;
+  }
+  headerV[header].type = HttpHeaderNone;
+
   if (orionldState.linkHttpHeaderPresent)
   {
     char link[512];
 
     snprintf(link, sizeof(link), "<%s>; rel=\"http://www.w3.org/ns/json-ld#context\"; type=\"application/ld+json\"", orionldState.link);
-    LM_TMP(("FWD: HTTP Link: %s", link));
-    reqOk = orionldRequestSend(&orionldState.httpResponse, protocol, host, port, "PATCH", uriPath, 5000, link, &detail, &tryAgain, &downloadFailed, NULL, contentType, orionldState.requestPayload, payloadLen);
+    reqOk = orionldRequestSend(&orionldState.httpResponse, protocol, host, port, "PATCH", uriPath, 5000, link, &detail, &tryAgain, &downloadFailed, NULL, contentType, orionldState.requestPayload, payloadLen, headerV);
   }
   else
-  {
-    LM_TMP(("FWD: Without HTTP Link"));
-    reqOk = orionldRequestSend(&orionldState.httpResponse, protocol, host, port, "PATCH", uriPath, 5000, NULL, &detail, &tryAgain, &downloadFailed, NULL, contentType, orionldState.requestPayload, payloadLen);
-  }
+    reqOk = orionldRequestSend(&orionldState.httpResponse, protocol, host, port, "PATCH", uriPath, 5000, NULL, &detail, &tryAgain, &downloadFailed, NULL, contentType, orionldState.requestPayload, payloadLen, headerV);
 
   if (reqOk == false)
   {
@@ -171,7 +173,6 @@ static bool orionldForwardPatchAttribute
     return false;
   }
 
-  LM_TMP(("PATCH: orionldRequestSend seems to have worked"));
   ciP->httpStatusCode = SccNoContent;
 
   return true;
@@ -358,7 +359,6 @@ bool orionldPatchAttribute(ConnectionInfo* ciP)
     if (matchingRegs > 1)
       dbRegistrationsOnlyOneAllowed(regArray, matchingRegs, entityId, attrName);
 
-    LM_TMP(("FWD: %d registration found for entity-attribute combination '%s' - '%s'", matchingRegs, entityId, attrName));
     return orionldForwardPatchAttribute(ciP, regArray->value.firstChildP, entityId, attrName, orionldState.requestTree);
   }
 

@@ -37,13 +37,14 @@ extern "C"
 #include "orionld/common/SCOMPARE.h"                             // SCOMPAREx
 #include "orionld/common/CHECK.h"                                // CHECK
 #include "orionld/common/orionldState.h"                         // orionldState
-#include "orionld/common/geoJsonCheck.h"                         // geoJsonCheck
 #include "orionld/common/urlCheck.h"                             // urlCheck
 #include "orionld/common/urnCheck.h"                             // urnCheck
+#include "orionld/context/OrionldContext.h"                      // OrionldContext
 #include "orionld/context/orionldCoreContext.h"                  // orionldCoreContextP
 #include "orionld/context/orionldContextItemExpand.h"            // orionldContextItemExpand
 #include "orionld/context/orionldContextValueExpand.h"           // orionldContextValueExpand
 #include "orionld/context/orionldContextItemAliasLookup.h"       // orionldContextItemAliasLookup
+#include "orionld/payloadCheck/pcheckGeoProperty.h"              // pcheckGeoProperty
 #include "orionld/kjTree/kjTreeToMetadata.h"                     // kjTreeToMetadata
 #include "orionld/kjTree/kjTreeToContextAttribute.h"             // Own interface
 
@@ -483,14 +484,14 @@ static bool atValueCheck(KjNode* atTypeNodeP, KjNode* atValueNodeP, char** title
 //
 // FIXME: This function is TOO LONG - try to split up
 //
-bool kjTreeToContextAttribute(ConnectionInfo* ciP, KjNode* kNodeP, ContextAttribute* caP, KjNode** typeNodePP, char** detailP)
+bool kjTreeToContextAttribute(ConnectionInfo* ciP, OrionldContext* contextP, KjNode* kNodeP, ContextAttribute* caP, KjNode** typeNodePP, char** detailP)
 {
   char* caName = kNodeP->name;
 
   *detailP = (char*) "unknown error";
 
-  if (orionldState.contextP == NULL)
-    orionldState.contextP = orionldCoreContextP;
+  if (contextP == NULL)
+    contextP = orionldCoreContextP;
 
   LM_T(LmtPayloadCheck, ("Treating attribute '%s' (KjNode at %p)", caName, kNodeP));
 
@@ -513,7 +514,7 @@ bool kjTreeToContextAttribute(ConnectionInfo* ciP, KjNode* kNodeP, ContextAttrib
     char*                longName;
     bool                 valueMayBeExpanded  = false;
 
-    longName = orionldContextItemExpand(orionldState.contextP, kNodeP->name, &valueMayBeExpanded, true, &contextItemP);
+    longName = orionldContextItemExpand(contextP, kNodeP->name, &valueMayBeExpanded, true, &contextItemP);
 
     if (valueMayBeExpanded)
       orionldContextValueExpand(kNodeP);
@@ -799,11 +800,12 @@ bool kjTreeToContextAttribute(ConnectionInfo* ciP, KjNode* kNodeP, ContextAttrib
     //
     if (isGeoProperty == true)
     {
-      if (geoJsonCheck(ciP, valueP, &orionldState.geoType, &orionldState.geoCoordsP) == false)
+      if (pcheckGeoProperty(ciP, valueP, &orionldState.geoType, &orionldState.geoCoordsP) == false)
       {
-        LM_E(("geoJsonCheck error for %s", caName));
-        // geoJsonCheck fills in error response
-        *detailP = (char*) "geoJsonCheck failed";
+        LM_E(("pcheckGeoProperty error for %s", caName));
+        // pcheckGeoProperty fills in error response
+        *detailP = (char*) "pcheckGeoProperty failed";
+        ciP->httpStatusCode = SccBadRequest;
         return false;
       }
       caP->valueType       = orion::ValueTypeObject;

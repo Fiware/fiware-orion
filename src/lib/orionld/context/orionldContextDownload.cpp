@@ -66,7 +66,6 @@ char* orionldContextDownload(const char* url, bool* downloadFailedP, OrionldProb
     return NULL;
   }
 
-  LM_TMP(("KZ: Downloading context '%s'", url));
   if (urlParse(url, protocol, sizeof(protocol), ip, sizeof(ip), &port, &urlPath, &pdP->detail) == false)
   {
     // pdP->detail set by urlParse
@@ -90,7 +89,9 @@ char* orionldContextDownload(const char* url, bool* downloadFailedP, OrionldProb
     // detailsPP is filled in by orionldRequestSend()
     // orionldState.httpResponse.buf freed by orionldRequestSend() in case of error
     //
-    bool tryAgain = false;
+    bool              tryAgain = false;
+    OrionldHttpHeader headerV[1];
+    headerV[0].type = HttpHeaderNone;
 
     reqOk = orionldRequestSend(&orionldState.httpResponse,
                                protocol,
@@ -106,7 +107,8 @@ char* orionldContextDownload(const char* url, bool* downloadFailedP, OrionldProb
                                "Accept: application/ld+json",
                                NULL,
                                NULL,
-                               0);
+                               0,
+                               headerV);
 
     if (reqOk == true)
       break;

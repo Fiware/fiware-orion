@@ -2923,7 +2923,6 @@ static bool processContextAttributeVector
 /* ****************************************************************************
 *
 * createEntity -
-*
 */
 static bool createEntity
 (
@@ -3087,8 +3086,9 @@ static bool createEntity
   {
     char* errorString;
 
-    if (geoJsonCreate(orionldState.locationAttributeP, &geoJson, &errorString) ==  false)
+    if (geoJsonCreate(orionldState.locationAttributeP, &geoJson, &errorString) == false)
     {
+      LM_E(("Internal Error (%s)", errorString));
       oeP->fill(SccReceiverInternalError, errorString, "InternalError");
       return false;
     }
@@ -3984,6 +3984,7 @@ void processContextElement
 
       if (!createEntity(enP, ceP->contextAttributeVector, now, &errDetail, tenant, servicePathV, apiVersion, fiwareCorrelator, &(responseP->oe)))
       {
+        LM_E(("Internal Error (createEntity failed)"));
         cerP->statusCode.fill(SccInvalidParameter, errDetail);
         // In this case, responseP->oe is not filled, as createEntity() deals internally with that
       }

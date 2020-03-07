@@ -137,8 +137,6 @@ int uriArgumentGet(void* cbDataP, MHD_ValueKind kind, const char* ckey, const ch
 {
   ConnectionInfo*  ciP   = (ConnectionInfo*) cbDataP;
 
-  LM_TMP(("FWD: Got a URI parameter: '%s': '%s'", ckey, val));
-
   if ((val == NULL) || (*val == 0))
   {
     std::string  errorString = std::string("Empty right-hand-side for URI param /") + ckey + "/";
@@ -587,7 +585,6 @@ int httpHeaderGet(void* cbDataP, MHD_ValueKind kind, const char* ckey, const cha
   HttpHeaders*     headerP = &ciP->httpHeaders;
   std::string      key     = ckey;
 
-  LM_TMP(("FWD: Got HTTP Header:   %s: %s", ckey, value));
   LM_T(LmtHttpHeaders, ("Got HTTP Header:   %s: %s", ckey, value));
 
   if      (strcasecmp(key.c_str(), HTTP_USER_AGENT) == 0)        headerP->userAgent      = value;
@@ -618,6 +615,12 @@ int httpHeaderGet(void* cbDataP, MHD_ValueKind kind, const char* ckey, const cha
     headerP->tenant = value;
     toLowercase((char*) headerP->tenant.c_str());
   }
+#ifdef ORIONLD
+  else if (strcasecmp(ckey, "NGSILD-Tenant") == 0)
+    orionldState.tenant = (char*) value;
+  else if (strcasecmp(ckey, "NGSILD-Path") == 0)
+    orionldState.servicePath = (char*) value;
+#endif
   else if (strcasecmp(key.c_str(), HTTP_X_AUTH_TOKEN) == 0)        headerP->xauthToken         = value;
   else if (strcasecmp(key.c_str(), HTTP_X_REAL_IP) == 0)           headerP->xrealIp            = value;
   else if (strcasecmp(key.c_str(), HTTP_X_FORWARDED_FOR) == 0)     headerP->xforwardedFor      = value;
@@ -627,6 +630,9 @@ int httpHeaderGet(void* cbDataP, MHD_ValueKind kind, const char* ckey, const cha
   {
     headerP->servicePath         = value;
     headerP->servicePathReceived = true;
+#ifdef ORIONLD
+    orionldState.servicePath = (char*) value;
+#endif
   }
 #ifdef ORIONLD
   else if (strcasecmp(key.c_str(), HTTP_LINK) == 0)

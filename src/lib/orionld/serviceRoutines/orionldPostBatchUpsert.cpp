@@ -60,10 +60,12 @@ extern "C"
 #include "orionld/common/entityIdAndTypeGet.h"                 // entityIdAndTypeGet
 #include "orionld/common/entityLookupById.h"                   // entityLookupById
 #include "orionld/common/typeCheckForNonExistingEntities.h"    // typeCheckForNonExistingEntities
+#include "orionld/common/OrionldProblemDetails.h"              // OrionldProblemDetails
 #include "orionld/context/orionldCoreContext.h"                // orionldDefaultUrl, orionldCoreContext
 #include "orionld/context/orionldContextPresent.h"             // orionldContextPresent
 #include "orionld/context/orionldContextItemAliasLookup.h"     // orionldContextItemAliasLookup
 #include "orionld/context/orionldContextItemExpand.h"          // orionldUriExpand
+#include "orionld/context/orionldContextFromTree.h"            // orionldContextFromTree
 #include "orionld/kjTree/kjStringValueLookupInArray.h"         // kjStringValueLookupInArray
 #include "orionld/kjTree/kjTreeToUpdateContextRequest.h"       // kjTreeToUpdateContextRequest
 #include "orionld/serviceRoutines/orionldPostBatchUpsert.h"    // Own Interface
@@ -87,15 +89,19 @@ static void entityIdPush(KjNode* entityIdsArrayP, const char* entityId)
 //
 // entityTypeGet - lookup 'type' in a KjTree
 //
-static char* entityTypeGet(KjNode* entityNodeP)
+static char* entityTypeGet(KjNode* entityNodeP, KjNode** contextNodePP)
 {
+  char* type = NULL;
+
   for (KjNode* itemP = entityNodeP->value.firstChildP; itemP != NULL; itemP = itemP->next)
   {
     if (SCOMPARE5(itemP->name, 't', 'y', 'p', 'e', 0))
-      return itemP->value.s;
+      type = itemP->value.s;
+    if (SCOMPARE9(itemP->name, '@', 'c', 'o', 'n', 't', 'e', 'x', 't', 0))
+      *contextNodePP = itemP;
   }
 
-  return NULL;
+  return type;
 }
 
 
@@ -215,14 +221,34 @@ bool orionldPostBatchUpsert(ConnectionInfo* ciP)
   {
     next = entityP->next;
 
-    char* entityId;
-    char* entityType;
+    char*   entityId;
+    char*   entityType;
 
     // entityIdAndTypeGet calls entityIdCheck/entityTypeCheck that adds the entity in errorsArrayP if needed
     if (entityIdAndTypeGet(entityP, &entityId, &entityType, errorsArrayP) == true)
       entityIdPush(idArray, entityId);
     else
+    {
       kjChildRemove(incomingTree, entityP);
+      entityP = next;
+      continue;
+    }
+
+    //
+    // Check Content-Type and @context in payload
+    //
+    KjNode* contextNodeP  = kjLookup(entityP, "@context");
+
+    if ((orionldState.ngsildContent == true) && (contextNodeP == NULL))
+    {
+      entityErrorPush(errorsArrayP, entityId, OrionldBadRequestData, "Invalid payload", "Content-Type is 'application/ld+json', but no @context in payload data array item", 400);
+      kjChildRemove(incomingTree, entityP);
+    }
+    else if ((orionldState.ngsildContent == false) && (contextNodeP != NULL))
+    {
+      entityErrorPush(errorsArrayP, entityId, OrionldBadRequestData, "Invalid payload", "Content-Type is 'application/json', and an @context is present in the payload data array item", 400);
+      kjChildRemove(incomingTree, entityP);
+    }
 
     entityP = next;
   }
@@ -248,11 +274,14 @@ bool orionldPostBatchUpsert(ConnectionInfo* ciP)
   {
     for (KjNode* dbEntityP = idTypeAndCreDateFromDb->value.firstChildP; dbEntityP != NULL; dbEntityP = dbEntityP->next)
     {
-      char*    idInDb        = NULL;
-      char*    typeInDb      = NULL;
-      int      creDateInDb   = 0;
-      char*    typeInPayload = NULL;
-      KjNode*  entityP;
+      char*                  idInDb        = NULL;
+      char*                  typeInDb      = NULL;
+      int                    creDateInDb   = 0;
+      char*                  typeInPayload = NULL;
+      KjNode*                contextNodeP  = NULL;
+      OrionldContext*        contextP      = NULL;
+      KjNode*                entityP;
+      OrionldProblemDetails  pd;
 
       // Get entity id, type and creDate from the DB
       entityTypeAndCreDateGet(dbEntityP, &idInDb, &typeInDb, &creDateInDb);
@@ -262,8 +291,12 @@ bool orionldPostBatchUpsert(ConnectionInfo* ciP)
       // First look up the entity with ID 'idInDb' in the incoming payload
       //
       entityP       = entityLookupById(incomingTree, idInDb);
-      typeInPayload = entityTypeGet(entityP);
+      typeInPayload = entityTypeGet(entityP, &contextNodeP);
 
+      if (contextNodeP != NULL)
+        contextP = orionldContextFromTree(NULL, true, contextNodeP, &pd);
+      if (contextP == NULL)
+        contextP = orionldState.contextP;
 
       //
       // If type exists in the incoming payload, it must be equal to the type in the DB
@@ -276,7 +309,7 @@ bool orionldPostBatchUpsert(ConnectionInfo* ciP)
       //
       if (typeInPayload != NULL)
       {
-        char* typeInPayloadExpanded = orionldContextItemExpand(orionldState.contextP, typeInPayload, NULL, true, NULL);
+        char* typeInPayloadExpanded = orionldContextItemExpand(contextP, typeInPayload, NULL, true, NULL);
 
         if (strcmp(typeInPayloadExpanded, typeInDb) != 0)
         {
@@ -285,6 +318,7 @@ bool orionldPostBatchUpsert(ConnectionInfo* ciP)
           // - removed from incomingTree
           // - not added to "removeArray"
           //
+          LM_W(("Bad Input (orig entity type: '%s'. New entity type: '%s'", typeInDb, typeInPayloadExpanded));
           entityErrorPush(errorsArrayP, idInDb, OrionldBadRequestData, "non-matching entity type", typeInPayload, 400);
           kjChildRemove(incomingTree, entityP);
           entityP = next;
@@ -434,6 +468,13 @@ bool orionldPostBatchUpsert(ConnectionInfo* ciP)
     orionldErrorResponseCreate(OrionldBadRequestData, "Internal Error", "Database Error");
     ciP->httpStatusCode = SccReceiverInternalError;
     return false;
+  }
+  else if (errorsArrayP->value.firstChildP != NULL)  // There are entities in error
+    ciP->httpStatusCode = SccMultiStatus;
+  else
+  {
+    ciP->httpStatusCode = SccNoContent;
+    orionldState.responseTree = NULL;
   }
 
   return true;

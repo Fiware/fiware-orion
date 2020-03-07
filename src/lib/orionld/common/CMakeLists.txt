@@ -28,8 +28,6 @@ SET (SOURCES
     urnCheck.cpp
     linkCheck.cpp
     httpStatusCodeToOrionldErrorType.cpp
-    geoJsonTypeCheck.cpp
-    geoJsonCheck.cpp
     geoJsonCreate.cpp
     numberToDate.cpp
     orionldState.cpp
@@ -53,6 +51,7 @@ SET (SOURCES
     removeArrayEntityLookup.cpp
     typeCheckForNonExistingEntities.cpp
     entityIdAndTypeGet.cpp
+    qAliasCompact.cpp
     # qTreeToBson.cpp
 )
 
