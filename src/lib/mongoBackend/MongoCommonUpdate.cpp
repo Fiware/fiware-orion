@@ -2941,7 +2941,7 @@ static bool createEntity
 
   /* Actually we don't know if this is the first entity (thus, the collection is being created) or not. However, we can
    * invoke ensureLocationIndex() in anycase, given that it is harmless in the case the collection and index already
-   * exits (see docs.mongodb.org/manual/reference/method/db.collection.ensureIndex/) */
+   * exist (see docs.mongodb.org/manual/reference/method/db.collection.ensureIndex/) */
   ensureLocationIndex(tenant);
   ensureDateExpirationIndex(tenant);
 
@@ -3086,16 +3086,13 @@ static bool createEntity
   {
     char* errorString;
 
-    LM_TMP(("GEO: Calling geoJsonCreate"));
     if (geoJsonCreate(orionldState.locationAttributeP, &geoJson, &errorString) == false)
     {
-      LM_TMP(("GEO: geoJsonCreate failed"));
       LM_E(("Internal Error (%s)", errorString));
       oeP->fill(SccReceiverInternalError, errorString, "InternalError");
       return false;
     }
 
-    // LM_TMP(("GEO: geoJsonCreate OK. geoJson: '%s'", geoJson.obj().toString().c_str()));
     insertedDoc.append(ENT_LOCATION, BSON(ENT_LOCATION_ATTRNAME << orionldState.locationAttributeP->name <<
                                           ENT_LOCATION_COORDS   << geoJson.obj()));
   }
@@ -3112,6 +3109,7 @@ static bool createEntity
 
   if (!collectionInsert(getEntitiesCollectionName(tenant), insertedDoc.obj(), errDetail))
   {
+    LM_E(("Internal Error (%s)", errDetail->c_str()));
     oeP->fill(SccReceiverInternalError, *errDetail, "InternalError");
     return false;
   }
