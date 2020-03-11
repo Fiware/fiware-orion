@@ -1344,7 +1344,6 @@ export -f orionCurl
 export -f dbInsertEntity
 export -f mongoCmd
 export -f mongoCmd2
-export -f logMsg
 export -f valgrindSleep
 export -f brokerStartAwait
 export -f brokerStopAwait

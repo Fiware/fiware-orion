@@ -50,7 +50,7 @@ function logMsg()
   now=$(date)
   echo $now: $* >> $LOG_FILE
 }
-
+export -f logMsg
 
 
 # -----------------------------------------------------------------------------
