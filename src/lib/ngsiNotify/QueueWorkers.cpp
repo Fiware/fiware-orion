@@ -128,7 +128,7 @@ static void* workerFunc(void* pSyncQ)
                          params->resource.c_str(),
                          params->content_type.c_str()));
 
-      int r;
+      int r = 0;
 
       if (simulatedNotification)
       {
