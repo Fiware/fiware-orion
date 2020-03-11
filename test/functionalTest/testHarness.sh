@@ -78,6 +78,7 @@ then
   dirname="."
 fi
 
+export REPO_HOME=$PWD
 cd $dirname
 export SCRIPT_HOME=$(pwd)
 cd - > /dev/null 2>&1
