@@ -69,6 +69,8 @@ TEST_TOOLS=(
  'python-pip' \
  'gridsite-clients' \
  'valgrind' \
+ 'mosquitto' \
+ 'python-paho-mqtt' \
 )
 
 TO_CLEAN=(
