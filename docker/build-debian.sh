@@ -152,7 +152,6 @@ if [[ "${STAGE}" == 'deps' ]]; then
         mongodb-org \
         mongodb-org-shell \
         mosquitto
-#        python-paho-mqtt
 
     echo "Builder: installing gmock"
     curl -L https://nexus.lab.fiware.org/repository/raw/public/storage/gmock-1.5.0.tar.bz2 | tar xjC ${ROOT}
@@ -168,7 +167,7 @@ if [[ "${STAGE}" == 'deps' ]]; then
 
     echo "Builder: installing python dependencies"
     pip install --upgrade setuptools wheel
-    pip install Flask==1.0.2 pyOpenSSL==19.0.0
+    pip install Flask==1.0.2 pyOpenSSL==19.0.0 paho-mqtt
     yes | pip uninstall setuptools wheel
 fi
 
