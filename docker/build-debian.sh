@@ -94,7 +94,7 @@ mkdir -p /var/{log,run}/${BROKER}
 echo "Builder: update apt"
 apt-get -y update
 
-echo "Builder: installing  tools and dependencies"
+echo "Builder: installing tools and dependencies"
 apt-get -y install --no-install-recommends \
     ${BUILD_TOOLS[@]} \
     ${BUILD_DEPS[@]}
@@ -106,12 +106,12 @@ scons --disable-warnings-as-errors --use-sasl-client --ssl
 scons install --disable-warnings-as-errors --prefix=/usr/local --use-sasl-client --ssl
 cd ${ROOT} && rm -Rf mongo-cxx-driver
 
-echo "Builder: installing rapid json"
+echo "Builder: installing rapidjson"
 curl -L https://github.com/miloyip/rapidjson/archive/v1.0.2.tar.gz | tar xzC ${ROOT}
 mv ${ROOT}/rapidjson-1.0.2/include/rapidjson/ /usr/local/include
 cd ${ROOT} && rm -Rf rapidjson-1.0.2
 
-echo "Builder: installing libmicronhttpd"
+echo "Builder: installing libmicrohttpd"
 curl -L http://ftp.gnu.org/gnu/libmicrohttpd/libmicrohttpd-0.9.48.tar.gz | tar xzC ${ROOT}
 cd ${ROOT}/libmicrohttpd-0.9.48
 ./configure --disable-messages --disable-postprocessor --disable-dauth
@@ -121,7 +121,7 @@ cd ${ROOT} && rm -Rf libmicrohttpd-0.9.48
 
 ldconfig
 
-echo "Builder: installing k tools"
+echo "Builder: installing k libs"
 for kproj in kbase klog kalloc kjson khash
 do
     git clone https://gitlab.com/kzangeli/${kproj}.git ${ROOT}/$kproj
@@ -151,8 +151,8 @@ if [[ "${STAGE}" == 'deps' ]]; then
     apt-get -y install \
         mongodb-org \
         mongodb-org-shell \
-        mosquitto \
-        python-paho-mqtt
+        mosquitto
+#        python-paho-mqtt
 
     echo "Builder: installing gmock"
     curl -L https://nexus.lab.fiware.org/repository/raw/public/storage/gmock-1.5.0.tar.bz2 | tar xjC ${ROOT}
