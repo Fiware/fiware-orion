@@ -135,15 +135,24 @@ do
     make install
 done
 
+echo "Builder: installing Paho MQTT C library"
+git clone https://github.com/eclipse/paho.mqtt.c.git ${ROOT}/paho.mqtt.c
+cd ${ROOT}/paho.mqtt.c
+make
+make install
+
+
 if [[ "${STAGE}" == 'deps' ]]; then
-    echo "Builder: installing mongo"
+    echo "Builder: installing mongo and MQTT"
     apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv 9DA31620334BD75D9DCB49F368818C72E52529D4
 
     echo 'deb [ arch=amd64 ] https://repo.mongodb.org/apt/debian stretch/mongodb-org/4.0 main' > /etc/apt/sources.list.d/mongodb.list
     apt-get -y update
     apt-get -y install \
         mongodb-org \
-        mongodb-org-shell
+        mongodb-org-shell \
+        mosquitto \
+        python-paho-mqtt
 
     echo "Builder: installing gmock"
     curl -L https://nexus.lab.fiware.org/repository/raw/public/storage/gmock-1.5.0.tar.bz2 | tar xjC ${ROOT}
