@@ -150,9 +150,12 @@ if [[ "${STAGE}" == 'deps' ]]; then
     apt-get -y update
     apt-get -y install \
         mongodb-org \
-        mongodb-org-shell \
-        mosquitto
+        mongodb-org-shell
 
+    echo "Builder: installing and starting mosquitto"
+    apt-get -y install mosquitto
+    sudo service mosquitto start
+    
     echo "Builder: installing gmock"
     curl -L https://nexus.lab.fiware.org/repository/raw/public/storage/gmock-1.5.0.tar.bz2 | tar xjC ${ROOT}
     cd ${ROOT}/gmock-1.5.0
