@@ -56,7 +56,7 @@ extern "C"
 //
 // ORIONLD_VERSION -
 //
-#define ORIONLD_VERSION "post-v0.1.0"
+#define ORIONLD_VERSION "post-v0.2.0"
 
 
 
@@ -97,6 +97,10 @@ typedef struct OrionldUriParams
   char* options;
   int   offset;    // Not Implemented - use ciP->uriParams for now
   int   limit;     // Not Implemented - use ciP->uriParams for now
+  char* geometry;
+  char* geoloc;
+  char* geoproperty;
+
   // To Be Continued ...
 } OrionldUriParams;
 
