@@ -39,6 +39,7 @@ brokerStart CB 212-249
 # 06. Attempt to create with an entity with 2 ID fields - see error
 # 07. Attempt to create with an entity with 2 TYPE fields - see error
 # 08. Attempt to create with an empty array - see error
+# 09. Attempt to create with an empty without @context field - see error
 #
 
 
@@ -46,6 +47,9 @@ echo "01. Attempt to create with an entity having an ID that is not a string - s
 echo "=================================================================================="
 payload='[
   {
+    "@context": {
+      "Vehicle": "http://example.org/Vehicle"
+    },
     "id": 1,
     "type": "Vehicle",
     "P1": {
@@ -54,6 +58,9 @@ payload='[
     }
   },
   {
+    "@context": {
+      "Vehicle": "http://example.org/Vehicle"
+    },
     "id": "urn:ngsi-ld:entity:E2",
     "type": "Vehicle",
     "P1": {
@@ -71,6 +78,9 @@ echo "02. Attempt to create with an entity without ID field - see error"
 echo "================================================================="
 payload='[
   {
+    "@context": {
+      "Vehicle": "http://example.org/Vehicle"
+    },
     "type": "Vehicle",
     "P1": {
       "type": "Property",
@@ -78,6 +88,9 @@ payload='[
     }
   },
   {
+    "@context": {
+      "Vehicle": "http://example.org/Vehicle"
+    },
     "id": "urn:ngsi-ld:entity:E2",
     "type": "Vehicle",
     "P1": {
@@ -95,6 +108,9 @@ echo "03. Attempt to create with an entity having an ID with URI invalid - see e
 echo "=============================================================================="
 payload='[
   {
+    "@context": {
+      "Vehicle": "http://example.org/Vehicle"
+    },
     "id": "E1",
     "type": "Vehicle",
     "P1": {
@@ -103,6 +119,9 @@ payload='[
     }
   },
   {
+    "@context": {
+      "Vehicle": "http://example.org/Vehicle"
+    },
     "id": "urn:ngsi-ld:entity:E2",
     "type": "Vehicle",
     "P1": {
@@ -120,6 +139,9 @@ echo "04. Attempt to create with an entity having a TYPE that is not a string - 
 echo "==================================================================================="
 payload='[
   {
+    "@context": {
+      "Vehicle": "http://example.org/Vehicle"
+    },
     "id": "urn:ngsi-ld:entity:E1",
     "type": 1,
     "P1": {
@@ -128,6 +150,9 @@ payload='[
     }
   },
   {
+    "@context": {
+      "Vehicle": "http://example.org/Vehicle"
+    },
     "id": "urn:ngsi-ld:entity:E2",
     "type": "Vehicle",
     "P1": {
@@ -145,6 +170,9 @@ echo "05. Attempt to create with an entity without TYPE field - see error"
 echo "==================================================================="
 payload='[
   {
+    "@context": {
+      "Vehicle": "http://example.org/Vehicle"
+    },
     "id": "urn:ngsi-ld:entity:E1",
     "P1": {
       "type": "Property",
@@ -152,6 +180,9 @@ payload='[
     }
   },
   {
+    "@context": {
+      "Vehicle": "http://example.org/Vehicle"
+    },
     "id": "urn:ngsi-ld:entity:E2",
     "type": "Vehicle",
     "P1": {
@@ -169,6 +200,9 @@ echo "06. Attempt to create with an entity with 2 ID fields - see error"
 echo "================================================================="
 payload='[
   {
+    "@context": {
+      "Vehicle": "http://example.org/Vehicle"
+    },
     "id": "urn:ngsi-ld:entity:E1",
     "id": "urn:ngsi-ld:entity:E2",
     "type": "Vehicle",
@@ -178,6 +212,9 @@ payload='[
     }
   },
   {
+    "@context": {
+      "Vehicle": "http://example.org/Vehicle"
+    },
     "id": "urn:ngsi-ld:entity:E3",
     "type": "Vehicle",
     "P1": {
@@ -195,6 +232,9 @@ echo "07. Attempt to create with an entity with 2 TYPE fields - see error"
 echo "==================================================================="
 payload='[
   {
+    "@context": {
+      "Vehicle": "http://example.org/Vehicle"
+    },
     "id": "urn:ngsi-ld:entity:E1",
     "type": "Vehicle",
     "type": "Vehicle",
@@ -204,6 +244,9 @@ payload='[
     }
   },
   {
+    "@context": {
+      "Vehicle": "http://example.org/Vehicle"
+    },
     "id": "urn:ngsi-ld:entity:E2",
     "type": "Vehicle",
     "P1": {
@@ -220,6 +263,34 @@ echo
 echo "08. Attempt to create with an empty array - see error"
 echo "====================================================="
 payload='[]'
+orionCurl --url "/ngsi-ld/v1/entityOperations/create" -X POST --payload "$payload" -H "Content-Type: application/ld+json"
+echo
+echo
+
+
+echo "09. Attempt to create with an empty without @context field - see error"
+echo "======================================================================"
+payload='[
+  {
+    "id": "urn:ngsi-ld:entity:E3",
+    "type": "Vehicle",
+    "P1": {
+      "type": "Property",
+      "value": "STEP 01"
+    }
+  },
+  {
+    "@context": {
+      "Vehicle": "http://example.org/Vehicle"
+    },
+    "id": "urn:ngsi-ld:entity:E4",
+    "type": "Vehicle",
+    "P1": {
+      "type": "Property",
+      "value": "STEP 01"
+    }
+  }
+]'
 orionCurl --url "/ngsi-ld/v1/entityOperations/create" -X POST --payload "$payload" -H "Content-Type: application/ld+json"
 echo
 echo
@@ -449,6 +520,31 @@ Date: REGEX(.*)
     "type": "https://uri.etsi.org/ngsi-ld/errors/InvalidRequest",
     "title": "Empty Array",
     "detail": "[]"
+}
+
+
+09. Attempt to create with an empty without @context field - see error
+======================================================================
+HTTP/1.1 200 OK
+Content-Length: 200
+Content-Type: application/json
+Link: <https://uri.etsi.org/ngsi-ld/v1/ngsi-ld-core-context.jsonld>; rel="http://www.w3.org/ns/json-ld#context"; type="application/ld+json"
+Date: REGEX(.*)
+
+{
+    "success": [
+        "urn:ngsi-ld:entity:E4"
+    ],
+    "errors": [
+        {
+            "entityId": "urn:ngsi-ld:entity:E3",
+            "error": {
+                "type": "https://uri.etsi.org/ngsi-ld/errors/BadRequestData",
+                "title": "entity already exists",
+                "status": 400
+            }
+        }
+    ]
 }
 
 
