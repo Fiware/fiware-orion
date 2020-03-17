@@ -199,6 +199,7 @@ function vMsg()
 #
 # If in TRAVIS, a few functests must be disabled
 #
+echo TRAVIS: $TRAVIS
 if [ "$TRAVIS" != "" ]
 then
     echo "==========================================================================================="
@@ -214,6 +215,12 @@ then
     CB_SKIP_FUNC_TESTS=$CB_SKIP_FUNC_TESTS" 2015_notification_templates/notification_templates_many_notifications.test"
     CB_SKIP_FUNC_TESTS=$CB_SKIP_FUNC_TESTS" ngsild_subscription_with_mqtt_notification_01.test"
     echo Travis run skips tests $CB_SKIP_FUNC_TESTS
+else
+    echo "==========================================================================================="
+    echo "==                                                                                       =="
+    echo "==    NOT TRAVIS                                                                         =="
+    echo "==                                                                                       =="
+    echo "==========================================================================================="    
 fi
 
 
