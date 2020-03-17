@@ -201,6 +201,11 @@ function vMsg()
 #
 if [ "$TRAVIS" != "" ]
 then
+    echo "==========================================================================================="
+    echo "==                                                                                       =="
+    echo "==    RUNNING INSIDE TRAVIS                                                              =="
+    echo "==                                                                                       =="
+    echo "==========================================================================================="
     CB_SKIP_FUNC_TESTS="0000_large_requests/notification_different_sizes.test"
     CB_SKIP_FUNC_TESTS=$CB_SKIP_FUNC_TESTS" 0000_ipv6_support/ipv4_ipv6_both.test"
     CB_SKIP_FUNC_TESTS=$CB_SKIP_FUNC_TESTS" 0706_direct_https_notifications/direct_https_notifications.test"
@@ -208,7 +213,7 @@ then
     CB_SKIP_FUNC_TESTS=$CB_SKIP_FUNC_TESTS" 2015_notification_templates/notification_templates_cache_refresh.test"
     CB_SKIP_FUNC_TESTS=$CB_SKIP_FUNC_TESTS" 2015_notification_templates/notification_templates_many_notifications.test"
     CB_SKIP_FUNC_TESTS=$CB_SKIP_FUNC_TESTS" ngsild_subscription_with_mqtt_notification_01.test"
-    echo Skipping tests in TRAVIS: $CB_SKIP_FUNC_TESTS
+    echo Travis run skips tests $CB_SKIP_FUNC_TESTS
 fi
 
 
