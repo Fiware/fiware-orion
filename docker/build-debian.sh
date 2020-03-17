@@ -152,10 +152,16 @@ if [[ "${STAGE}" == 'deps' ]]; then
         mongodb-org \
         mongodb-org-shell
 
-    echo "Builder: installing and starting mosquitto"
-    apt-get -y install mosquitto
-    sudo service mosquitto start
-    
+    #
+    # FIXME
+    #   For unknown reasons, 'mosquitto' can't be installed in this repo
+    #   As workaround, all MQTT functests are disabled for travis. 
+    #
+    # echo "Builder: installing and starting mosquitto"
+    # apt-get -y install mosquitto
+    # sudo service mosquitto start
+    #
+
     echo "Builder: installing gmock"
     curl -L https://nexus.lab.fiware.org/repository/raw/public/storage/gmock-1.5.0.tar.bz2 | tar xjC ${ROOT}
     cd ${ROOT}/gmock-1.5.0
