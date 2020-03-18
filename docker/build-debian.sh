@@ -99,6 +99,16 @@ apt-get -y install --no-install-recommends \
     ${BUILD_TOOLS[@]} \
     ${BUILD_DEPS[@]}
 
+echo "Builder: installing Paho MQTT C library"
+git clone https://github.com/eclipse/paho.mqtt.c.git ${ROOT}/paho.mqtt.c
+cd ${ROOT}/paho.mqtt.c
+rm -f /usr/local/lib/libpaho*
+apt install doxygen
+make html
+make
+make install
+
+
 echo "Builder: installing mongo cxx driver"
 git clone https://github.com/FIWARE-Ops/mongo-cxx-driver ${ROOT}/mongo-cxx-driver
 cd ${ROOT}/mongo-cxx-driver
@@ -134,16 +144,6 @@ do
     make
     make install
 done
-
-echo "Builder: installing Paho MQTT C library"
-git clone https://github.com/eclipse/paho.mqtt.c.git ${ROOT}/paho.mqtt.c
-cd ${ROOT}/paho.mqtt.c
-rm -f /usr/local/lib/libpaho*
-apt install doxygen
-make html
-make
-make install
-
 
 if [[ "${STAGE}" == 'deps' ]]; then
     echo "Builder: installing mongo and MQTT"
