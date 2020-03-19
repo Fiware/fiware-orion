@@ -63,7 +63,7 @@ payload='[
     }
   }
 ]'
-orionCurl --url "/ngsi-ld/v1/entityOperations/create" -X POST --payload "$payload" -H "Content-Type: application/ld+json"
+orionCurl --url "/ngsi-ld/v1/entityOperations/create?prettyPrint=yes&spaces=2" -X POST --payload "$payload" -H "Content-Type: application/ld+json" --noPayloadCheck
 echo
 echo
 
@@ -92,11 +92,11 @@ Link: <https://uri.etsi.org/ngsi-ld/v1/ngsi-ld-core-context.jsonld>; rel="http:/
 Date: REGEX(.*)
 
 {
-    "success": [
-        "urn:ngsi-ld:entity:E1",
-        "urn:ngsi-ld:entity:E2"
-    ],
-    "errors": []
+  "success": [
+    "urn:ngsi-ld:entity:E1",
+    "urn:ngsi-ld:entity:E2"
+  ],
+  "errors": []
 }
 
 

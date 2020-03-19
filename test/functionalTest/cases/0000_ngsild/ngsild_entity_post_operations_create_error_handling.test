@@ -41,6 +41,9 @@ brokerStart CB 212-249
 # 08. Attempt to create with an empty array - see error
 # 09. Attempt to create with an empty without @context field - see error
 #
+# 10. Create an entity E10
+# 11. Attempt to create entities E10 and E11 - see error for E10, ok for E11
+#
 
 
 echo "01. Attempt to create with an entity having an ID that is not a string - see error"
@@ -69,7 +72,7 @@ payload='[
     }
   }
 ]'
-orionCurl --url "/ngsi-ld/v1/entityOperations/create" -X POST --payload "$payload" -H "Content-Type: application/ld+json"
+orionCurl --url "/ngsi-ld/v1/entityOperations/create?prettyPrint=yes&spaces=2" -X POST --payload "$payload" -H "Content-Type: application/ld+json" --noPayloadCheck
 echo
 echo
 
@@ -99,7 +102,7 @@ payload='[
     }
   }
 ]'
-orionCurl --url "/ngsi-ld/v1/entityOperations/create" -X POST --payload "$payload" -H "Content-Type: application/ld+json"
+orionCurl --url "/ngsi-ld/v1/entityOperations/create?prettyPrint=yes&spaces=2" -X POST --payload "$payload" -H "Content-Type: application/ld+json" --noPayloadCheck
 echo
 echo
 
@@ -130,7 +133,7 @@ payload='[
     }
   }
 ]'
-orionCurl --url "/ngsi-ld/v1/entityOperations/create" -X POST --payload "$payload" -H "Content-Type: application/ld+json"
+orionCurl --url "/ngsi-ld/v1/entityOperations/create?prettyPrint=yes&spaces=2" -X POST --payload "$payload" -H "Content-Type: application/ld+json" --noPayloadCheck
 echo
 echo
 
@@ -161,7 +164,7 @@ payload='[
     }
   }
 ]'
-orionCurl --url "/ngsi-ld/v1/entityOperations/create" -X POST --payload "$payload" -H "Content-Type: application/ld+json"
+orionCurl --url "/ngsi-ld/v1/entityOperations/create?prettyPrint=yes&spaces=2" -X POST --payload "$payload" -H "Content-Type: application/ld+json" --noPayloadCheck
 echo
 echo
 
@@ -191,7 +194,7 @@ payload='[
     }
   }
 ]'
-orionCurl --url "/ngsi-ld/v1/entityOperations/create" -X POST --payload "$payload" -H "Content-Type: application/ld+json"
+orionCurl --url "/ngsi-ld/v1/entityOperations/create?prettyPrint=yes&spaces=2" -X POST --payload "$payload" -H "Content-Type: application/ld+json" --noPayloadCheck
 echo
 echo
 
@@ -223,7 +226,7 @@ payload='[
     }
   }
 ]'
-orionCurl --url "/ngsi-ld/v1/entityOperations/create" -X POST --payload "$payload" -H "Content-Type: application/ld+json"
+orionCurl --url "/ngsi-ld/v1/entityOperations/create?prettyPrint=yes&spaces=2" -X POST --payload "$payload" -H "Content-Type: application/ld+json" --noPayloadCheck
 echo
 echo
 
@@ -255,7 +258,7 @@ payload='[
     }
   }
 ]'
-orionCurl --url "/ngsi-ld/v1/entityOperations/create" -X POST --payload "$payload" -H "Content-Type: application/ld+json"
+orionCurl --url "/ngsi-ld/v1/entityOperations/create?prettyPrint=yes&spaces=2" -X POST --payload "$payload" -H "Content-Type: application/ld+json" --noPayloadCheck
 echo
 echo
 
@@ -263,7 +266,7 @@ echo
 echo "08. Attempt to create with an empty array - see error"
 echo "====================================================="
 payload='[]'
-orionCurl --url "/ngsi-ld/v1/entityOperations/create" -X POST --payload "$payload" -H "Content-Type: application/ld+json"
+orionCurl --url "/ngsi-ld/v1/entityOperations/create?prettyPrint=yes&spaces=2" -X POST --payload "$payload" -H "Content-Type: application/ld+json" --noPayloadCheck
 echo
 echo
 
@@ -291,7 +294,47 @@ payload='[
     }
   }
 ]'
-orionCurl --url "/ngsi-ld/v1/entityOperations/create" -X POST --payload "$payload" -H "Content-Type: application/ld+json"
+orionCurl --url "/ngsi-ld/v1/entityOperations/create?prettyPrint=yes&spaces=2" -X POST --payload "$payload" -H "Content-Type: application/ld+json" --noPayloadCheck
+echo
+echo
+
+
+echo "10. Create an entity E10"
+echo "========================"
+payload='{
+  "id": "urn:ngsi-ld:entity:E10",
+  "type": "T",
+  "P1": {
+    "type": "Property",
+    "value": 10
+  }
+}'
+orionCurl --url /ngsi-ld/v1/entities --payload "$payload"
+echo
+echo
+
+
+echo "11. Attempt to create entities E10 and E11 - see error for E10, ok for E11"
+echo "=========================================================================="
+payload='[
+  {
+    "id": "urn:ngsi-ld:entity:E10",
+    "type": "Vehicle",
+    "P1": {
+      "type": "Property",
+      "value": 11
+    }
+  },
+  {
+    "id": "urn:ngsi-ld:entity:E11",
+    "type": "Vehicle",
+    "P1": {
+      "type": "Property",
+      "value": 11
+    }
+  }
+]'
+orionCurl --url "/ngsi-ld/v1/entityOperations/create?prettyPrint=yes&spaces=2" --payload "$payload" --noPayloadCheck
 echo
 echo
 
@@ -300,252 +343,296 @@ echo
 01. Attempt to create with an entity having an ID that is not a string - see error
 ==================================================================================
 HTTP/1.1 200 OK
-Content-Length: 221
+Content-Length: 315
 Content-Type: application/json
 Link: <https://uri.etsi.org/ngsi-ld/v1/ngsi-ld-core-context.jsonld>; rel="http://www.w3.org/ns/json-ld#context"; type="application/ld+json"
 Date: REGEX(.*)
 
 {
-    "success": [
-        "urn:ngsi-ld:entity:E2"
-    ],
-    "errors": [
-        {
-            "entityId": "invalid entity::id",
-            "error": {
-                "type": "https://uri.etsi.org/ngsi-ld/errors/BadRequestData",
-                "title": "field with invalid type",
-                "detail": "entity::id",
-                "status": 400
-            }
-        }
-    ]
+  "success": [
+    "urn:ngsi-ld:entity:E2"
+  ],
+  "errors": [
+    {
+      "entityId": "invalid entity::id",
+      "error": {
+        "type": "https://uri.etsi.org/ngsi-ld/errors/BadRequestData",
+        "title": "field with invalid type",
+        "detail": "entity::id",
+        "status": 400
+      }
+    }
+  ]
 }
+
 
 
 02. Attempt to create with an entity without ID field - see error
 =================================================================
 HTTP/1.1 200 OK
-Content-Length: 345
+Content-Length: 494
 Content-Type: application/json
 Link: <https://uri.etsi.org/ngsi-ld/v1/ngsi-ld-core-context.jsonld>; rel="http://www.w3.org/ns/json-ld#context"; type="application/ld+json"
 Date: REGEX(.*)
 
 {
-    "success": [],
-    "errors": [
-        {
-            "entityId": "no entity::id",
-            "error": {
-                "type": "https://uri.etsi.org/ngsi-ld/errors/BadRequestData",
-                "title": "mandatory field missing",
-                "detail": "entity::id",
-                "status": 400
-            }
-        },
-        {
-            "entityId": "urn:ngsi-ld:entity:E2",
-            "error": {
-                "type": "https://uri.etsi.org/ngsi-ld/errors/BadRequestData",
-                "title": "entity already exists",
-                "status": 400
-            }
-        }
-    ]
+  "success": [],
+  "errors": [
+    {
+      "entityId": "no entity::id",
+      "error": {
+        "type": "https://uri.etsi.org/ngsi-ld/errors/BadRequestData",
+        "title": "mandatory field missing",
+        "detail": "entity::id",
+        "status": 400
+      }
+    },
+    {
+      "entityId": "urn:ngsi-ld:entity:E2",
+      "error": {
+        "type": "https://uri.etsi.org/ngsi-ld/errors/BadRequestData",
+        "title": "entity already exists",
+        "status": 400
+      }
+    }
+  ]
 }
+
 
 
 03. Attempt to create with an entity having an ID with URI invalid - see error
 ==============================================================================
 HTTP/1.1 200 OK
-Content-Length: 312
+Content-Length: 461
 Content-Type: application/json
 Link: <https://uri.etsi.org/ngsi-ld/v1/ngsi-ld-core-context.jsonld>; rel="http://www.w3.org/ns/json-ld#context"; type="application/ld+json"
 Date: REGEX(.*)
 
 {
-    "success": [],
-    "errors": [
-        {
-            "entityId": "E1",
-            "error": {
-                "type": "https://uri.etsi.org/ngsi-ld/errors/BadRequestData",
-                "title": "Not a URI",
-                "detail": "E1",
-                "status": 400
-            }
-        },
-        {
-            "entityId": "urn:ngsi-ld:entity:E2",
-            "error": {
-                "type": "https://uri.etsi.org/ngsi-ld/errors/BadRequestData",
-                "title": "entity already exists",
-                "status": 400
-            }
-        }
-    ]
+  "success": [],
+  "errors": [
+    {
+      "entityId": "E1",
+      "error": {
+        "type": "https://uri.etsi.org/ngsi-ld/errors/BadRequestData",
+        "title": "Not a URI",
+        "detail": "E1",
+        "status": 400
+      }
+    },
+    {
+      "entityId": "urn:ngsi-ld:entity:E2",
+      "error": {
+        "type": "https://uri.etsi.org/ngsi-ld/errors/BadRequestData",
+        "title": "entity already exists",
+        "status": 400
+      }
+    }
+  ]
 }
+
 
 
 04. Attempt to create with an entity having a TYPE that is not a string - see error
 ===================================================================================
 HTTP/1.1 200 OK
-Content-Length: 355
+Content-Length: 504
 Content-Type: application/json
 Link: <https://uri.etsi.org/ngsi-ld/v1/ngsi-ld-core-context.jsonld>; rel="http://www.w3.org/ns/json-ld#context"; type="application/ld+json"
 Date: REGEX(.*)
 
 {
-    "success": [],
-    "errors": [
-        {
-            "entityId": "urn:ngsi-ld:entity:E1",
-            "error": {
-                "type": "https://uri.etsi.org/ngsi-ld/errors/BadRequestData",
-                "title": "field with invalid type",
-                "detail": "entity::type",
-                "status": 400
-            }
-        },
-        {
-            "entityId": "urn:ngsi-ld:entity:E2",
-            "error": {
-                "type": "https://uri.etsi.org/ngsi-ld/errors/BadRequestData",
-                "title": "entity already exists",
-                "status": 400
-            }
-        }
-    ]
+  "success": [],
+  "errors": [
+    {
+      "entityId": "urn:ngsi-ld:entity:E1",
+      "error": {
+        "type": "https://uri.etsi.org/ngsi-ld/errors/BadRequestData",
+        "title": "field with invalid type",
+        "detail": "entity::type",
+        "status": 400
+      }
+    },
+    {
+      "entityId": "urn:ngsi-ld:entity:E2",
+      "error": {
+        "type": "https://uri.etsi.org/ngsi-ld/errors/BadRequestData",
+        "title": "entity already exists",
+        "status": 400
+      }
+    }
+  ]
 }
+
 
 
 05. Attempt to create with an entity without TYPE field - see error
 ===================================================================
 HTTP/1.1 200 OK
-Content-Length: 373
+Content-Length: 522
 Content-Type: application/json
 Link: <https://uri.etsi.org/ngsi-ld/v1/ngsi-ld-core-context.jsonld>; rel="http://www.w3.org/ns/json-ld#context"; type="application/ld+json"
 Date: REGEX(.*)
 
 {
-    "success": [],
-    "errors": [
-        {
-            "entityId": "urn:ngsi-ld:entity:E2",
-            "error": {
-                "type": "https://uri.etsi.org/ngsi-ld/errors/BadRequestData",
-                "title": "entity already exists",
-                "status": 400
-            }
-        },
-        {
-            "entityId": "urn:ngsi-ld:entity:E1",
-            "error": {
-                "type": "https://uri.etsi.org/ngsi-ld/errors/BadRequestData",
-                "title": "Invalid Entity",
-                "detail": "Mandatory field entity::type is missing",
-                "status": 400
-            }
-        }
-    ]
+  "success": [],
+  "errors": [
+    {
+      "entityId": "urn:ngsi-ld:entity:E2",
+      "error": {
+        "type": "https://uri.etsi.org/ngsi-ld/errors/BadRequestData",
+        "title": "entity already exists",
+        "status": 400
+      }
+    },
+    {
+      "entityId": "urn:ngsi-ld:entity:E1",
+      "error": {
+        "type": "https://uri.etsi.org/ngsi-ld/errors/BadRequestData",
+        "title": "Invalid Entity",
+        "detail": "Mandatory field entity::type is missing",
+        "status": 400
+      }
+    }
+  ]
 }
+
 
 
 06. Attempt to create with an entity with 2 ID fields - see error
 =================================================================
 HTTP/1.1 200 OK
-Content-Length: 217
+Content-Length: 311
 Content-Type: application/json
 Link: <https://uri.etsi.org/ngsi-ld/v1/ngsi-ld-core-context.jsonld>; rel="http://www.w3.org/ns/json-ld#context"; type="application/ld+json"
 Date: REGEX(.*)
 
 {
-    "success": [
-        "urn:ngsi-ld:entity:E3"
-    ],
-    "errors": [
-        {
-            "entityId": "urn:ngsi-ld:entity:E1",
-            "error": {
-                "type": "https://uri.etsi.org/ngsi-ld/errors/BadRequestData",
-                "title": "Duplicated field",
-                "detail": "entity::id",
-                "status": 400
-            }
-        }
-    ]
+  "success": [
+    "urn:ngsi-ld:entity:E3"
+  ],
+  "errors": [
+    {
+      "entityId": "urn:ngsi-ld:entity:E1",
+      "error": {
+        "type": "https://uri.etsi.org/ngsi-ld/errors/BadRequestData",
+        "title": "Duplicated field",
+        "detail": "entity::id",
+        "status": 400
+      }
+    }
+  ]
 }
+
 
 
 07. Attempt to create with an entity with 2 TYPE fields - see error
 ===================================================================
 HTTP/1.1 200 OK
-Content-Length: 348
+Content-Length: 497
 Content-Type: application/json
 Link: <https://uri.etsi.org/ngsi-ld/v1/ngsi-ld-core-context.jsonld>; rel="http://www.w3.org/ns/json-ld#context"; type="application/ld+json"
 Date: REGEX(.*)
 
 {
-    "success": [],
-    "errors": [
-        {
-            "entityId": "urn:ngsi-ld:entity:E1",
-            "error": {
-                "type": "https://uri.etsi.org/ngsi-ld/errors/BadRequestData",
-                "title": "Duplicated field",
-                "detail": "entity::type",
-                "status": 400
-            }
-        },
-        {
-            "entityId": "urn:ngsi-ld:entity:E2",
-            "error": {
-                "type": "https://uri.etsi.org/ngsi-ld/errors/BadRequestData",
-                "title": "entity already exists",
-                "status": 400
-            }
-        }
-    ]
+  "success": [],
+  "errors": [
+    {
+      "entityId": "urn:ngsi-ld:entity:E1",
+      "error": {
+        "type": "https://uri.etsi.org/ngsi-ld/errors/BadRequestData",
+        "title": "Duplicated field",
+        "detail": "entity::type",
+        "status": 400
+      }
+    },
+    {
+      "entityId": "urn:ngsi-ld:entity:E2",
+      "error": {
+        "type": "https://uri.etsi.org/ngsi-ld/errors/BadRequestData",
+        "title": "entity already exists",
+        "status": 400
+      }
+    }
+  ]
 }
+
 
 
 08. Attempt to create with an empty array - see error
 =====================================================
 HTTP/1.1 400 Bad Request
-Content-Length: 97
+Content-Length: 111
 Content-Type: application/json
 Date: REGEX(.*)
 
 {
-    "type": "https://uri.etsi.org/ngsi-ld/errors/InvalidRequest",
-    "title": "Empty Array",
-    "detail": "[]"
+  "type": "https://uri.etsi.org/ngsi-ld/errors/InvalidRequest",
+  "title": "Empty Array",
+  "detail": "[]"
 }
+
 
 
 09. Attempt to create with an empty without @context field - see error
 ======================================================================
 HTTP/1.1 200 OK
-Content-Length: 200
+Content-Length: 284
 Content-Type: application/json
 Link: <https://uri.etsi.org/ngsi-ld/v1/ngsi-ld-core-context.jsonld>; rel="http://www.w3.org/ns/json-ld#context"; type="application/ld+json"
 Date: REGEX(.*)
 
 {
-    "success": [
-        "urn:ngsi-ld:entity:E4"
-    ],
-    "errors": [
-        {
-            "entityId": "urn:ngsi-ld:entity:E3",
-            "error": {
-                "type": "https://uri.etsi.org/ngsi-ld/errors/BadRequestData",
-                "title": "entity already exists",
-                "status": 400
-            }
-        }
-    ]
+  "success": [
+    "urn:ngsi-ld:entity:E4"
+  ],
+  "errors": [
+    {
+      "entityId": "urn:ngsi-ld:entity:E3",
+      "error": {
+        "type": "https://uri.etsi.org/ngsi-ld/errors/BadRequestData",
+        "title": "entity already exists",
+        "status": 400
+      }
+    }
+  ]
 }
+
+
+
+10. Create an entity E10
+========================
+HTTP/1.1 201 Created
+Content-Length: 0
+Location: /ngsi-ld/v1/entities/urn:ngsi-ld:entity:E10
+Date: REGEX(.*)
+
+
+
+11. Attempt to create entities E10 and E11 - see error for E10, ok for E11
+==========================================================================
+HTTP/1.1 200 OK
+Content-Length: 286
+Content-Type: application/json
+Link: <https://uri.etsi.org/ngsi-ld/v1/ngsi-ld-core-context.jsonld>; rel="http://www.w3.org/ns/json-ld#context"; type="application/ld+json"
+Date: REGEX(.*)
+
+{
+  "success": [
+    "urn:ngsi-ld:entity:E11"
+  ],
+  "errors": [
+    {
+      "entityId": "urn:ngsi-ld:entity:E10",
+      "error": {
+        "type": "https://uri.etsi.org/ngsi-ld/errors/BadRequestData",
+        "title": "entity already exists",
+        "status": 400
+      }
+    }
+  ]
+}
+
 
 
 --TEARDOWN--
