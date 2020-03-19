@@ -86,7 +86,7 @@ echo
 01. Create entities E1 and E2 using POST /ngsi-ld/v1/entityOperations/create
 ============================================================================
 HTTP/1.1 200 OK
-Content-Length: 73
+Content-Length: 96
 Content-Type: application/json
 Link: <https://uri.etsi.org/ngsi-ld/v1/ngsi-ld-core-context.jsonld>; rel="http://www.w3.org/ns/json-ld#context"; type="application/ld+json"
 Date: REGEX(.*)
@@ -98,6 +98,7 @@ Date: REGEX(.*)
   ],
   "errors": []
 }
+
 
 
 02. See the entity E1 in mongo
