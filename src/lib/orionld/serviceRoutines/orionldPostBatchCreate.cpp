@@ -173,9 +173,9 @@ bool orionldPostBatchCreate(ConnectionInfo* ciP)
       // Get entity id, type and creDate from the DB
       entityIdGet(dbEntityP, &idInDb);
       entityErrorPush(errorsArrayP, idInDb, OrionldBadRequestData, "entity already exists", NULL, 400);
-      
+
       entityP = entityLookupById(incomingTree, idInDb);
-      
+
       kjChildRemove(incomingTree, entityP);
     }
   }
@@ -248,5 +248,5 @@ bool orionldPostBatchCreate(ConnectionInfo* ciP)
     return false;
   }
 
-  return true;   
+  return true;
 }
