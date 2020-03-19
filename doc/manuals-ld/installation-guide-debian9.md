@@ -237,22 +237,23 @@ If using a docker image, the MongoDB server comes as part of the docker, but if 
 For this, preser refer to the [MongoDB documentation](https://docs.mongodb.com/manual/tutorial/install-mongodb-on-debian/).
 The version 4.0 is recommended, but both older and newer should work just fine.
 
-This is what the MongoDB documentation tells us to do to install MongoDB server 4.0 under Debian 9.
+This is what the MongoDB documentation tells us to do to install MongoDB server 4.2 under Debian 9.
+The version 4.2 has been tested to work just fine in debian 9.
 
 ```bash
 wget -qO - https://www.mongodb.org/static/pgp/server-4.2.asc | sudo apt-key add -
-apt-get install gnupg
+sudo apt-get install gnupg
 
 wget -qO - https://www.mongodb.org/static/pgp/server-4.2.asc |  sudo apt-key add -
-echo "deb http://repo.mongodb.org/apt/debian stretch/mongodb-org/4.2 main" | tee /etc/apt/sources.list.d/mongodb-org-4.2.list
+echo "deb http://repo.mongodb.org/apt/debian stretch/mongodb-org/4.2 main" | sudo tee /etc/apt/sources.list.d/mongodb-org-4.2.list
 
 sudo apt-get update
 sudo apt-get install -y mongodb-org
-echo "mongodb-org hold" | sudo dpkg --set-selections
+echo "mongodb-org hold"        | sudo dpkg --set-selections
 echo "mongodb-org-server hold" | sudo dpkg --set-selections
-echo "mongodb-org-shell hold" | sudo dpkg --set-selections
+echo "mongodb-org-shell hold"  | sudo dpkg --set-selections
 echo "mongodb-org-mongos hold" | sudo dpkg --set-selections
-echo "mongodb-org-tools hold" | sudo dpkg --set-selections
+echo "mongodb-org-tools hold"  | sudo dpkg --set-selections
 sudo systemctl start mongod
 sudo systemctl status mongod
 sudo systemctl enable mongod

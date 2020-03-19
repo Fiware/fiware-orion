@@ -39,6 +39,6 @@ extern "C"
 //
 // kjTreeToSubscription -
 //
-extern bool kjTreeToSubscription(ConnectionInfo* ciP, ngsiv2::Subscription* subP, char** subIdPP);
+extern bool kjTreeToSubscription(ConnectionInfo* ciP, ngsiv2::Subscription* subP, char** subIdPP, KjNode** endpointPP);
 
 #endif  // SRC_LIB_ORIONLD_KJTREE_KJTREETOSUBSCRIPTION_H_
