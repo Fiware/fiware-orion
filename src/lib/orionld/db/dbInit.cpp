@@ -43,6 +43,8 @@
 #include "orionld/mongoCppLegacy/mongoCppLegacySubscriptionReplace.h"      // mongoCppLegacySubscriptionReplace
 #include "orionld/mongoCppLegacy/mongoCppLegacyRegistrationGet.h"          // mongoCppLegacyRegistrationGet
 #include "orionld/mongoCppLegacy/mongoCppLegacyRegistrationReplace.h"      // mongoCppLegacyRegistrationReplace
+#include "orionld/mongoCppLegacy/mongoCppLegacyEntityTypesGet.h"           // mongoCppLegacyEntityTypesGet
+#include "orionld/mongoCppLegacy/mongoCppLegacyEntitiesGet.h"              // mongoCppLegacyEntitiesGet
 
 #elif DB_DRIVER_MONGOC
 #include "orionld/mongoc/mongocInit.h"                                     // mongocInit
@@ -82,6 +84,8 @@ void dbInit(const char* dbHost, const char* dbName)
   dbSubscriptionReplace                    = mongoCppLegacySubscriptionReplace;
   dbRegistrationGet                        = mongoCppLegacyRegistrationGet;
   dbRegistrationReplace                    = mongoCppLegacyRegistrationReplace;
+  dbEntityTypesGet                         = mongoCppLegacyEntityTypesGet;
+  dbEntitiesGet                            = mongoCppLegacyEntitiesGet;
 
   mongoCppLegacyInit(dbHost, dbName);
 
@@ -101,6 +105,8 @@ void dbInit(const char* dbHost, const char* dbName)
   dbSubscriptionReplace                    = NULL;  // FIXME: Implement mongocSubscriptionReplace
   dbRegistrationGet                        = NULL;  // FIXME: Implement mongocRegistrationGet
   dbRegistrationReplace                    = NULL;  // FIXME: Implement mongocRegistrationReplace
+  dbEntityTypesGet                         = NULL;  // FIXME: Implement 
+  dbEntitiesGet                            = NULL;  // FIXME: Implement 
 
   mongocInit(dbHost, dbName);
 

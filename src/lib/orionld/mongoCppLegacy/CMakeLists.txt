@@ -38,6 +38,9 @@ SET (SOURCES
     mongoCppLegacySubscriptionReplace.cpp
     mongoCppLegacyRegistrationGet.cpp
     mongoCppLegacyRegistrationReplace.cpp
+    mongoCppLegacyEntityTypesGet.cpp
+    mongoCppLegacyEntityTypesFromRegistrationsGet.cpp
+    mongoCppLegacyEntitiesGet.cpp
 )
 
 # Include directories

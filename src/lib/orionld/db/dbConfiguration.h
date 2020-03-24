@@ -30,6 +30,8 @@ extern "C"
 #include "kjson/KjNode.h"                                        // KjNode
 }
 
+#include "orionld/common/OrionldProblemDetails.h"                // OrionldProblemDetails
+
 
 
 // -----------------------------------------------------------------------------
@@ -77,6 +79,8 @@ typedef KjNode* (*DbSubscriptionGet)(const char* subscriptionId);
 typedef bool    (*DbSubscriptionReplace)(const char* subscriptionId, KjNode* dbSubscriptionP);
 typedef KjNode* (*DbRegistrationGet)(const char* registrationId);
 typedef bool    (*DbRegistrationReplace)(const char* registrationId, KjNode* dbRegistrationP);
+typedef KjNode* (*DbEntityTypesGet)(OrionldProblemDetails* pdP);
+typedef KjNode* (*DbEntitiesGet)(char** fieldV, int fields);
 
 
 
@@ -101,5 +105,7 @@ extern DbSubscriptionGet                         dbSubscriptionGet;
 extern DbSubscriptionReplace                     dbSubscriptionReplace;
 extern DbRegistrationGet                         dbRegistrationGet;
 extern DbRegistrationReplace                     dbRegistrationReplace;
+extern DbEntityTypesGet                          dbEntityTypesGet;
+extern DbEntitiesGet                             dbEntitiesGet;
 
 #endif  // SRC_LIB_ORIONLD_DB_DBCONFIGURATION_H_
