@@ -106,7 +106,7 @@ rm -f /usr/local/lib/libpaho*
 apt install doxygen
 make html
 make
-sudo make install
+make install
 
 
 echo "Builder: installing mongo cxx driver"
