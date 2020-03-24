@@ -38,9 +38,8 @@ extern "C"
 #include "orionld/common/orionldState.h"                          // orionldState
 #include "orionld/common/OrionldProblemDetails.h"                 // OrionldProblemDetails
 #include "orionld/context/orionldContextItemAliasLookup.h"        // orionldContextItemAliasLookup
-#include "orionld/mongoCppLegacy/mongoCppLegacyEntityTypesFromRegistrationsGet.h"  // mongoCppLegacyEntityTypesFromRegistrationsGet
-#include "orionld/mongoCppLegacy/mongoCppLegacyEntitiesGet.h"     // mongoCppLegacyEntitiesGet
-#include "orionld/mongoCppLegacy/mongoCppLegacyEntityTypesGet.h"  // Own interface
+#include "orionld/db/dbConfiguration.h"                           // dbEntityTypesFromRegistrationsGet, dbEntitiesGet
+#include "orionld/db/dbEntityTypesGet.h"                          // Own interface
 
 
 
@@ -118,11 +117,11 @@ static void kjStringArraySortedInsert(KjNode* array, KjNode* newItemP)
 
 // ----------------------------------------------------------------------------
 //
-// mongoCppLegacyEntityTypesGet -
+// dbEntityTypesGet -
 //
 // FIXME: Move to db library - no direct DB handling is done here
 //
-KjNode* mongoCppLegacyEntityTypesGet(OrionldProblemDetails* pdP)
+KjNode* dbEntityTypesGet(OrionldProblemDetails* pdP)
 {
   KjNode*  local;
   KjNode*  remote;
@@ -131,8 +130,8 @@ KjNode* mongoCppLegacyEntityTypesGet(OrionldProblemDetails* pdP)
 
   fields[0] = (char*) "_id";
   
-  local  = mongoCppLegacyEntitiesGet(fields, 1);
-  remote = mongoCppLegacyEntityTypesFromRegistrationsGet();
+  local  = dbEntitiesGet(fields, 1);
+  remote = dbEntityTypesFromRegistrationsGet();
 
   if (local != NULL)
     local = typesExtract(local);

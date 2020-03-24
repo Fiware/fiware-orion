@@ -35,7 +35,7 @@ extern "C"
 #include "orionld/common/orionldState.h"                         // orionldState
 #include "orionld/common/OrionldProblemDetails.h"                // OrionldProblemDetails
 #include "orionld/common/orionldErrorResponse.h"                 // orionldErrorResponseCreate
-#include "orionld/db/dbConfiguration.h"                          // dbEntityTypesGet
+#include "orionld/db/dbEntityTypesGet.h"                         // dbEntityTypesGet
 #include "orionld/serviceRoutines/orionldGetEntityTypes.h"       // Own Interface
 
 

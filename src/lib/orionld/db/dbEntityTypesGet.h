@@ -1,5 +1,5 @@
-#ifndef SRC_LIB_ORIONLD_MONGOCPPLEGACY_MONGOCPPLEGACYENTITYTYPESGET_H_
-#define SRC_LIB_ORIONLD_MONGOCPPLEGACY_MONGOCPPLEGACYENTITYTYPESGET_H_
+#ifndef SRC_LIB_ORIONLD_DB_DBENTITYTYPESGET_H_
+#define SRC_LIB_ORIONLD_DB_DBENTITYTYPESGET_H_
 
 /*
 *
@@ -37,8 +37,8 @@ extern "C"
 
 // -----------------------------------------------------------------------------
 //
-// mongoCppLegacyEntityTypesGet -
+// dbEntityTypesGet -
 //
-extern KjNode* mongoCppLegacyEntityTypesGet(OrionldProblemDetails* pdP);
+extern KjNode* dbEntityTypesGet(OrionldProblemDetails* pdP);
 
-#endif  // SRC_LIB_ORIONLD_MONGOCPPLEGACY_MONGOCPPLEGACYENTITYTYPESGET_H_
+#endif  // SRC_LIB_ORIONLD_DB_DBENTITYTYPESGET_H_

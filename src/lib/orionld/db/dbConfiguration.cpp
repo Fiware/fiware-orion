@@ -53,5 +53,5 @@ DbSubscriptionGet                         dbSubscriptionGet;
 DbSubscriptionReplace                     dbSubscriptionReplace;
 DbRegistrationGet                         dbRegistrationGet;
 DbRegistrationReplace                     dbRegistrationReplace;
-DbEntityTypesGet                          dbEntityTypesGet;
+DbEntityTypesFromRegistrationsGet         dbEntityTypesFromRegistrationsGet;
 DbEntitiesGet                             dbEntitiesGet;
