@@ -105,7 +105,7 @@ cd ${ROOT}/paho.mqtt.c
 echo "========================================================="
 pwd
 echo "========================================================="
-#rm -f /usr/local/lib/libpaho*
+rm -f /usr/local/lib/libpaho*
 #apt-get install doxygen
 #make html
 #make
