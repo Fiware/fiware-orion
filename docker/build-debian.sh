@@ -101,16 +101,25 @@ apt-get -y install --no-install-recommends \
 
 echo "Builder: installing Paho MQTT C library"
 apt-get -y install doxygen                                                    # OK - with -y. NOT OK without -y !!!
+apt-get -y install graphviz 
 rm -f /usr/local/lib/libpaho*                                                 # OK
 git clone https://github.com/eclipse/paho.mqtt.c.git ${ROOT}/paho.mqtt.c      # OK
 cd ${ROOT}/paho.mqtt.c                                                        # OK
 git fetch -a
-#git checkout tags/v1.3.1                                                      # OK
-git checkout develop                                                          # OK
+git checkout tags/v1.3.1                                                      # OK - git checkout develop ...
 make html                                                                     # OK
-make                                                                          # OK
+
+echo Building Paho MQTT C Library
+make > /tmp/paho-build 2&>1 || /bin/true
+echo Paho Built ...
+echo "============== PAHO BUILD TRACES START ============================="
+cat /tmp/paho-build
+echo "============== PAHO BUILD TRACES END ==============================="
+
+
+echo Installing Paho MQTT C Library
 make install > /tmp/paho-install 2&>1 || /bin/true                            # ... ?
-echo Pah Done ...
+echo Paho Installed ...
 echo "============== PAHO INSTALLATION TRACES START ============================="
 cat /tmp/paho-install
 echo "============== PAHO INSTALLATION TRACES END ==============================="
