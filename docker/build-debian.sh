@@ -101,10 +101,12 @@ apt-get -y install --no-install-recommends \
 
 echo "Builder: installing Paho MQTT C library"
 apt-get -y install doxygen                                                    # OK - with -y. NOT OK without -y !!!
+rm -f /usr/local/lib/libpaho*                                                 # OK
 git clone https://github.com/eclipse/paho.mqtt.c.git ${ROOT}/paho.mqtt.c      # OK
 cd ${ROOT}/paho.mqtt.c                                                        # OK
-rm -f /usr/local/lib/libpaho*                                                 # OK
-git checkout tags/v1.3.1                                                      # OK
+git fetch -a
+#git checkout tags/v1.3.1                                                      # OK
+git checkout develop                                                          # OK
 make html                                                                     # OK
 make                                                                          # OK
 make install > /tmp/paho-install 2&>1 || /bin/true                            # ... ?
