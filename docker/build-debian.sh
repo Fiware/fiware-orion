@@ -104,9 +104,9 @@ git clone https://github.com/eclipse/paho.mqtt.c.git ${ROOT}/paho.mqtt.c      # 
 cd ${ROOT}/paho.mqtt.c                                                        # OK
 rm -f /usr/local/lib/libpaho*                                                 # OK - 
 apt-get -y install doxygen                                                    # OK - with -y. NOT OK without -y !!!
-make html                                                                     # ...
-#make
-#make install
+make html                                                                     # OK
+make                                                                          # ... ?  Both in the same test
+make install                                                                  # ... ?  Both in the same test
 
 
 echo "Builder: installing mongo cxx driver"
