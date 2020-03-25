@@ -31,8 +31,6 @@ extern "C"
 #include "kjson/kjBuilder.h"                                    // kjChildAdd, ...
 }
 
-#include "rest/ConnectionInfo.h"                                // ConnectionInfo
-
 #include "orionld/common/CHECK.h"                               // STRING_CHECK, ...
 #include "orionld/common/orionldState.h"                        // orionldState
 #include "orionld/common/orionldErrorResponse.h"                // orionldErrorResponseCreate
@@ -65,7 +63,7 @@ extern "C"
 // as a KjNode tree, until we are able to perform this check.
 // The output parameter 'propertyTreeP' is used for this purpose.
 //
-bool pcheckRegistration(ConnectionInfo* ciP, KjNode* registrationP, bool idCanBePresent, KjNode**  propertyTreeP)
+bool pcheckRegistration(KjNode* registrationP, bool idCanBePresent, KjNode**  propertyTreeP)
 {
   KjNode*  idP                   = NULL;
   KjNode*  typeP                 = NULL;
@@ -146,7 +144,7 @@ bool pcheckRegistration(ConnectionInfo* ciP, KjNode* registrationP, bool idCanBe
     {
       DUPLICATE_CHECK(informationP, "information", nodeP);
       ARRAY_CHECK(nodeP, "information");
-      if (pcheckInformation(ciP, nodeP) == false)
+      if (pcheckInformation(nodeP) == false)
         return false;
     }
     else if (strcmp(nodeP->name, "observationInterval") == 0)
@@ -154,14 +152,14 @@ bool pcheckRegistration(ConnectionInfo* ciP, KjNode* registrationP, bool idCanBe
       DUPLICATE_CHECK(observationIntervalP, "observationInterval", nodeP);
       OBJECT_CHECK(nodeP, "observationInterval");
       EMPTY_OBJECT_CHECK(nodeP, "observationInterval");
-      if (pcheckTimeInterval(ciP, nodeP, "observationInterval") == false)
+      if (pcheckTimeInterval(nodeP, "observationInterval") == false)
         return false;
     }
     else if (strcmp(nodeP->name, "managementInterval") == 0)
     {
       DUPLICATE_CHECK(managementIntervalP, "managementInterval", nodeP);
       OBJECT_CHECK(nodeP, "managementInterval");
-      if (pcheckTimeInterval(ciP, nodeP, "managementInterval") == false)
+      if (pcheckTimeInterval(nodeP, "managementInterval") == false)
         return false;
     }
     else if (strcmp(nodeP->name, "location") == 0)

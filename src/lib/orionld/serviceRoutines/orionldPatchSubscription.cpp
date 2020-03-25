@@ -498,7 +498,7 @@ bool orionldPatchSubscription(ConnectionInfo* ciP)
   KjNode* qP                     = NULL;
   KjNode* geoqP                  = NULL;
 
-  if (pcheckSubscription(ciP, orionldState.requestTree, false, &watchedAttributesNodeP, &timeIntervalNodeP, &qP, &geoqP) == false)
+  if (pcheckSubscription(orionldState.requestTree, false, &watchedAttributesNodeP, &timeIntervalNodeP, &qP, &geoqP) == false)
   {
     LM_E(("pcheckSubscription FAILED"));
     return false;

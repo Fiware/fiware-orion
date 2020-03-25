@@ -30,8 +30,6 @@ extern "C"
 #include "logMsg/logMsg.h"                                      // LM_*
 #include "logMsg/traceLevels.h"                                 // Lmt*
 
-#include "rest/ConnectionInfo.h"                                // ConnectionInfo
-
 #include "orionld/common/CHECK.h"                               // STRING_CHECK, ...
 #include "orionld/common/orionldState.h"                        // orionldState
 #include "orionld/payloadCheck/pcheckEndpoint.h"                // Own interface
@@ -42,7 +40,7 @@ extern "C"
 //
 // pcheckEndpoint -
 //
-bool pcheckEndpoint(ConnectionInfo* ciP, KjNode* endpointP)
+bool pcheckEndpoint(KjNode* endpointP)
 {
   KjNode* uriP    = NULL;
   KjNode* acceptP = NULL;

@@ -27,8 +27,6 @@ extern "C"
 #include "kjson/KjNode.h"                                       // KjNode
 }
 
-#include "rest/ConnectionInfo.h"                                // ConnectionInfo
-
 #include "logMsg/logMsg.h"                                      // LM_*
 #include "logMsg/traceLevels.h"                                 // Lmt*
 
@@ -43,7 +41,7 @@ extern "C"
 //
 // pcheckTimeInterval -
 //
-bool pcheckTimeInterval(ConnectionInfo* ciP, KjNode* timeIntervalNodeP, const char* fieldName)
+bool pcheckTimeInterval(KjNode* timeIntervalNodeP, const char* fieldName)
 {
   KjNode* startP = NULL;
   KjNode* endP   = NULL;

@@ -30,8 +30,6 @@ extern "C"
 #include "logMsg/logMsg.h"                                      // LM_*
 #include "logMsg/traceLevels.h"                                 // Lmt*
 
-#include "rest/ConnectionInfo.h"                                // ConnectionInfo
-
 #include "orionld/common/orionldState.h"                        // orionldState
 #include "orionld/common/orionldErrorResponse.h"                // orionldErrorResponseCreate
 #include "orionld/common/CHECK.h"                               // STRING_CHECK, ...
@@ -44,7 +42,7 @@ extern "C"
 //
 // pcheckInformation -
 //
-bool pcheckInformation(ConnectionInfo* ciP, KjNode* informationArrayP)
+bool pcheckInformation(KjNode* informationArrayP)
 {
   if (informationArrayP->value.firstChildP == NULL)  // Empty Array
   {
@@ -57,7 +55,7 @@ bool pcheckInformation(ConnectionInfo* ciP, KjNode* informationArrayP)
   {
     OBJECT_CHECK(informationP, "information[X]");
 
-    if (pcheckInformationItem(ciP, informationP) == false)
+    if (pcheckInformationItem(informationP) == false)
       return false;
   }
 

@@ -556,7 +556,7 @@ bool orionldPatchRegistration(ConnectionInfo* ciP)
     return false;
   }
 
-  if (pcheckRegistration(ciP, orionldState.requestTree, false, &propertyTree) == false)
+  if (pcheckRegistration(orionldState.requestTree, false, &propertyTree) == false)
   {
     LM_E(("pcheckRegistration FAILED"));
     return false;

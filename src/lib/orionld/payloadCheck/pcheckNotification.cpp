@@ -30,8 +30,6 @@ extern "C"
 #include "logMsg/logMsg.h"                                      // LM_*
 #include "logMsg/traceLevels.h"                                 // Lmt*
 
-#include "rest/ConnectionInfo.h"                                // ConnectionInfo
-
 #include "orionld/common/CHECK.h"                               // STRING_CHECK, ...
 #include "orionld/common/orionldState.h"                        // orionldState
 #include "orionld/common/orionldErrorResponse.h"                // orionldErrorResponseCreate
@@ -45,7 +43,7 @@ extern "C"
 //
 // pcheckNotification -
 //
-bool pcheckNotification(ConnectionInfo* ciP, KjNode* notificationP)
+bool pcheckNotification(KjNode* notificationP)
 {
   KjNode* attributesP = NULL;
   KjNode* formatP     = NULL;
@@ -85,7 +83,7 @@ bool pcheckNotification(ConnectionInfo* ciP, KjNode* notificationP)
       DUPLICATE_CHECK(endpointP, "endpoint", nItemP);
       OBJECT_CHECK(endpointP, "endpoint");
       EMPTY_OBJECT_CHECK(endpointP, "endpoint");
-      if (pcheckEndpoint(ciP, endpointP) == false)
+      if (pcheckEndpoint(endpointP) == false)
         return false;
     }
     else if (strcmp(nItemP->name, "status") == 0)

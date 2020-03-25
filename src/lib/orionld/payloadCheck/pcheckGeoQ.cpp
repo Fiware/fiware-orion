@@ -32,8 +32,6 @@ extern "C"
 #include "logMsg/logMsg.h"                                      // LM_*
 #include "logMsg/traceLevels.h"                                 // Lmt*
 
-#include "rest/ConnectionInfo.h"                                // ConnectionInfo
-
 #include "orionld/common/CHECK.h"                               // STRING_CHECK, ...
 #include "orionld/common/orionldState.h"                        // orionldState
 #include "orionld/common/orionldErrorResponse.h"                // orionldErrorResponseCreate
@@ -48,7 +46,7 @@ extern "C"
 //
 // ngsildCoordinatesToAPIv1Datamodel -
 //
-static bool ngsildCoordinatesToAPIv1Datamodel(ConnectionInfo* ciP, KjNode* coordinatesP, const char* fieldName, KjNode* geometryP)
+static bool ngsildCoordinatesToAPIv1Datamodel(KjNode* coordinatesP, const char* fieldName, KjNode* geometryP)
 {
   bool   isPoint = false;
   char*  buf;
@@ -104,7 +102,7 @@ static bool ngsildCoordinatesToAPIv1Datamodel(ConnectionInfo* ciP, KjNode* coord
 //
 // pcheckGeoQ -
 //
-bool pcheckGeoQ(ConnectionInfo* ciP, KjNode* geoqNodeP)
+bool pcheckGeoQ(KjNode* geoqNodeP)
 {
   KjNode*             geometryP    = NULL;
   KjNode*             coordinatesP = NULL;
@@ -195,7 +193,7 @@ bool pcheckGeoQ(ConnectionInfo* ciP, KjNode* geoqNodeP)
   //
   // Render the coordinates and convert to a string - for the NGSIv1 database model ... ?
   //
-  if (ngsildCoordinatesToAPIv1Datamodel(ciP, coordinatesP, "geoQ::coordinates", geometryP) == false)
+  if (ngsildCoordinatesToAPIv1Datamodel(coordinatesP, "geoQ::coordinates", geometryP) == false)
     return false;
 
   return true;

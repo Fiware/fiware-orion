@@ -240,7 +240,7 @@ static OrionLdRestService* serviceLookup(ConnectionInfo* ciP)
 {
   OrionLdRestService* serviceP;
 
-  serviceP = orionldServiceLookup(ciP, &orionldRestServiceV[ciP->verb]);
+  serviceP = orionldServiceLookup(&orionldRestServiceV[ciP->verb]);
   if (serviceP == NULL)
   {
     if (orionldBadVerb(ciP) == true)

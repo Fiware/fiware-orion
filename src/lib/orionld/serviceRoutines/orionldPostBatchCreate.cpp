@@ -127,7 +127,7 @@ bool orionldPostBatchCreate(ConnectionInfo* ciP)
   // * all entities must contain a entity::id (one level down)
   // * no entity can contain an entity::type (one level down)
   //
-  pcheckEntities(ciP, orionldState.requestTree);
+  pcheckEntities(orionldState.requestTree);
 
   KjNode*               incomingTree   = orionldState.requestTree;
   KjNode*               idArray        = kjArray(orionldState.kjsonP, NULL);
