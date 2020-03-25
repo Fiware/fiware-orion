@@ -103,8 +103,8 @@ echo "Builder: installing Paho MQTT C library"
 git clone https://github.com/eclipse/paho.mqtt.c.git ${ROOT}/paho.mqtt.c      # OK - 
 cd ${ROOT}/paho.mqtt.c                                                        # OK
 rm -f /usr/local/lib/libpaho*                                                 # OK - 
-apt-get -y install doxygen                                                    # ... ?
-#make html
+apt-get -y install doxygen                                                    # OK - with -y. NOT OK without -y !!!
+make html                                                                     # ...
 #make
 #make install
 
