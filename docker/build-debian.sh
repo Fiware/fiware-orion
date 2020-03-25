@@ -110,9 +110,12 @@ git checkout develop                                                          # 
 make html                                                                     # OK
 make                                                                          # OK
 make install > /tmp/paho-install 2&>1 || /bin/true                            # ... ?
+echo Pah Done ...
+echo "============== PAHO INSTALLATION TRACES START ============================="
 cat /tmp/paho-install
-echo "Exiting"
-exit 3
+echo "============== PAHO INSTALLATION TRACES END ==============================="
+
+
 
 echo "Builder: installing mongo cxx driver"
 git clone https://github.com/FIWARE-Ops/mongo-cxx-driver ${ROOT}/mongo-cxx-driver
