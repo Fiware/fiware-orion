@@ -100,13 +100,10 @@ apt-get -y install --no-install-recommends \
     ${BUILD_DEPS[@]}
 
 echo "Builder: installing Paho MQTT C library"
-git clone https://github.com/eclipse/paho.mqtt.c.git ${ROOT}/paho.mqtt.c
-cd ${ROOT}/paho.mqtt.c
-echo "========================================================="
-pwd
-echo "========================================================="
-rm -f /usr/local/lib/libpaho*
-#apt-get install doxygen
+git clone https://github.com/eclipse/paho.mqtt.c.git ${ROOT}/paho.mqtt.c      # OK - 
+cd ${ROOT}/paho.mqtt.c                                                        # OK
+rm -f /usr/local/lib/libpaho*                                                 # OK - 
+apt-get install doxygen                                                       # ... ?
 #make html
 #make
 #make install
