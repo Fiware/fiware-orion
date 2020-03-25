@@ -101,14 +101,16 @@ apt-get -y install --no-install-recommends \
 
 echo "Builder: installing Paho MQTT C library"
 apt-get -y install doxygen                                                    # OK - with -y. NOT OK without -y !!!
-git clone https://github.com/eclipse/paho.mqtt.c.git ${ROOT}/paho.mqtt.c      # OK - 
+git clone https://github.com/eclipse/paho.mqtt.c.git ${ROOT}/paho.mqtt.c      # OK
 cd ${ROOT}/paho.mqtt.c                                                        # OK
-rm -f /usr/local/lib/libpaho*                                                 # OK - 
-git checkout tags/v1.3.1                                                      # OK - 
-make html                                                                     # OK - 
-make                                                                          # ... ?
-#make install                                                                  # ... ?  Both in the same test
-
+rm -f /usr/local/lib/libpaho*                                                 # OK
+git checkout tags/v1.3.1                                                      # OK
+make html                                                                     # OK
+make                                                                          # OK
+make install > /tmp/paho-install 2&>1 || /bin/true                            # ... ?
+cat /tmp/paho-install
+echo "Exiting"
+exit 3
 
 echo "Builder: installing mongo cxx driver"
 git clone https://github.com/FIWARE-Ops/mongo-cxx-driver ${ROOT}/mongo-cxx-driver
