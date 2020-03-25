@@ -94,7 +94,7 @@ bool pcheckInformationItem(ConnectionInfo* ciP, KjNode* informationP)
     else
     {
       orionldErrorResponseCreate(OrionldBadRequestData, "Invalid field for information[X]", infoItemP->name);
-      ciP->httpStatusCode = SccBadRequest;
+      orionldState.httpStatusCode = SccBadRequest;
       return false;
     }
   }

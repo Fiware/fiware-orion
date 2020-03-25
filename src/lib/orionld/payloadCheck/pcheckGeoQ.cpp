@@ -56,7 +56,7 @@ static bool ngsildCoordinatesToAPIv1Datamodel(ConnectionInfo* ciP, KjNode* coord
   if (geometryP == NULL)
   {
     orionldErrorResponseCreate(OrionldBadRequestData, "Internal Error", "Unable to extract the geometry of a geoQ for coordinmate APIv1 fix");
-    ciP->httpStatusCode = SccBadRequest;
+    orionldState.httpStatusCode = SccBadRequest;
     return false;
   }
 
@@ -139,7 +139,7 @@ bool pcheckGeoQ(ConnectionInfo* ciP, KjNode* geoqNodeP)
     {
       LM_W(("Bad Input (invalid field in geoQ: '%s')", itemP->name));
       orionldErrorResponseCreate(OrionldBadRequestData, "Invalid Payload Data", "invalid field in geoQ");
-      ciP->httpStatusCode = SccBadRequest;
+      orionldState.httpStatusCode = SccBadRequest;
       return false;
     }
   }
@@ -148,7 +148,7 @@ bool pcheckGeoQ(ConnectionInfo* ciP, KjNode* geoqNodeP)
   {
     LM_W(("Bad Input (mandatory geoQ field 'geometry' is missing)"));
     orionldErrorResponseCreate(OrionldBadRequestData, "Invalid Payload Data", "mandatory geoQ field 'geometry' is missing");
-    ciP->httpStatusCode = SccBadRequest;
+    orionldState.httpStatusCode = SccBadRequest;
     return false;
   }
 
@@ -156,7 +156,7 @@ bool pcheckGeoQ(ConnectionInfo* ciP, KjNode* geoqNodeP)
   {
     LM_W(("Bad Input (mandatory geoQ field 'coordinates' is missing)"));
     orionldErrorResponseCreate(OrionldBadRequestData, "Invalid Payload Data", "mandatory geoQ field 'coordinates' is missing");
-    ciP->httpStatusCode = SccBadRequest;
+    orionldState.httpStatusCode = SccBadRequest;
     return false;
   }
 
@@ -164,7 +164,7 @@ bool pcheckGeoQ(ConnectionInfo* ciP, KjNode* geoqNodeP)
   {
     LM_W(("Bad Input (mandatory geoQ field 'georel' is missing)"));
     orionldErrorResponseCreate(OrionldBadRequestData, "Invalid Payload Data", "mandatory geoQ field 'georel' is missing");
-    ciP->httpStatusCode = SccBadRequest;
+    orionldState.httpStatusCode = SccBadRequest;
     return false;
   }
 
@@ -172,7 +172,7 @@ bool pcheckGeoQ(ConnectionInfo* ciP, KjNode* geoqNodeP)
   {
     LM_W(("Bad Input (invalid geometry: '%s')", geometryP->value.s));
     orionldErrorResponseCreate(OrionldBadRequestData, "Invalid Payload Data", detail);
-    ciP->httpStatusCode = SccBadRequest;
+    orionldState.httpStatusCode = SccBadRequest;
     return false;
   }
 
@@ -180,7 +180,7 @@ bool pcheckGeoQ(ConnectionInfo* ciP, KjNode* geoqNodeP)
   {
     LM_W(("Bad Input (invalid coordinates: for geo '%s')", geometryP->value.s));
     orionldErrorResponseCreate(OrionldBadRequestData, "Invalid Payload Data", "invalid coordinates");
-    ciP->httpStatusCode = SccBadRequest;
+    orionldState.httpStatusCode = SccBadRequest;
     return false;
   }
 
@@ -188,7 +188,7 @@ bool pcheckGeoQ(ConnectionInfo* ciP, KjNode* geoqNodeP)
   {
     LM_W(("Bad Input (invalid georel (%s): for geo '%s')", georelP->value.s, geometryP->value.s));
     orionldErrorResponseCreate(OrionldBadRequestData, "Invalid Payload Data", "invalid georel");
-    ciP->httpStatusCode = SccBadRequest;
+    orionldState.httpStatusCode = SccBadRequest;
     return false;
   }
 

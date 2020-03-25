@@ -79,7 +79,7 @@ bool pcheckSubscription
   if (subNodeP->type != KjObject)
   {
     orionldErrorResponseCreate(OrionldBadRequestData, "Invalid Subscription", "The payload data for updating a subscription must be a JSON Object");
-    ciP->httpStatusCode = SccBadRequest;
+    orionldState.httpStatusCode = SccBadRequest;
     return false;
   }
 
@@ -90,7 +90,7 @@ bool pcheckSubscription
       if (idCanBePresent == false)
       {
         orionldErrorResponseCreate(OrionldBadRequestData, "The Subscription ID cannot be modified", "id");
-        ciP->httpStatusCode = SccBadRequest;
+        orionldState.httpStatusCode = SccBadRequest;
         return false;
       }
 
@@ -106,7 +106,7 @@ bool pcheckSubscription
       if (strcmp(nodeP->value.s, "Subscription") != 0)
       {
         orionldErrorResponseCreate(OrionldBadRequestData, "Invalid value for Subscription Type", nodeP->value.s);
-        ciP->httpStatusCode = SccBadRequest;
+        orionldState.httpStatusCode = SccBadRequest;
         return false;
       }
     }
@@ -194,14 +194,14 @@ bool pcheckSubscription
     else if (strcmp(nodeP->name, "status") == 0)
     {
       orionldErrorResponseCreate(OrionldBadRequestData, "Attempt to modify Read-Only attribute", "status");
-      ciP->httpStatusCode = SccBadRequest;
+      orionldState.httpStatusCode = SccBadRequest;
       return false;
     }
     else
     {
       LM_E(("Unknown field in Subscription fragment: '%s'", nodeP->name));
       orionldErrorResponseCreate(OrionldBadRequestData, "Unknown field in Subscription fragment", nodeP->name);
-      ciP->httpStatusCode = SccBadRequest;
+      orionldState.httpStatusCode = SccBadRequest;
       return false;
     }
   }

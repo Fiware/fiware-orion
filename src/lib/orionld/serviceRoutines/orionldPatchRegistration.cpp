@@ -66,7 +66,7 @@ do                                                                              
 {                                                                                                 \
   LM_E(("Internal Error (database corruption: %s)", detail));                                     \
   orionldErrorResponseCreate(OrionldBadRequestData, "Database seems to be corrupted", detail);    \
-  ciP->httpStatusCode = SccReceiverInternalError;                                                 \
+  orionldState.httpStatusCode = SccReceiverInternalError;                                         \
   return false;                                                                                   \
 } while (0)
 
@@ -551,7 +551,7 @@ bool orionldPatchRegistration(ConnectionInfo* ciP)
 
   if ((urlCheck(registrationId, NULL) == false) && (urnCheck(registrationId, NULL) == false))
   {
-    ciP->httpStatusCode = SccBadRequest;
+    orionldState.httpStatusCode = SccBadRequest;
     orionldErrorResponseCreate(OrionldBadRequestData, "Registration ID must be a valid URI", registrationId);
     return false;
   }
@@ -566,7 +566,7 @@ bool orionldPatchRegistration(ConnectionInfo* ciP)
 
   if (dbRegistrationP == NULL)
   {
-    ciP->httpStatusCode = SccNotFound;
+    orionldState.httpStatusCode = SccNotFound;
     orionldErrorResponseCreate(OrionldBadRequestData, "Registration not found", registrationId);
     return false;
   }
@@ -585,7 +585,7 @@ bool orionldPatchRegistration(ConnectionInfo* ciP)
     //
     if (propertyTree->value.firstChildP != NULL)
     {
-      ciP->httpStatusCode = SccBadRequest;
+      orionldState.httpStatusCode = SccBadRequest;
       orionldErrorResponseCreate(OrionldBadRequestData, "non-existing registration property", propertyTree->value.firstChildP->name);
       return false;
     }
@@ -611,7 +611,7 @@ bool orionldPatchRegistration(ConnectionInfo* ciP)
 
     if ((dbPropertyP = kjLookup(dbPropertiesP, propertyP->name)) == NULL)
     {
-      ciP->httpStatusCode = SccBadRequest;
+      orionldState.httpStatusCode = SccBadRequest;
       orionldErrorResponseCreate(OrionldBadRequestData, "non-existing registration property", propertyP->name);
       return false;
     }
@@ -647,7 +647,7 @@ bool orionldPatchRegistration(ConnectionInfo* ciP)
   dbRegistrationReplace(registrationId, dbRegistrationP);
 
   // All OK? 204
-  ciP->httpStatusCode = SccNoContent;
+  orionldState.httpStatusCode = SccNoContent;
 
   return true;
 }

@@ -76,7 +76,7 @@ bool pcheckNotification(ConnectionInfo* ciP, KjNode* notificationP)
       if ((strcmp(formatP->value.s, "keyValues") != 0) && (strcmp(formatP->value.s, "normalized") != 0))
       {
         orionldErrorResponseCreate(OrionldBadRequestData, "Invalid value of 'format' (must be either 'keyValues' or 'normalized'", formatP->value.s);
-        ciP->httpStatusCode = SccBadRequest;
+        orionldState.httpStatusCode = SccBadRequest;
         return false;
       }
     }
@@ -91,13 +91,13 @@ bool pcheckNotification(ConnectionInfo* ciP, KjNode* notificationP)
     else if (strcmp(nItemP->name, "status") == 0)
     {
       orionldErrorResponseCreate(OrionldBadRequestData, "Invalid field for notification", "'status' is read-only");
-      ciP->httpStatusCode = SccBadRequest;
+      orionldState.httpStatusCode = SccBadRequest;
       return false;
     }
     else
     {
       orionldErrorResponseCreate(OrionldBadRequestData, "Invalid field for notification", nItemP->name);
-      ciP->httpStatusCode = SccBadRequest;
+      orionldState.httpStatusCode = SccBadRequest;
       return false;
     }
   }
@@ -105,7 +105,7 @@ bool pcheckNotification(ConnectionInfo* ciP, KjNode* notificationP)
   if (endpointP == NULL)
   {
     orionldErrorResponseCreate(OrionldBadRequestData, "Mandatory field missing", "endpoint");
-    ciP->httpStatusCode = SccBadRequest;
+    orionldState.httpStatusCode = SccBadRequest;
     return false;
   }
 

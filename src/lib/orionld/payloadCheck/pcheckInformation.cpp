@@ -32,6 +32,7 @@ extern "C"
 
 #include "rest/ConnectionInfo.h"                                // ConnectionInfo
 
+#include "orionld/common/orionldState.h"                        // orionldState
 #include "orionld/common/orionldErrorResponse.h"                // orionldErrorResponseCreate
 #include "orionld/common/CHECK.h"                               // STRING_CHECK, ...
 #include "orionld/payloadCheck/pcheckInformationItem.h"         // pcheckInformationItem
@@ -48,7 +49,7 @@ bool pcheckInformation(ConnectionInfo* ciP, KjNode* informationArrayP)
   if (informationArrayP->value.firstChildP == NULL)  // Empty Array
   {
     orionldErrorResponseCreate(OrionldBadRequestData, "Empty Array", "information");
-    ciP->httpStatusCode = SccBadRequest;
+    orionldState.httpStatusCode = SccBadRequest;
     return false;
   }
 
