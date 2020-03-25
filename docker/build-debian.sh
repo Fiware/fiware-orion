@@ -104,9 +104,8 @@ apt-get -y install doxygen                                                    # 
 git clone https://github.com/eclipse/paho.mqtt.c.git ${ROOT}/paho.mqtt.c      # OK - 
 cd ${ROOT}/paho.mqtt.c                                                        # OK
 rm -f /usr/local/lib/libpaho*                                                 # OK - 
-git checkut tags/v1.3.1
-ls -l
-make html                                                                     # OK
+git checkout tags/v1.3.1
+make html                                                                     # 
 #make                                                                          # ... ?  Both in the same test
 #make install                                                                  # ... ?  Both in the same test
 
