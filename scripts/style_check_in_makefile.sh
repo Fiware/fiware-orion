@@ -47,6 +47,7 @@ function style_check
 
 style_check src/lib/orionld/common
 style_check src/lib/orionld/context
+style_check src/lib/orionld/db
 style_check src/lib/orionld/kjTree
 style_check src/lib/orionld/rest
 style_check src/lib/orionld/serviceRoutines
