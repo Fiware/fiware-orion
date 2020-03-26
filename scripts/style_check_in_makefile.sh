@@ -51,6 +51,7 @@ style_check src/lib/orionld/db
 style_check src/lib/orionld/kjTree
 style_check src/lib/orionld/mongoBackend
 style_check src/lib/orionld/mongoCppLegacy
+style_check src/lib/orionld/mongoc
 style_check src/lib/orionld/rest
 style_check src/lib/orionld/serviceRoutines
 style_check src/lib/orionld/temporal
