@@ -1,3 +1,6 @@
+#ifndef SRC_LIB_ORIONLD_MONGOCPPLEGACY_MONGOCPPLEGACYDBARRAYFIELDGET_H_
+#define SRC_LIB_ORIONLD_MONGOCPPLEGACY_MONGOCPPLEGACYDBARRAYFIELDGET_H_
+
 /*
 *
 * Copyright 2019 FIWARE Foundation e.V.
@@ -22,26 +25,16 @@
 *
 * Author: Ken Zangelin
 */
-#include "logMsg/logMsg.h"                                       // LM_*
-#include "logMsg/traceLevels.h"                                  // Lmt*
-
-
-#include "orionld/mongoCppLegacy/mongoCppLegacyTenantsGet.h"     // mongoCppLegacyTenantsGet
-#include "orionld/mongoCppLegacy/mongoCppLegacyGeoIndexInit.h"   // mongoCppLegacyGeoIndexInit
-#include "orionld/mongoCppLegacy/mongoCppLegacyInit.h"           // Own interface
+#include "mongo/client/dbclient.h"                             // mongo legacy driver
 
 
 
 // -----------------------------------------------------------------------------
 //
-// mongoCppLegacyInit -
+// mongoCppLegacyDbArrayFieldGet -
 //
-void mongoCppLegacyInit(const char* dbHost, const char* dbName)
-{
-  // Most of everything is already done by mongoInit/mongoBackend
+// FIXME: avoid to send object on the stack!!!
+//
+extern mongo::BSONArray mongoCppLegacyDbArrayFieldGet(const mongo::BSONObj* boP, const char* fieldName);
 
-  if (mongoCppLegacyTenantsGet() == false)
-    LM_X(1, ("Unable to extract tenants from the database - fatal error"));
-
-  mongoCppLegacyGeoIndexInit();
-}
+#endif  // SRC_LIB_ORIONLD_MONGOCPPLEGACY_MONGOCPPLEGACYDBARRAYFIELDGET_H_

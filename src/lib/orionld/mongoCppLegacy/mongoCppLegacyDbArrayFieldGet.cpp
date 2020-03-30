@@ -22,26 +22,34 @@
 *
 * Author: Ken Zangelin
 */
-#include "logMsg/logMsg.h"                                       // LM_*
-#include "logMsg/traceLevels.h"                                  // Lmt*
+#include "mongo/client/dbclient.h"                             // mongo legacy driver
 
+#include "logMsg/logMsg.h"                                     // LM_*
+#include "logMsg/traceLevels.h"                                // Lmt*
 
-#include "orionld/mongoCppLegacy/mongoCppLegacyTenantsGet.h"     // mongoCppLegacyTenantsGet
-#include "orionld/mongoCppLegacy/mongoCppLegacyGeoIndexInit.h"   // mongoCppLegacyGeoIndexInit
-#include "orionld/mongoCppLegacy/mongoCppLegacyInit.h"           // Own interface
+#include "orionld/mongoCppLegacy/mongoCppLegacyDbArrayFieldGet.h"   // Own interface
 
 
 
 // -----------------------------------------------------------------------------
 //
-// mongoCppLegacyInit -
+// mongoCppLegacyDbArrayFieldGet -
 //
-void mongoCppLegacyInit(const char* dbHost, const char* dbName)
+// FIXME: avoid to send object on the stack!!!
+//
+mongo::BSONArray mongoCppLegacyDbArrayFieldGet(const mongo::BSONObj* boP, const char* fieldName)
 {
-  // Most of everything is already done by mongoInit/mongoBackend
+  if (boP->hasField(fieldName) == false)
+  {
+    LM_E(("Runtime Error (field '%s' is missing in BSONObj '%s'", fieldName, boP->toString().c_str()));
+    return mongo::BSONArray();
+  }
 
-  if (mongoCppLegacyTenantsGet() == false)
-    LM_X(1, ("Unable to extract tenants from the database - fatal error"));
+  if (boP->getField(fieldName).type() != mongo::Array)
+  {
+    LM_E(("Runtime Error (field '%s' not an array (type=%d) in BSONObj '%s'", fieldName, boP->getField(fieldName).type(), boP->toString().c_str()));
+    return mongo::BSONArray();
+  }
 
-  mongoCppLegacyGeoIndexInit();
+  return (mongo::BSONArray) boP->getObjectField(fieldName);
 }

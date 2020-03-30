@@ -22,26 +22,32 @@
 *
 * Author: Ken Zangelin
 */
-#include "logMsg/logMsg.h"                                       // LM_*
-#include "logMsg/traceLevels.h"                                  // Lmt*
+#include "mongo/client/dbclient.h"                             // mongo legacy driver
 
+#include "logMsg/logMsg.h"                                     // LM_*
+#include "logMsg/traceLevels.h"                                // Lmt*
 
-#include "orionld/mongoCppLegacy/mongoCppLegacyTenantsGet.h"     // mongoCppLegacyTenantsGet
-#include "orionld/mongoCppLegacy/mongoCppLegacyGeoIndexInit.h"   // mongoCppLegacyGeoIndexInit
-#include "orionld/mongoCppLegacy/mongoCppLegacyInit.h"           // Own interface
+#include "orionld/mongoCppLegacy/mongoCppLegacyDbStringFieldGet.h"   // Own interface
 
 
 
 // -----------------------------------------------------------------------------
 //
-// mongoCppLegacyInit -
+// mongoCppLegacyDbStringFieldGet -
 //
-void mongoCppLegacyInit(const char* dbHost, const char* dbName)
+char* mongoCppLegacyDbStringFieldGet(const mongo::BSONObj* boP, const char* fieldName)
 {
-  // Most of everything is already done by mongoInit/mongoBackend
+  if (boP->hasField(fieldName) == false)
+  {
+    LM_E(("Runtime Error (string field '%s' is missing in BSONObj '%s'", fieldName, boP->toString().c_str()));
+    return NULL;
+  }
 
-  if (mongoCppLegacyTenantsGet() == false)
-    LM_X(1, ("Unable to extract tenants from the database - fatal error"));
+  if (boP->getField(fieldName).type() != mongo::String)
+  {
+    LM_E(("Runtime Error (field '%s' not a string (type=%d) in BSONObj '%s'", fieldName, boP->getField(fieldName).type(), boP->toString().c_str()));
+    return NULL;
+  }
 
-  mongoCppLegacyGeoIndexInit();
+  return (char*) boP->getStringField(fieldName);
 }

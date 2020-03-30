@@ -562,6 +562,10 @@ void exitFunc(void)
   {
     LM_T(LmtSoftError, ("error removing PID file '%s': %s", pidPath, strerror(errno)));
   }
+
+  // Free the tenant list
+  for (int ix = 0; ix < tenants; ix++)
+    free(tenantV[ix]);
 }
 
 

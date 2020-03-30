@@ -158,6 +158,8 @@ typedef struct OrionldConnectionState
   ApiVersion              apiVersion;
   int                     requestNo;
   KjNode*                 locationAttributeP;           // This assumes we have only ONE Geo-Location attribute ...
+  KjNode*                 geoAttrV[100];                // Array of GeoProperty attributes
+  int                     geoAttrs;
   char*                   geoType;
   KjNode*                 geoCoordsP;
   bool                    entityCreated;                // If an entity is created, if complex context, it must be stored
@@ -265,6 +267,8 @@ extern int         contextDownloadAttempts;  // From orionld.cpp
 extern int         contextDownloadTimeout;   // From orionld.cpp
 extern bool        temporal;                 // From orionld.cpp
 extern const char* orionldVersion;
+extern char*       tenantV[100];
+extern int         tenants;
 
 
 

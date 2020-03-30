@@ -22,6 +22,9 @@
 *
 * Author: Ken Zangelin
 */
+#include <string.h>                                              // strncpy
+#include <string>                                                // std::string
+
 #include "logMsg/logMsg.h"                                       // LM_*
 #include "logMsg/traceLevels.h"                                  // Lmt*
 
@@ -50,6 +53,7 @@ extern "C"
 #include "orionld/common/CHECK.h"                                // CHECK
 #include "orionld/common/orionldState.h"                         // orionldState, orionldHostName
 #include "orionld/common/uuidGenerate.h"                         // uuidGenerate
+#include "orionld/common/dotForEq.h"                             // dotForEq
 #include "orionld/payloadCheck/pcheckName.h"                     // pcheckName
 #include "orionld/context/orionldCoreContext.h"                  // ORIONLD_CORE_CONTEXT_URL
 #include "orionld/context/orionldContextFromUrl.h"               // orionldContextFromUrl
@@ -606,6 +610,114 @@ static void contextToPayload(void)
 
 // -----------------------------------------------------------------------------
 //
+// OrionldGeoIndex -
+//
+typedef struct OrionldGeoIndex
+{
+  char*                    tenant;
+  char*                    attrName;
+  struct OrionldGeoIndex*  next;
+} OrionldGeoIndex;
+
+OrionldGeoIndex* geoIndexList = NULL;
+
+
+
+// -----------------------------------------------------------------------------
+//
+// dbGeoIndexLookup -
+//
+OrionldGeoIndex* dbGeoIndexLookup(const char* tenant, const char* attrName)
+{
+  OrionldGeoIndex* giP = geoIndexList;
+
+  while (giP != NULL)
+  {
+    if ((strcmp(giP->tenant, tenant) == 0) && (strcmp(giP->attrName, attrName) == 0))
+      return giP;
+  }
+
+  return NULL;
+}
+
+
+
+// -----------------------------------------------------------------------------
+//
+// dbGeoIndexAdd -
+//
+void dbGeoIndexAdd(const char* tenant, const char* attrName)
+{
+  OrionldGeoIndex* geoNodeP = (OrionldGeoIndex*) kaAlloc(&kalloc, sizeof(OrionldGeoIndex));
+
+  geoNodeP->tenant   = kaStrdup(&kalloc, tenant);
+  geoNodeP->attrName = kaStrdup(&kalloc, attrName);
+
+  if (geoIndexList == NULL)
+  {
+    geoNodeP->next = NULL;
+    geoIndexList   = geoNodeP;
+  }
+  else
+  {
+    geoNodeP->next = geoIndexList;
+    geoIndexList   = geoNodeP;
+  }
+}
+
+// -----------------------------------------------------------------------------
+//
+// dbGeoIndex - FIXME: Move to mongoCppLegacy lib
+//
+#include "mongoBackend/connectionOperations.h"    // collectionCreateIndex
+#include "orionld/db/dbCollectionPathGet.h"       // dbCollectionPathGet
+static void dbGeoIndex(const char* tenant, const char* attrName)
+{
+  int         len          = 6 + strlen(attrName) + 6 + 1;               // "attrs." == 6, ".value" == 6, 1 for string-termination
+  char*       index        = kaAlloc(&orionldState.kalloc, len);
+  char*       attrNameCopy = kaStrdup(&orionldState.kalloc, attrName);
+  std::string err;
+
+  dotForEq(attrNameCopy);
+  snprintf(index, len, "attrs.%s.value", attrNameCopy);
+  LM_T(LmtMongo, ("GEO: ensuring 2dsphere index on %s (tenant '%s')", index, tenant));
+
+  char collectionPath[256];
+  dbCollectionPathGet(collectionPath, sizeof(collectionPath), "entities");
+
+  if (collectionCreateIndex(collectionPath, BSON(index << "2dsphere"), false, &err) == true)
+  {
+    LM_E(("Database Error (error creating 2dsphere index for attribute '%s' for tenant '%s')", attrName, tenant));
+    return;
+  }
+
+  dbGeoIndexAdd(tenant, attrName);
+}
+
+
+
+// -----------------------------------------------------------------------------
+//
+// dbGeoIndexes -
+//
+void dbGeoIndexes(void)
+{
+  // sem_take
+  for (int ix = 0; ix < orionldState.geoAttrs; ix++)
+  {
+    if (dbGeoIndexLookup(orionldState.tenant, orionldState.geoAttrV[ix]->name) == NULL)
+    {
+      LM_TMP(("GEO: Calling geoIndex for '%s'", orionldState.geoAttrV[ix]->name));
+      dbGeoIndex(orionldState.tenant, orionldState.geoAttrV[ix]->name);
+    }
+  }
+  // sem_give
+}
+
+
+
+// -----------------------------------------------------------------------------
+//
 // orionldMhdConnectionTreat -
 //
 // The @context is completely taken care of here in this function.
@@ -762,6 +874,7 @@ int orionldMhdConnectionTreat(ConnectionInfo* ciP)
       orionldState.httpStatusCode = SccBadRequest;
   }
 
+  dbGeoIndexes();
 
  respond:
   //

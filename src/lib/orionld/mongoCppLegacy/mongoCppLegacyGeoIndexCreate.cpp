@@ -22,26 +22,19 @@
 *
 * Author: Ken Zangelin
 */
-#include "logMsg/logMsg.h"                                       // LM_*
-#include "logMsg/traceLevels.h"                                  // Lmt*
+#include "logMsg/logMsg.h"                                        // LM_*
+#include "logMsg/traceLevels.h"                                   // Lmt*
 
-
-#include "orionld/mongoCppLegacy/mongoCppLegacyTenantsGet.h"     // mongoCppLegacyTenantsGet
-#include "orionld/mongoCppLegacy/mongoCppLegacyGeoIndexInit.h"   // mongoCppLegacyGeoIndexInit
-#include "orionld/mongoCppLegacy/mongoCppLegacyInit.h"           // Own interface
+#include "orionld/mongoCppLegacy/mongoCppLegacyGeoIndexCreate.h"  // Own interface
 
 
 
 // -----------------------------------------------------------------------------
 //
-// mongoCppLegacyInit -
+// mongoCppLegacyGeoIndexCreate -
 //
-void mongoCppLegacyInit(const char* dbHost, const char* dbName)
+bool mongoCppLegacyGeoIndexCreate(const char* tenant, const char* attrLongName)
 {
-  // Most of everything is already done by mongoInit/mongoBackend
-
-  if (mongoCppLegacyTenantsGet() == false)
-    LM_X(1, ("Unable to extract tenants from the database - fatal error"));
-
-  mongoCppLegacyGeoIndexInit();
+  LM_E(("IMPLEMENT!!!"));
+  return false;
 }
