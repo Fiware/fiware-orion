@@ -22,27 +22,28 @@
 *
 * Author: Ken Zangelin
 */
+#include <string.h>                                            // strcpy
+
 extern "C"
 {
-#include "kjson/KjNode.h"                                         // KjNode
+#include "kbase/kMacros.h"                                     // K_VEC_SIZE
 }
 
-#include "logMsg/logMsg.h"                                        // LM_*
-#include "logMsg/traceLevels.h"                                   // Lmt*
+#include "logMsg/logMsg.h"                                     // LM_*
+#include "logMsg/traceLevels.h"                                // Lmt*
 
-#include "orionld/common/orionldState.h"                          // tenants, tenantV
-#include "orionld/mongoCppLegacy/mongoCppLegacyGeoIndexInit.h"    // Own interface
+#include "orionld/common/orionldState.h"                       // tenantV, tenants
+#include "orionld/common/orionldTenantCreate.h"                // Own interface
 
 
 
 // -----------------------------------------------------------------------------
 //
-// mongoCppLegacyGeoIndexInit -
+// orionldTenantCreate
 //
-void mongoCppLegacyGeoIndexInit(void)
+void orionldTenantCreate(const char* tenant)
 {
-  for (unsigned int ix = 0; ix < tenants; ix++)
-  {
-    LM_TMP(("DBS: %s", tenantV[ix]));
-  }
+  if (tenants >= K_VEC_SIZE(tenantV))
+    LM_X(1, ("Too many tenants in the system - increase the size of tenantV and recompile!"));
+  tenantV[tenants++] = strdup(tenant);
 }

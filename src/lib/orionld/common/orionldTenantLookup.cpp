@@ -22,27 +22,24 @@
 *
 * Author: Ken Zangelin
 */
-extern "C"
-{
-#include "kjson/KjNode.h"                                         // KjNode
-}
+#include <string.h>                                            // strcpy
 
-#include "logMsg/logMsg.h"                                        // LM_*
-#include "logMsg/traceLevels.h"                                   // Lmt*
-
-#include "orionld/common/orionldState.h"                          // tenants, tenantV
-#include "orionld/mongoCppLegacy/mongoCppLegacyGeoIndexInit.h"    // Own interface
+#include "orionld/common/orionldState.h"                       // tenantV, tenants
+#include "orionld/common/orionldTenantLookup.h"                // Own interface
 
 
 
 // -----------------------------------------------------------------------------
 //
-// mongoCppLegacyGeoIndexInit -
+// orionldTenantLookup
 //
-void mongoCppLegacyGeoIndexInit(void)
+char* orionldTenantLookup(const char* tenant)
 {
   for (unsigned int ix = 0; ix < tenants; ix++)
   {
-    LM_TMP(("DBS: %s", tenantV[ix]));
+    if (strcmp(tenant, tenantV[ix]) == 0)
+      return tenantV[ix];
   }
+
+  return NULL;
 }

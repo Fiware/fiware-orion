@@ -54,6 +54,8 @@ extern "C"
 #include "orionld/common/orionldState.h"                         // orionldState, orionldHostName
 #include "orionld/common/uuidGenerate.h"                         // uuidGenerate
 #include "orionld/common/dotForEq.h"                             // dotForEq
+#include "orionld/common/orionldTenantLookup.h"                  // orionldTenantLookup
+#include "orionld/common/orionldTenantCreate.h"                  // orionldTenantCreate
 #include "orionld/payloadCheck/pcheckName.h"                     // pcheckName
 #include "orionld/context/orionldCoreContext.h"                  // ORIONLD_CORE_CONTEXT_URL
 #include "orionld/context/orionldContextFromUrl.h"               // orionldContextFromUrl
@@ -873,8 +875,20 @@ int orionldMhdConnectionTreat(ConnectionInfo* ciP)
     if (orionldState.httpStatusCode < 400)
       orionldState.httpStatusCode = SccBadRequest;
   }
+  else  // Service Routine worked
+  {
+    dbGeoIndexes();
 
-  dbGeoIndexes();
+    // New tenant?
+    if (orionldState.tenant != NULL)
+    {
+      if ((orionldState.verb == POST) || (orionldState.verb == PATCH))
+      {
+        if (orionldTenantLookup(orionldState.tenant) == NULL)
+          orionldTenantCreate(orionldState.tenant);
+      }
+    }
+  }
 
  respond:
   //

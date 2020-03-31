@@ -1,6 +1,9 @@
+#ifndef SRC_LIB_ORIONLD_COMMON_ORIONLDTENANTLOOKUP_H_
+#define SRC_LIB_ORIONLD_COMMON_ORIONLDTENANTLOOKUP_H_
+
 /*
 *
-* Copyright 2019 FIWARE Foundation e.V.
+* Copyright 2018 FIWARE Foundation e.V.
 *
 * This file is part of Orion-LD Context Broker.
 *
@@ -22,27 +25,14 @@
 *
 * Author: Ken Zangelin
 */
-extern "C"
-{
-#include "kjson/KjNode.h"                                         // KjNode
-}
-
-#include "logMsg/logMsg.h"                                        // LM_*
-#include "logMsg/traceLevels.h"                                   // Lmt*
-
-#include "orionld/common/orionldState.h"                          // tenants, tenantV
-#include "orionld/mongoCppLegacy/mongoCppLegacyGeoIndexInit.h"    // Own interface
+#include <time.h>                                              // time, gmtime_r
 
 
 
 // -----------------------------------------------------------------------------
 //
-// mongoCppLegacyGeoIndexInit -
+// orionldTenantLookup
 //
-void mongoCppLegacyGeoIndexInit(void)
-{
-  for (unsigned int ix = 0; ix < tenants; ix++)
-  {
-    LM_TMP(("DBS: %s", tenantV[ix]));
-  }
-}
+extern char* orionldTenantLookup(const char* tenant);
+
+#endif  // SRC_LIB_ORIONLD_COMMON_ORIONLDTENANTLOOKUP_H_

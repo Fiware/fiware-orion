@@ -53,7 +53,7 @@ const char* orionldVersion = ORIONLD_VERSION;
 //
 // orionldState - the state of the connection
 //
-__thread OrionldConnectionState orionldState = { 0 };
+__thread OrionldConnectionState orionldState;
 
 
 
@@ -80,7 +80,7 @@ int             dbNameLen;
 char            orionldHostName[128];
 int             orionldHostNameLen       = -1;
 char*           tenantV[100];
-int             tenants                  = 0;
+unsigned int    tenants                  = 0;
 
 
 //

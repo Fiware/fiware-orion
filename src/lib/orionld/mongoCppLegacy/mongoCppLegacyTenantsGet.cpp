@@ -34,6 +34,7 @@
 #include "mongoBackend/MongoGlobal.h"                          // getMongoConnection
 
 #include "orionld/common/orionldState.h"                       // orionldState
+#include "orionld/common/orionldTenantCreate.h"                // orionldTenantCreate.h
 #include "orionld/mongoCppLegacy/mongoCppLegacyDbStringFieldGet.h"   // mongoCppLegacyDbStringFieldGet
 #include "orionld/mongoCppLegacy/mongoCppLegacyDbFieldGet.h"   // mongoCppLegacyDbFieldGet
 #include "orionld/mongoCppLegacy/mongoCppLegacyTenantsGet.h"   // Own interface
@@ -63,7 +64,7 @@ bool mongoCppLegacyTenantsGet(void)
       mongo::BSONObj  db      = dbV[ix].Obj();
       std::string     dbName  = mongoCppLegacyDbStringFieldGet(&db, "name");
 
-      tenantV[tenants++] = strdup(dbName.c_str());
+      orionldTenantCreate(dbName.c_str());
     }
   }
   catch (const std::exception &e)

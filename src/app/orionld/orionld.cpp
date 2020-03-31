@@ -564,7 +564,7 @@ void exitFunc(void)
   }
 
   // Free the tenant list
-  for (int ix = 0; ix < tenants; ix++)
+  for (unsigned int ix = 0; ix < tenants; ix++)
     free(tenantV[ix]);
 }
 
