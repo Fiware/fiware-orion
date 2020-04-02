@@ -83,7 +83,7 @@ echo
 
 echo "05. Kill the broker and restart it"
 echo "=================================="
-killall orionld
+brokerStop CB
 brokerStart CB 0-255 IPv4 -multiservice
 echo
 echo
