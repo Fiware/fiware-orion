@@ -41,9 +41,12 @@ extern "C"
 //
 // orionldTenantCreate
 //
-void orionldTenantCreate(const char* tenant)
+void orionldTenantCreate(char* tenant)
 {
   if (tenants >= K_VEC_SIZE(tenantV))
     LM_X(1, ("Too many tenants in the system - increase the size of tenantV and recompile!"));
+
+  LM_TMP(("TEN: Adding new tenant '%s' to the tenant array", tenant));
+
   tenantV[tenants++] = strdup(tenant);
 }

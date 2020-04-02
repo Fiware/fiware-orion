@@ -1,5 +1,5 @@
-#ifndef SRC_LIB_ORIONLD_DB_DBCOLLECTIONPATHGET_H_
-#define SRC_LIB_ORIONLD_DB_DBCOLLECTIONPATHGET_H_
+#ifndef SRC_LIB_ORIONLD_DB_DBGEOINDEXLOOKUP_H_
+#define SRC_LIB_ORIONLD_DB_DBGEOINDEXLOOKUP_H_
 
 /*
 *
@@ -25,26 +25,14 @@
 *
 * Author: Ken Zangelin
 */
-#include "logMsg/logMsg.h"                                       // LM_*
-#include "logMsg/traceLevels.h"                                  // Lmt*
-
-#include "orionld/common/orionldState.h"                         // orionldState, dbName
-#include "orionld/db/dbCollectionPathGet.h"                      // Own interface
+#include "orionld/types/OrionldGeoIndex.h"                       // OrionldGeoIndex
 
 
 
 // ----------------------------------------------------------------------------
 //
-// dbCollectionPathGet -
+// dbGeoIndexLookup -
 //
-extern int dbCollectionPathGet(char* path, int pathLen, const char* collection);
+extern OrionldGeoIndex* dbGeoIndexLookup(const char* tenant, const char* attrName);
 
-
-
-// ----------------------------------------------------------------------------
-//
-// dbCollectionPathGetWithTenant -
-//
-extern int dbCollectionPathGetWithTenant(char* path, int pathLen, const char* tenant, const char* collection);
-
-#endif  // SRC_LIB_ORIONLD_DB_DBCOLLECTIONPATHGET_H_
+#endif  // SRC_LIB_ORIONLD_DB_DBGEOINDEXLOOKUP_H_

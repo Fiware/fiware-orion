@@ -1,9 +1,9 @@
-#ifndef SRC_LIB_ORIONLD_DB_DBCOLLECTIONPATHGET_H_
-#define SRC_LIB_ORIONLD_DB_DBCOLLECTIONPATHGET_H_
+#ifndef SRC_LIB_ORIONLD_SERVICEROUTINES_ORIONLDGETTENANTS_H_
+#define SRC_LIB_ORIONLD_SERVICEROUTINES_ORIONLDGETTENANTS_H_
 
 /*
 *
-* Copyright 2019 FIWARE Foundation e.V.
+* Copyright 2018 FIWARE Foundation e.V.
 *
 * This file is part of Orion-LD Context Broker.
 *
@@ -25,26 +25,16 @@
 *
 * Author: Ken Zangelin
 */
-#include "logMsg/logMsg.h"                                       // LM_*
-#include "logMsg/traceLevels.h"                                  // Lmt*
+#include "logMsg/logMsg.h"
 
-#include "orionld/common/orionldState.h"                         // orionldState, dbName
-#include "orionld/db/dbCollectionPathGet.h"                      // Own interface
+#include "rest/ConnectionInfo.h"
 
 
 
 // ----------------------------------------------------------------------------
 //
-// dbCollectionPathGet -
+// orionldGetTenants -
 //
-extern int dbCollectionPathGet(char* path, int pathLen, const char* collection);
+extern bool orionldGetTenants(ConnectionInfo* ciP);
 
-
-
-// ----------------------------------------------------------------------------
-//
-// dbCollectionPathGetWithTenant -
-//
-extern int dbCollectionPathGetWithTenant(char* path, int pathLen, const char* tenant, const char* collection);
-
-#endif  // SRC_LIB_ORIONLD_DB_DBCOLLECTIONPATHGET_H_
+#endif  // SRC_LIB_ORIONLD_SERVICEROUTINES_ORIONLDGETTENANTS_H_

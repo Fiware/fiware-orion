@@ -1,6 +1,3 @@
-#ifndef SRC_LIB_ORIONLD_DB_DBCOLLECTIONPATHGET_H_
-#define SRC_LIB_ORIONLD_DB_DBCOLLECTIONPATHGET_H_
-
 /*
 *
 * Copyright 2019 FIWARE Foundation e.V.
@@ -25,26 +22,29 @@
 *
 * Author: Ken Zangelin
 */
-#include "logMsg/logMsg.h"                                       // LM_*
-#include "logMsg/traceLevels.h"                                  // Lmt*
+#include <string.h>                                              // strcmp
 
-#include "orionld/common/orionldState.h"                         // orionldState, dbName
-#include "orionld/db/dbCollectionPathGet.h"                      // Own interface
-
-
-
-// ----------------------------------------------------------------------------
-//
-// dbCollectionPathGet -
-//
-extern int dbCollectionPathGet(char* path, int pathLen, const char* collection);
+#include "orionld/types/OrionldGeoIndex.h"                       // OrionldGeoIndex
+#include "orionld/common/orionldState.h"                         // geoIndexList
+#include "orionld/db/dbGeoIndexLookup.h"                         // Own interface
 
 
 
 // ----------------------------------------------------------------------------
 //
-// dbCollectionPathGetWithTenant -
+// dbGeoIndexLookup -
 //
-extern int dbCollectionPathGetWithTenant(char* path, int pathLen, const char* tenant, const char* collection);
+OrionldGeoIndex* dbGeoIndexLookup(const char* tenant, const char* attrName)
+{
+  OrionldGeoIndex* giP = geoIndexList;
 
-#endif  // SRC_LIB_ORIONLD_DB_DBCOLLECTIONPATHGET_H_
+  while (giP != NULL)
+  {
+    if ((strcmp(giP->tenant, tenant) == 0) && (strcmp(giP->attrName, attrName) == 0))
+      return giP;
+
+    giP = giP->next;
+  }
+
+  return NULL;
+}

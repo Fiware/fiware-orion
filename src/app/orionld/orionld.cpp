@@ -617,8 +617,6 @@ static void contextBrokerInit(std::string dbPrefix, bool multitenant)
 
   /* Set HTTP timeout */
   httpRequestInit(httpTimeout);
-
-  dbInit(dbHost, dbName);
 }
 
 
@@ -1044,6 +1042,7 @@ int main(int argC, char* argV[])
   // Initialize orionld
   //
   orionldServiceInit(restServiceVV, 9, getenv("ORIONLD_CACHED_CONTEXT_DIRECTORY"));
+  dbInit(dbHost, dbName);
 
   if (https)
   {

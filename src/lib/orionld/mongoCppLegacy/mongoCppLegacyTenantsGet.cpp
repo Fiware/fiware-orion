@@ -33,7 +33,7 @@
 
 #include "mongoBackend/MongoGlobal.h"                          // getMongoConnection
 
-#include "orionld/common/orionldState.h"                       // orionldState
+#include "orionld/common/orionldState.h"                       // orionldState, dbName, dbNameLen
 #include "orionld/common/orionldTenantCreate.h"                // orionldTenantCreate.h
 #include "orionld/mongoCppLegacy/mongoCppLegacyDbStringFieldGet.h"   // mongoCppLegacyDbStringFieldGet
 #include "orionld/mongoCppLegacy/mongoCppLegacyDbFieldGet.h"   // mongoCppLegacyDbFieldGet
@@ -61,10 +61,13 @@ bool mongoCppLegacyTenantsGet(void)
     std::vector<mongo::BSONElement> dbV = mongoCppLegacyDbFieldGet(&result, "databases").Array();
     for (unsigned int ix = 0; ix < dbV.size(); ix++)
     {
-      mongo::BSONObj  db      = dbV[ix].Obj();
-      std::string     dbName  = mongoCppLegacyDbStringFieldGet(&db, "name");
+      mongo::BSONObj  db   = dbV[ix].Obj();
+      char*           name = mongoCppLegacyDbStringFieldGet(&db, "name");
 
-      orionldTenantCreate(dbName.c_str());
+      LM_TMP(("TEN: Found an initial DB '%s'", name));
+
+      if (strncmp(name, dbName, dbNameLen) == 0)
+        orionldTenantCreate(name);
     }
   }
   catch (const std::exception &e)

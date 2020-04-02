@@ -39,6 +39,7 @@ extern "C"
 #include "rest/HttpStatusCode.h"                                 // HttpStatusCode
 #include "rest/Verb.h"                                           // Verb
 #include "orionld/common/QNode.h"                                // QNode
+#include "orionld/types/OrionldGeoIndex.h"                       // OrionldGeoIndex
 #include "orionld/types/OrionldGeoJsonType.h"                    // OrionldGeoJsonType
 #include "orionld/types/OrionldPrefixCache.h"                    // OrionldPrefixCache
 #include "orionld/common/OrionldResponseBuffer.h"                // OrionldResponseBuffer
@@ -138,12 +139,7 @@ typedef struct OrionldNotificationInfo
 //
 typedef struct OrionldConnectionState
 {
-  Verb                    verb;
-  char*                   verbString;
-  char*                   urlPath;
-  char*                   wildcard[2];
   ConnectionInfo*         ciP;
-  OrionLdRestService*     serviceP;
   HttpStatusCode          httpStatusCode;
   Kjson                   kjson;
   Kjson*                  kjsonP;
@@ -163,7 +159,6 @@ typedef struct OrionldConnectionState
   OrionldContext*         contextP;
   ApiVersion              apiVersion;
   int                     requestNo;
-  KjNode*                 locationAttributeP;           // This assumes we have only ONE Geo-Location attribute ...
   KjNode*                 geoAttrV[100];                // Array of GeoProperty attributes
   int                     geoAttrs;
   char*                   geoType;
@@ -176,6 +171,11 @@ typedef struct OrionldConnectionState
   char                    errorAttributeArray[512];
   int                     errorAttributeArrayUsed;
   int                     errorAttributeArraySize;
+  OrionLdRestService*     serviceP;
+  char*                   wildcard[2];
+  char*                   urlPath;
+  Verb                    verb;
+  char*                   verbString;
   bool                    prettyPrint;
   char                    prettyPrintSpaces;
   bool                    acceptJson;
@@ -251,26 +251,27 @@ extern __thread OrionldConnectionState orionldState;
 //
 // Global state
 //
-extern char         orionldHostName[128];
-extern int          orionldHostNameLen;
-extern char         kallocBuffer[32 * 1024];
-extern int          requestNo;                // Never mind protecting with semaphore. Just a debugging help
-extern KAlloc       kalloc;
-extern Kjson        kjson;
-extern Kjson*       kjsonP;
-extern uint16_t     portNo;
-extern char         dbName[];                 // From orionld.cpp
-extern int          dbNameLen;
-extern char         dbUser[];                 // From orionld.cpp
-extern char         dbPwd[];                  // From orionld.cpp
-extern bool         multitenancy;             // From orionld.cpp
-extern char*        tenant;                   // From orionld.cpp
-extern int          contextDownloadAttempts;  // From orionld.cpp
-extern int          contextDownloadTimeout;   // From orionld.cpp
-extern bool         temporal;                 // From orionld.cpp
-extern const char*  orionldVersion;
-extern char*        tenantV[100];
-extern unsigned int tenants;
+extern char              orionldHostName[128];
+extern int               orionldHostNameLen;
+extern char              kallocBuffer[32 * 1024];
+extern int               requestNo;                // Never mind protecting with semaphore. Just a debugging help
+extern KAlloc            kalloc;
+extern Kjson             kjson;
+extern Kjson*            kjsonP;
+extern uint16_t          portNo;
+extern char              dbName[];                 // From orionld.cpp
+extern int               dbNameLen;
+extern char              dbUser[];                 // From orionld.cpp
+extern char              dbPwd[];                  // From orionld.cpp
+extern bool              multitenancy;             // From orionld.cpp
+extern char*             tenant;                   // From orionld.cpp
+extern int               contextDownloadAttempts;  // From orionld.cpp
+extern int               contextDownloadTimeout;   // From orionld.cpp
+extern bool              temporal;                 // From orionld.cpp
+extern const char*       orionldVersion;
+extern char*             tenantV[100];
+extern unsigned int      tenants;
+extern OrionldGeoIndex*  geoIndexList;
 
 
 

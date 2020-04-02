@@ -33,6 +33,6 @@
 //
 // orionldTenantCreate
 //
-extern void orionldTenantCreate(const char* tenant);
+extern void orionldTenantCreate(char* tenant);
 
 #endif  // SRC_LIB_ORIONLD_COMMON_ORIONLDTENANTCREATE_H_

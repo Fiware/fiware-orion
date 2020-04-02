@@ -1,9 +1,6 @@
-#ifndef SRC_LIB_ORIONLD_DB_DBCOLLECTIONPATHGET_H_
-#define SRC_LIB_ORIONLD_DB_DBCOLLECTIONPATHGET_H_
-
 /*
 *
-* Copyright 2019 FIWARE Foundation e.V.
+* Copyright 2018 FIWARE Foundation e.V.
 *
 * This file is part of Orion-LD Context Broker.
 *
@@ -25,26 +22,37 @@
 *
 * Author: Ken Zangelin
 */
+extern "C"
+{
+#include "kjson/KjNode.h"                                        // KjNode
+#include "kjson/kjBuilder.h"                                     // kjObject, kjString, kjBoolean, ...
+#include "kjson/kjRender.h"                                      // kjRender
+}
+
 #include "logMsg/logMsg.h"                                       // LM_*
 #include "logMsg/traceLevels.h"                                  // Lmt*
 
-#include "orionld/common/orionldState.h"                         // orionldState, dbName
-#include "orionld/db/dbCollectionPathGet.h"                      // Own interface
+#include "rest/ConnectionInfo.h"                                 // ConnectionInfo
+
+#include "orionld/common/orionldState.h"                         // orionldState, tenantV, tenants
+#include "orionld/serviceRoutines/orionldGetTenants.h"           // Own interface
 
 
 
 // ----------------------------------------------------------------------------
 //
-// dbCollectionPathGet -
+// orionldGetTenants -
 //
-extern int dbCollectionPathGet(char* path, int pathLen, const char* collection);
+bool orionldGetTenants(ConnectionInfo* ciP)
+{
+  orionldState.responseTree = kjArray(orionldState.kjsonP, NULL);
 
+  for (unsigned int ix = 0; ix < tenants; ix++)
+  {
+    KjNode* tenantP = kjString(orionldState.kjsonP, NULL, tenantV[ix]);
+    kjChildAdd(orionldState.responseTree, tenantP);
+  }
 
-
-// ----------------------------------------------------------------------------
-//
-// dbCollectionPathGetWithTenant -
-//
-extern int dbCollectionPathGetWithTenant(char* path, int pathLen, const char* tenant, const char* collection);
-
-#endif  // SRC_LIB_ORIONLD_DB_DBCOLLECTIONPATHGET_H_
+  orionldState.noLinkHeader = true;
+  return true;
+}

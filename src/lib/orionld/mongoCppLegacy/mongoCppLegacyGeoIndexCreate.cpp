@@ -22,9 +22,22 @@
 *
 * Author: Ken Zangelin
 */
+#include <string>                                                 // std::string
+
+extern "C"
+{
+#include "kalloc/kaAlloc.h"                                       // kaAlloc
+#include "kalloc/kaStrdup.h"                                      // kaStrdup
+}
+
 #include "logMsg/logMsg.h"                                        // LM_*
 #include "logMsg/traceLevels.h"                                   // Lmt*
 
+#include "mongoBackend/connectionOperations.h"                    // collectionCreateIndex
+
+#include "orionld/db/dbCollectionPathGet.h"                       // dbCollectionPathGet
+#include "orionld/db/dbGeoIndexAdd.h"                             // dbGeoIndexAdd
+#include "orionld/common/dotForEq.h"                              // dotForEq
 #include "orionld/mongoCppLegacy/mongoCppLegacyGeoIndexCreate.h"  // Own interface
 
 
@@ -35,6 +48,29 @@
 //
 bool mongoCppLegacyGeoIndexCreate(const char* tenant, const char* attrLongName)
 {
-  LM_E(("IMPLEMENT!!!"));
-  return false;
+  LM_TMP(("GEOI: tenant: '%s'", tenant));
+  LM_TMP(("GEOI: attr:   '%s'", attrLongName));
+
+  int         len          = 6 + strlen(attrLongName) + 6 + 1;              // "attrs." == 6, ".value" == 6, 1 for string-termination
+  char*       index        = kaAlloc(&orionldState.kalloc, len);
+  char*       attrNameCopy = kaStrdup(&orionldState.kalloc, attrLongName);  // To not destroy the original attrName
+  std::string err;
+
+  dotForEq(attrNameCopy);
+  snprintf(index, len, "attrs.%s.value", attrNameCopy);
+  LM_T(LmtMongo, ("GEO: ensuring 2dsphere index on %s (tenant '%s')", index, tenant));
+
+  char collectionPath[256];
+  dbCollectionPathGet(collectionPath, sizeof(collectionPath), "entities");
+
+  if (collectionCreateIndex(collectionPath, BSON(index << "2dsphere"), false, &err) == false)
+  {
+    LM_E(("Database Error (error creating 2dsphere index for attribute '%s' for tenant '%s')", attrNameCopy, tenant));
+    return false;
+  }
+
+  LM_TMP(("GEOI: Creating a Geo-Index for %s-%s", tenant, attrNameCopy));
+  dbGeoIndexAdd(tenant, attrNameCopy);
+  LM_TMP(("GEOI: Created a Geo-Index for %s-%s", tenant, attrNameCopy));
+  return true;
 }

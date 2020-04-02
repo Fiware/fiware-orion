@@ -47,15 +47,18 @@ extern "C"
 #include "rest/restReply.h"                                      // restReply
 
 #include "orionld/types/OrionldProblemDetails.h"                 // OrionldProblemDetails
+#include "orionld/types/OrionldGeoIndex.h"                       // OrionldGeoIndex
+#include "orionld/common/orionldState.h"                         // orionldState, orionldHostName
 #include "orionld/common/orionldErrorResponse.h"                 // orionldErrorResponseCreate
 #include "orionld/common/linkCheck.h"                            // linkCheck
 #include "orionld/common/SCOMPARE.h"                             // SCOMPARE
 #include "orionld/common/CHECK.h"                                // CHECK
-#include "orionld/common/orionldState.h"                         // orionldState, orionldHostName
 #include "orionld/common/uuidGenerate.h"                         // uuidGenerate
 #include "orionld/common/dotForEq.h"                             // dotForEq
 #include "orionld/common/orionldTenantLookup.h"                  // orionldTenantLookup
 #include "orionld/common/orionldTenantCreate.h"                  // orionldTenantCreate
+#include "orionld/db/dbConfiguration.h"                          // dbGeoIndexCreate
+#include "orionld/db/dbGeoIndexLookup.h"                         // dbGeoIndexLookup
 #include "orionld/payloadCheck/pcheckName.h"                     // pcheckName
 #include "orionld/context/orionldCoreContext.h"                  // ORIONLD_CORE_CONTEXT_URL
 #include "orionld/context/orionldContextFromUrl.h"               // orionldContextFromUrl
@@ -548,6 +551,7 @@ static void contextToPayload(void)
 {
   // If no contest node exists, create it with the default context
 
+  LM_TMP(("In contextToPayload"));
   if (orionldState.payloadContextNode == NULL)
   {
     if (orionldState.link == NULL)
@@ -555,9 +559,11 @@ static void contextToPayload(void)
     else
       orionldState.payloadContextNode = kjString(orionldState.kjsonP, "@context", orionldState.link);
   }
+  LM_TMP(("Got the payloadContextNode"));
 
   if (orionldState.payloadContextNode == NULL)
   {
+    LM_E(("Out of memory"));
     orionldErrorResponseCreate(OrionldInternalError, "Out of memory", NULL);
     return;
   }
@@ -574,6 +580,7 @@ static void contextToPayload(void)
   }
   else if (orionldState.responseTree->type == KjArray)
   {
+    LM_TMP(("In contextToPayload - it's an array!"));
     for (KjNode* rTreeItemP = orionldState.responseTree->value.firstChildP; rTreeItemP != NULL; rTreeItemP = rTreeItemP->next)
     {
       KjNode* contextNode;
@@ -612,107 +619,23 @@ static void contextToPayload(void)
 
 // -----------------------------------------------------------------------------
 //
-// OrionldGeoIndex -
-//
-typedef struct OrionldGeoIndex
-{
-  char*                    tenant;
-  char*                    attrName;
-  struct OrionldGeoIndex*  next;
-} OrionldGeoIndex;
-
-OrionldGeoIndex* geoIndexList = NULL;
-
-
-
-// -----------------------------------------------------------------------------
-//
-// dbGeoIndexLookup -
-//
-OrionldGeoIndex* dbGeoIndexLookup(const char* tenant, const char* attrName)
-{
-  OrionldGeoIndex* giP = geoIndexList;
-
-  while (giP != NULL)
-  {
-    if ((strcmp(giP->tenant, tenant) == 0) && (strcmp(giP->attrName, attrName) == 0))
-      return giP;
-  }
-
-  return NULL;
-}
-
-
-
-// -----------------------------------------------------------------------------
-//
-// dbGeoIndexAdd -
-//
-void dbGeoIndexAdd(const char* tenant, const char* attrName)
-{
-  OrionldGeoIndex* geoNodeP = (OrionldGeoIndex*) kaAlloc(&kalloc, sizeof(OrionldGeoIndex));
-
-  geoNodeP->tenant   = kaStrdup(&kalloc, tenant);
-  geoNodeP->attrName = kaStrdup(&kalloc, attrName);
-
-  if (geoIndexList == NULL)
-  {
-    geoNodeP->next = NULL;
-    geoIndexList   = geoNodeP;
-  }
-  else
-  {
-    geoNodeP->next = geoIndexList;
-    geoIndexList   = geoNodeP;
-  }
-}
-
-// -----------------------------------------------------------------------------
-//
-// dbGeoIndex - FIXME: Move to mongoCppLegacy lib
-//
-#include "mongoBackend/connectionOperations.h"    // collectionCreateIndex
-#include "orionld/db/dbCollectionPathGet.h"       // dbCollectionPathGet
-static void dbGeoIndex(const char* tenant, const char* attrName)
-{
-  int         len          = 6 + strlen(attrName) + 6 + 1;               // "attrs." == 6, ".value" == 6, 1 for string-termination
-  char*       index        = kaAlloc(&orionldState.kalloc, len);
-  char*       attrNameCopy = kaStrdup(&orionldState.kalloc, attrName);
-  std::string err;
-
-  dotForEq(attrNameCopy);
-  snprintf(index, len, "attrs.%s.value", attrNameCopy);
-  LM_T(LmtMongo, ("GEO: ensuring 2dsphere index on %s (tenant '%s')", index, tenant));
-
-  char collectionPath[256];
-  dbCollectionPathGet(collectionPath, sizeof(collectionPath), "entities");
-
-  if (collectionCreateIndex(collectionPath, BSON(index << "2dsphere"), false, &err) == true)
-  {
-    LM_E(("Database Error (error creating 2dsphere index for attribute '%s' for tenant '%s')", attrName, tenant));
-    return;
-  }
-
-  dbGeoIndexAdd(tenant, attrName);
-}
-
-
-
-// -----------------------------------------------------------------------------
-//
 // dbGeoIndexes -
 //
-void dbGeoIndexes(void)
+static void dbGeoIndexes(void)
 {
   // sem_take
   for (int ix = 0; ix < orionldState.geoAttrs; ix++)
   {
+    LM_TMP(("GEOI: ix=%d", ix));
     if (dbGeoIndexLookup(orionldState.tenant, orionldState.geoAttrV[ix]->name) == NULL)
     {
-      LM_TMP(("GEO: Calling geoIndex for '%s'", orionldState.geoAttrV[ix]->name));
-      dbGeoIndex(orionldState.tenant, orionldState.geoAttrV[ix]->name);
+      LM_TMP(("GEOI: Calling geoIndexCreate for '%s'", orionldState.geoAttrV[ix]->name));
+      dbGeoIndexCreate(orionldState.tenant, orionldState.geoAttrV[ix]->name);
+      LM_TMP(("GEOI: After geoIndexCreate for '%s'", orionldState.geoAttrV[ix]->name));
     }
+    LM_TMP(("GEOI: ix=%d", ix));
   }
+  LM_TMP(("GEOI: Done"));
   // sem_give
 }
 
@@ -863,6 +786,7 @@ int orionldMhdConnectionTreat(ConnectionInfo* ciP)
   //
   LM_T(LmtServiceRoutine, ("Calling Service Routine %s (context at %p)", orionldState.serviceP->url, orionldState.contextP));
 
+  LM_TMP(("Calling serviceRoutine(tenant==%s)", orionldState.tenant));
   serviceRoutineResult = orionldState.serviceP->serviceRoutine(ciP);
   LM_T(LmtServiceRoutine, ("service routine '%s %s' done", orionldState.verbString, orionldState.serviceP->url));
 
@@ -877,15 +801,20 @@ int orionldMhdConnectionTreat(ConnectionInfo* ciP)
   }
   else  // Service Routine worked
   {
+    LM_TMP(("Service Routine worked - dbGeoIndexes ?"));
     dbGeoIndexes();
 
     // New tenant?
-    if (orionldState.tenant != NULL)
+    if ((orionldState.tenant != NULL) && (orionldState.tenant[0] != 0))
     {
       if ((orionldState.verb == POST) || (orionldState.verb == PATCH))
       {
-        if (orionldTenantLookup(orionldState.tenant) == NULL)
-          orionldTenantCreate(orionldState.tenant);
+        char prefixed[64];
+
+        snprintf(prefixed, sizeof(prefixed), "%s-%s", dbName, orionldState.tenant);
+
+        if (orionldTenantLookup(prefixed) == NULL)
+          orionldTenantCreate(prefixed);
       }
     }
   }
@@ -932,7 +861,6 @@ int orionldMhdConnectionTreat(ConnectionInfo* ciP)
       httpHeaderLinkAdd(ciP, orionldState.link);
   }
 
-
   //
   // Is there a KJSON response tree to render?
   //
@@ -951,7 +879,6 @@ int orionldMhdConnectionTreat(ConnectionInfo* ciP)
         contextToPayload();
     }
 
-
     //
     // Render the payload to get a string for restReply to send the response
     //
@@ -961,8 +888,10 @@ int orionldMhdConnectionTreat(ConnectionInfo* ciP)
     orionldState.responsePayload = (char*) malloc(bufLen);
     if (orionldState.responsePayload != NULL)
     {
+      LM_TMP(("Allocated 32MB foir the response"));
       orionldState.responsePayloadAllocated = true;
       kjRender(orionldState.kjsonP, orionldState.responseTree, orionldState.responsePayload, bufLen);
+      LM_TMP(("orionldState.responsePayload: '%s'", orionldState.responsePayload));
     }
     else
     {
@@ -979,8 +908,10 @@ int orionldMhdConnectionTreat(ConnectionInfo* ciP)
   if (orionldState.responsePayload != NULL)
     restReply(ciP, orionldState.responsePayload);    // orionldState.responsePayload freed and NULLed by restReply()
   else
+  {
+    LM_TMP(("No payload for the response"));
     restReply(ciP, "");
-
+  }
   //
   // Calling Temporal Routine to save the temporal data (if applicable)
   // Only if the Service Routine was successful, of course

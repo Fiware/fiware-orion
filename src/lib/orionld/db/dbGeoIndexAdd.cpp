@@ -1,6 +1,3 @@
-#ifndef SRC_LIB_ORIONLD_DB_DBCOLLECTIONPATHGET_H_
-#define SRC_LIB_ORIONLD_DB_DBCOLLECTIONPATHGET_H_
-
 /*
 *
 * Copyright 2019 FIWARE Foundation e.V.
@@ -25,26 +22,37 @@
 *
 * Author: Ken Zangelin
 */
-#include "logMsg/logMsg.h"                                       // LM_*
-#include "logMsg/traceLevels.h"                                  // Lmt*
+extern "C"
+{
+#include "kalloc/kaAlloc.h"                                      // kaAlloc
+#include "kalloc/kaStrdup.h"                                     // kaStrdup
+}
 
-#include "orionld/common/orionldState.h"                         // orionldState, dbName
-#include "orionld/db/dbCollectionPathGet.h"                      // Own interface
-
-
-
-// ----------------------------------------------------------------------------
-//
-// dbCollectionPathGet -
-//
-extern int dbCollectionPathGet(char* path, int pathLen, const char* collection);
+#include "orionld/types/OrionldGeoIndex.h"                       // OrionldGeoIndex
+#include "orionld/common/orionldState.h"                         // kalloc, geoIndexList
+#include "orionld/db/dbGeoIndexAdd.h"                            // Own interface
 
 
 
 // ----------------------------------------------------------------------------
 //
-// dbCollectionPathGetWithTenant -
+// dbGeoIndexAdd -
 //
-extern int dbCollectionPathGetWithTenant(char* path, int pathLen, const char* tenant, const char* collection);
+void dbGeoIndexAdd(const char* tenant, const char* attrName)
+{
+  OrionldGeoIndex* geoNodeP = (OrionldGeoIndex*) kaAlloc(&kalloc, sizeof(OrionldGeoIndex));
 
-#endif  // SRC_LIB_ORIONLD_DB_DBCOLLECTIONPATHGET_H_
+  geoNodeP->tenant   = kaStrdup(&kalloc, tenant);
+  geoNodeP->attrName = kaStrdup(&kalloc, attrName);
+
+  if (geoIndexList == NULL)
+  {
+    geoNodeP->next = NULL;
+    geoIndexList   = geoNodeP;
+  }
+  else
+  {
+    geoNodeP->next = geoIndexList;
+    geoIndexList   = geoNodeP;
+  }
+}
