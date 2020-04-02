@@ -26,6 +26,7 @@ extern "C"
 {
 #include "kjson/KjNode.h"                                        // KjNode
 #include "kjson/kjBuilder.h"                                     // kjObject, kjString, kjBoolean, ...
+#include "kalloc/kaStrdup.h"                                     // kaStrdup
 }
 
 #include "logMsg/logMsg.h"                                       // LM_*
@@ -34,6 +35,8 @@ extern "C"
 #include "rest/ConnectionInfo.h"                                 // ConnectionInfo
 
 #include "orionld/common/orionldState.h"                         // orionldState
+#include "orionld/common/eqForDot.h"                             // eqForDot
+#include "orionld/context/orionldContextItemAliasLookup.h"       // orionldContextItemAliasLookup
 #include "orionld/serviceRoutines/orionldGetDbIndexes.h"         // Own interface
 
 
@@ -44,19 +47,29 @@ extern "C"
 //
 bool orionldGetDbIndexes(ConnectionInfo* ciP)
 {
+  int items = 0;
+
   orionldState.responseTree = kjArray(orionldState.kjsonP, NULL);
 
   for (OrionldGeoIndex* geoNodeP = geoIndexList; geoNodeP != NULL; geoNodeP = geoNodeP->next)
   {
+    char*   attrName  =  kaStrdup(&orionldState.kalloc, geoNodeP->attrName);
+
+    eqForDot(attrName);
+
     KjNode* objP      = kjObject(orionldState.kjsonP, NULL);
     KjNode* tenantP   = kjString(orionldState.kjsonP, "tenant",   geoNodeP->tenant);
-    KjNode* attrNameP = kjString(orionldState.kjsonP, "attrName", geoNodeP->attrName);
+    KjNode* attrNameP = kjString(orionldState.kjsonP, "attribute", orionldContextItemAliasLookup(orionldState.contextP, attrName, NULL, NULL));
 
     kjChildAdd(objP, tenantP);
     kjChildAdd(objP, attrNameP);
     kjChildAdd(orionldState.responseTree, objP);
+
+    ++items;
   }
 
-  orionldState.noLinkHeader = true;
+  if (items == 0)
+    orionldState.noLinkHeader = true;
+
   return true;
 }

@@ -623,19 +623,23 @@ static void contextToPayload(void)
 //
 static void dbGeoIndexes(void)
 {
+  char  tenant[64];
+  char* tenantP;
+
+  if ((orionldState.tenant == NULL) || (orionldState.tenant[0] == 0))
+    tenantP = dbName;
+  else
+  {
+    snprintf(tenant, sizeof(tenant), "%s-%s", dbName, orionldState.tenant);
+    tenantP = tenant;
+  }
+
   // sem_take
   for (int ix = 0; ix < orionldState.geoAttrs; ix++)
   {
-    LM_TMP(("GEOI: ix=%d", ix));
-    if (dbGeoIndexLookup(orionldState.tenant, orionldState.geoAttrV[ix]->name) == NULL)
-    {
-      LM_TMP(("GEOI: Calling geoIndexCreate for '%s'", orionldState.geoAttrV[ix]->name));
-      dbGeoIndexCreate(orionldState.tenant, orionldState.geoAttrV[ix]->name);
-      LM_TMP(("GEOI: After geoIndexCreate for '%s'", orionldState.geoAttrV[ix]->name));
-    }
-    LM_TMP(("GEOI: ix=%d", ix));
+    if (dbGeoIndexLookup(tenantP, orionldState.geoAttrV[ix]->name) == NULL)
+      dbGeoIndexCreate(tenantP, orionldState.geoAttrV[ix]->name);
   }
-  LM_TMP(("GEOI: Done"));
   // sem_give
 }
 
