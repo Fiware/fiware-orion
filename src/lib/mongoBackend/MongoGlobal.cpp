@@ -1675,7 +1675,7 @@ bool entitiesQuery
     cerV->push_back(cer);
   }
 
-release:
+ release:
   LM_TMP(("GEO: Got %d results", docs));
   releaseMongoConnection(connection);
 
