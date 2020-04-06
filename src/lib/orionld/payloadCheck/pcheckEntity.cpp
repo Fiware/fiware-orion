@@ -92,7 +92,6 @@ static bool checkEntityIdFieldExists(void)
 bool pcheckEntity
 (
   KjNode*   kNodeP,
-  KjNode**  datasetAttrsP,
   KjNode**  locationNodePP,
   KjNode**  observationSpaceNodePP,
   KjNode**  operationSpaceNodePP,

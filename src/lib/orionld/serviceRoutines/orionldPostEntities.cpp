@@ -74,9 +74,8 @@ bool orionldPostEntities(ConnectionInfo* ciP)
   KjNode*  operationSpaceP    = NULL;
   KjNode*  createdAtP         = NULL;
   KjNode*  modifiedAtP        = NULL;
-  KjNode*  datasetAttrsP      = NULL;
 
-  if (pcheckEntity(orionldState.requestTree->value.firstChildP, &datasetAttrsP, &locationP, &observationSpaceP, &operationSpaceP, &createdAtP, &modifiedAtP, false) == false)
+  if (pcheckEntity(orionldState.requestTree->value.firstChildP, &locationP, &observationSpaceP, &operationSpaceP, &createdAtP, &modifiedAtP, false) == false)
     return false;
 
   char*    entityId           = orionldState.payloadIdNode->value.s;
