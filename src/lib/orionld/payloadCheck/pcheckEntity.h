@@ -39,6 +39,7 @@ extern "C"
 extern bool pcheckEntity
 (
   KjNode*          kNodeP,
+  KjNode**         datasetAttrsP,
   KjNode**         locationNodePP,
   KjNode**         observationSpaceNodePP,
   KjNode**         operationSpaceNodePP,
