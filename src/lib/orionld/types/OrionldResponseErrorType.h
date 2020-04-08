@@ -34,6 +34,7 @@
 //
 typedef enum OrionldResponseErrorType
 {
+  OrionldOk,
   OrionldInvalidRequest,
   OrionldBadRequestData,
   OrionldAlreadyExists,

@@ -65,6 +65,14 @@ extern "C"
 
 // -----------------------------------------------------------------------------
 //
+// ORIONLD_DEFAULT_DATASET_ID -
+//
+#define ORIONLD_DEFAULT_DATASET_ID "urn:ngsi-ld:default:datasetId"
+
+
+
+// -----------------------------------------------------------------------------
+//
 // Forward declarations -
 //
 struct OrionLdRestService;
@@ -230,6 +238,7 @@ typedef struct OrionldConnectionState
   //
   KjNode*                 creDatesP;
   bool                    onlyCount;
+  KjNode*                 datasets;
 
   //
   // General Behavior
