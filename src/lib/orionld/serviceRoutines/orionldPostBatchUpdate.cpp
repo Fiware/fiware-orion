@@ -158,13 +158,23 @@ bool orionldPostBatchUpdate(ConnectionInfo* ciP)
   //
   // 02. Check if some ID from idArray not exists
   //
+  KjNode* idTypeAndCreDateFromDb = dbEntityListLookupWithIdTypeCreDate(idArray);
   for (KjNode* idEntity = idArray->value.firstChildP; idEntity != NULL; idEntity = idEntity->next)
   {
-    LM_W(("ID_ENTITY %s", idEntity->value.s));
     KjNode*  entityP;
-    if (dbEntityLookup(idEntity->value.s) == NULL)
+    if (idTypeAndCreDateFromDb != NULL)
     {
-      entityErrorPush(errorsArrayP, idEntity->value.s, OrionldBadRequestData, "entity not exists", NULL, 400);
+      entityP = entityLookupById(idTypeAndCreDateFromDb, idEntity->value.s);
+      if (entityP == NULL)
+      {
+        entityErrorPush(errorsArrayP, idEntity->value.s, OrionldBadRequestData, "entity does not exist", NULL, 400);
+        entityP = entityLookupById(incomingTree, idEntity->value.s);
+        kjChildRemove(incomingTree, entityP);
+      }
+    }
+    else
+    {
+      entityErrorPush(errorsArrayP, idEntity->value.s, OrionldBadRequestData, "entity does not exist", NULL, 400);
       entityP = entityLookupById(incomingTree, idEntity->value.s);
       kjChildRemove(incomingTree, entityP);
     }
@@ -245,6 +255,6 @@ bool orionldPostBatchUpdate(ConnectionInfo* ciP)
     orionldState.httpStatusCode = SccReceiverInternalError;
     return false;
   }
-  
+
   return true;
 }

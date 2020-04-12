@@ -364,7 +364,7 @@ echo
 01. Attempt to update with an entity having an ID that is not a string - see error
 ==================================================================================
 HTTP/1.1 200 OK
-Content-Length: 495
+Content-Length: 499
 Content-Type: application/json
 Link: <https://uri.etsi.org/ngsi-ld/v1/ngsi-ld-core-context.jsonld>; rel="http://www.w3.org/ns/json-ld#context"; type="application/ld+json"
 Date: REGEX(.*)
@@ -385,7 +385,7 @@ Date: REGEX(.*)
       "entityId": "urn:ngsi-ld:entity:E2",
       "error": {
         "type": "https://uri.etsi.org/ngsi-ld/errors/BadRequestData",
-        "title": "entity not exists",
+        "title": "entity does not exist",
         "status": 400
       }
     }
@@ -397,7 +397,7 @@ Date: REGEX(.*)
 02. Attempt to update with an entity without ID field - see error
 =================================================================
 HTTP/1.1 200 OK
-Content-Length: 490
+Content-Length: 494
 Content-Type: application/json
 Link: <https://uri.etsi.org/ngsi-ld/v1/ngsi-ld-core-context.jsonld>; rel="http://www.w3.org/ns/json-ld#context"; type="application/ld+json"
 Date: REGEX(.*)
@@ -418,7 +418,7 @@ Date: REGEX(.*)
       "entityId": "urn:ngsi-ld:entity:E2",
       "error": {
         "type": "https://uri.etsi.org/ngsi-ld/errors/BadRequestData",
-        "title": "entity not exists",
+        "title": "entity does not exist",
         "status": 400
       }
     }
@@ -430,7 +430,7 @@ Date: REGEX(.*)
 03. Attempt to update with an entity having an ID with URI invalid - see error
 ==============================================================================
 HTTP/1.1 200 OK
-Content-Length: 457
+Content-Length: 461
 Content-Type: application/json
 Link: <https://uri.etsi.org/ngsi-ld/v1/ngsi-ld-core-context.jsonld>; rel="http://www.w3.org/ns/json-ld#context"; type="application/ld+json"
 Date: REGEX(.*)
@@ -451,7 +451,7 @@ Date: REGEX(.*)
       "entityId": "urn:ngsi-ld:entity:E2",
       "error": {
         "type": "https://uri.etsi.org/ngsi-ld/errors/BadRequestData",
-        "title": "entity not exists",
+        "title": "entity does not exist",
         "status": 400
       }
     }
@@ -463,7 +463,7 @@ Date: REGEX(.*)
 04. Attempt to update with an entity having a TYPE that is not a string - see error
 ===================================================================================
 HTTP/1.1 200 OK
-Content-Length: 500
+Content-Length: 504
 Content-Type: application/json
 Link: <https://uri.etsi.org/ngsi-ld/v1/ngsi-ld-core-context.jsonld>; rel="http://www.w3.org/ns/json-ld#context"; type="application/ld+json"
 Date: REGEX(.*)
@@ -484,7 +484,7 @@ Date: REGEX(.*)
       "entityId": "urn:ngsi-ld:entity:E2",
       "error": {
         "type": "https://uri.etsi.org/ngsi-ld/errors/BadRequestData",
-        "title": "entity not exists",
+        "title": "entity does not exist",
         "status": 400
       }
     }
@@ -496,7 +496,7 @@ Date: REGEX(.*)
 05. Attempt to update with an entity without TYPE field - see error
 ===================================================================
 HTTP/1.1 200 OK
-Content-Length: 460
+Content-Length: 468
 Content-Type: application/json
 Link: <https://uri.etsi.org/ngsi-ld/v1/ngsi-ld-core-context.jsonld>; rel="http://www.w3.org/ns/json-ld#context"; type="application/ld+json"
 Date: REGEX(.*)
@@ -508,7 +508,7 @@ Date: REGEX(.*)
       "entityId": "urn:ngsi-ld:entity:E1",
       "error": {
         "type": "https://uri.etsi.org/ngsi-ld/errors/BadRequestData",
-        "title": "entity not exists",
+        "title": "entity does not exist",
         "status": 400
       }
     },
@@ -516,7 +516,7 @@ Date: REGEX(.*)
       "entityId": "urn:ngsi-ld:entity:E2",
       "error": {
         "type": "https://uri.etsi.org/ngsi-ld/errors/BadRequestData",
-        "title": "entity not exists",
+        "title": "entity does not exist",
         "status": 400
       }
     }
@@ -528,7 +528,7 @@ Date: REGEX(.*)
 06. Attempt to update with an entity with 2 ID fields - see error
 =================================================================
 HTTP/1.1 200 OK
-Content-Length: 491
+Content-Length: 495
 Content-Type: application/json
 Link: <https://uri.etsi.org/ngsi-ld/v1/ngsi-ld-core-context.jsonld>; rel="http://www.w3.org/ns/json-ld#context"; type="application/ld+json"
 Date: REGEX(.*)
@@ -549,7 +549,7 @@ Date: REGEX(.*)
       "entityId": "urn:ngsi-ld:entity:E3",
       "error": {
         "type": "https://uri.etsi.org/ngsi-ld/errors/BadRequestData",
-        "title": "entity not exists",
+        "title": "entity does not exist",
         "status": 400
       }
     }
@@ -561,7 +561,7 @@ Date: REGEX(.*)
 07. Attempt to update with an entity with 2 TYPE fields - see error
 ===================================================================
 HTTP/1.1 200 OK
-Content-Length: 493
+Content-Length: 497
 Content-Type: application/json
 Link: <https://uri.etsi.org/ngsi-ld/v1/ngsi-ld-core-context.jsonld>; rel="http://www.w3.org/ns/json-ld#context"; type="application/ld+json"
 Date: REGEX(.*)
@@ -582,7 +582,7 @@ Date: REGEX(.*)
       "entityId": "urn:ngsi-ld:entity:E2",
       "error": {
         "type": "https://uri.etsi.org/ngsi-ld/errors/BadRequestData",
-        "title": "entity not exists",
+        "title": "entity does not exist",
         "status": 400
       }
     }
@@ -609,7 +609,7 @@ Date: REGEX(.*)
 09. Attempt to update with an empty without @context field - see error
 ======================================================================
 HTTP/1.1 200 OK
-Content-Length: 460
+Content-Length: 468
 Content-Type: application/json
 Link: <https://uri.etsi.org/ngsi-ld/v1/ngsi-ld-core-context.jsonld>; rel="http://www.w3.org/ns/json-ld#context"; type="application/ld+json"
 Date: REGEX(.*)
@@ -621,7 +621,7 @@ Date: REGEX(.*)
       "entityId": "urn:ngsi-ld:entity:E3",
       "error": {
         "type": "https://uri.etsi.org/ngsi-ld/errors/BadRequestData",
-        "title": "entity not exists",
+        "title": "entity does not exist",
         "status": 400
       }
     },
@@ -629,7 +629,7 @@ Date: REGEX(.*)
       "entityId": "urn:ngsi-ld:entity:E4",
       "error": {
         "type": "https://uri.etsi.org/ngsi-ld/errors/BadRequestData",
-        "title": "entity not exists",
+        "title": "entity does not exist",
         "status": 400
       }
     }
@@ -659,7 +659,7 @@ Date: REGEX(.*)
 11. Try to update entity which not exists POST /ngsi-ld/v1/entityOperations/update
 ==================================================================================
 HTTP/1.1 200 OK
-Content-Length: 280
+Content-Length: 284
 Content-Type: application/json
 Link: <https://uri.etsi.org/ngsi-ld/v1/ngsi-ld-core-context.jsonld>; rel="http://www.w3.org/ns/json-ld#context"; type="application/ld+json"
 Date: REGEX(.*)
@@ -673,7 +673,7 @@ Date: REGEX(.*)
       "entityId": "urn:ngsi-ld:entity:E3",
       "error": {
         "type": "https://uri.etsi.org/ngsi-ld/errors/BadRequestData",
-        "title": "entity not exists",
+        "title": "entity does not exist",
         "status": 400
       }
     }
