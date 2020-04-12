@@ -104,13 +104,16 @@ Date: REGEX(.*)
     }
   },
   {
-    "url": REGEX(.*),
-    "id": REGEX(.*),
-    "type": "array",
-    "URLs": [
-      "REGEX(.*)",
-      "https://fiware.github.io/NGSI-LD_TestSuite/ldContext/testContext.jsonld"
-    ]
+    "url": "https://fiware.github.io/NGSI-LD_TestSuite/ldContext/testContext.jsonld",
+    "id": "None",
+    "type": "hash-table",
+    "hash-table": {
+      "T": "http://example.org/T",
+      "P1": "http://example.org/P1",
+      "P2": "http://example.org/P2",
+      "R1": "http://example.org/R1",
+      "P3": "http://example.org/P3"
+    }
   },
   {
     "url": "https://fiware.github.io/NGSI-LD_TestSuite/ldContext/testContext.jsonld",
@@ -133,6 +136,15 @@ Date: REGEX(.*)
       "T2": "http:/a.b.c/types/T2",
       "T3": "http:/a.b.c/types/T3"
     }
+  },
+  {
+    "url": "REGEX(.*)",
+    "id": "REGEX(.*)",
+    "type": "array",
+    "URLs": [
+      "https://fiware.github.io/NGSI-LD_TestSuite/ldContext/testContext.jsonld",
+      "REGEX(.*)"
+    ]
   }
 ]
 
