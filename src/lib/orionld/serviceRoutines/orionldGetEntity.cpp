@@ -386,8 +386,7 @@ bool orionldGetEntity(ConnectionInfo* ciP)
 
   LM_T(LmtServiceRoutine, ("In orionldGetEntity: %s", orionldState.wildcard[0]));
 
-#if 1
-  bool                  keyValues = ciP->uriParamOptions[OPT_KEY_VALUES];
+  bool                  keyValues = orionldState.uriParamOptions.keyValues;  // ciP->uriParamOptions[OPT_KEY_VALUES];
   EntityId              entityId(orionldState.wildcard[0], "", "false", false);
   QueryContextRequest   request;
   QueryContextResponse  response;
@@ -422,63 +421,6 @@ bool orionldGetEntity(ConnectionInfo* ciP)
     // Create response by converting "QueryContextResponse response" into a KJson tree
     orionldState.responseTree = kjTreeFromQueryContextResponse(ciP, true, orionldState.uriParams.attrs, keyValues, &response);
   }
-#else
-  //
-  // Use dbEntityLookup() instead of mongoQueryContext()
-  //
-  //
-  // FIXME
-  // dbEntityLookup (mongoCppLegacyEntityLookup) uses dbDataToKjTree, which makes a complete copy of the tree in mongo:
-  // {
-  //   "_id": {
-  //     "id": "urn:ngsi-ld:E09",
-  //     "type": "https://uri.etsi.org/ngsi-ld/default-context/T",
-  //     "servicePath": "/"
-  //   },
-  //   "attrNames": [
-  //     "https://uri.etsi.org/ngsi-ld/default-context/P1"
-  //   ],
-  //   "attrs": {
-  //     "https://uri=etsi=org/ngsi-ld/default-context/P1": {
-  //       "type": "Property",
-  //       "creDate": 1579884546,
-  //       "modDate": 1579884546,
-  //       "value": {
-  //         "@type": "DateTime",
-  //         "@value": "2018-12-04T12:00:00"
-  //       },
-  //       "mdNames": []
-  //     }
-  //   },
-  //   "creDate": 1579884546,
-  //   "modDate": 1579884546,
-  //   "lastCorrelator": ""
-  // }
-  //
-  // Instead of:
-  // {
-  //   "id": "urn:ngsi-ld:E09",
-  //   "type": "T",
-  //   "P1": {
-  //     "type": "Property",
-  //     "value": {
-  //     "@type": "DateTime",
-  //     "@value": "2018-12-04T12:00:00"
-  //   }
-  // }
-  //
-  // To fix this:
-  // - Call a less generic function to create the KjNode tree (dbEntityDataToKjTree) that
-  //   - Removes "_id", "servicePath", "attrNames", "mdNames", "creDate", "modDate", "lastCorrelator"
-  // - Compact the attribute names and the entity id
-  // - keyValues
-  // - sysAttrs
-  //
-  // With all this done, I could stop using mongoBackend for this (and similar with all GET operations)
-  //
-  KjNode* entityWithDatabaseStructure = dbEntityLookup(orionldState.wildcard[0]);
-  orionldState.responseTree = kjTreeFromEntityWithDatabaseStructure(entityWithDatabaseStructure, keyValues, sysAttrs);
-#endif
 
   if ((orionldState.responseTree == NULL) && (regArray == NULL))
   {
