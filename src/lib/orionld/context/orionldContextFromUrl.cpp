@@ -41,16 +41,11 @@
 //
 OrionldContext* orionldContextFromUrl(char* url, OrionldProblemDetails* pdP)
 {
-  LM_TMP(("Looking up context '%s' in the context cache", url));
   OrionldContext* contextP = orionldContextCacheLookup(url);
 
   if (contextP != NULL)
-  {
-    LM_TMP(("Found the context '%s' in the context cache", url));
     return contextP;
-  }
 
-  LM_TMP(("No context '%s' in the context cache - must download it!", url));
   bool  downloadFailed;
   char* buffer = orionldContextDownload(url, &downloadFailed, pdP);  // downloadFailed not used ... remove?
 
@@ -61,10 +56,7 @@ OrionldContext* orionldContextFromUrl(char* url, OrionldProblemDetails* pdP)
     return NULL;
   }
 
-  LM_TMP(("Calling orionldContextFromBuffer"));
   contextP = orionldContextFromBuffer(url, buffer, pdP);
 
-  LM_TMP(("CCIN: Calling orionldContextCacheInsert for '%s'", contextP->url));
-  orionldContextCacheInsert(contextP);
   return contextP;
 }

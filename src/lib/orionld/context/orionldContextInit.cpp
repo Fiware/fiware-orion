@@ -195,7 +195,7 @@ static void contextFileTreat(char* dir, struct dirent* dirItemP)
       LM_E(("error creating context from file system file '%s'", path));
     else
     {
-      LM_TMP(("CCIN: Calling orionldContextCacheInsert for '%s'", contextP->url));
+      LM_TMP(("CC: Calling orionldContextCacheInsert for '%s'", contextP->url));
       orionldContextCacheInsert(contextP);
     }
   }

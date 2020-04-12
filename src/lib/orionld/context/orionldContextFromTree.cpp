@@ -80,6 +80,7 @@ OrionldContext* orionldContextFromTree(char* url, bool toBeCloned, KjNode* conte
 {
   int itemsInArray;
 
+  LM_TMP(("CC: contextTreeP (%s) is a JSON %s", url, kjValueType(contextTreeP->type)));
   if (contextTreeP->type == KjArray)
   {
     LM_TMP(("CTX: @context is an array to be simplified"));
@@ -133,7 +134,7 @@ OrionldContext* orionldContextFromTree(char* url, bool toBeCloned, KjNode* conte
 
     if (insert)
     {
-      LM_TMP(("CCIN: Calling orionldContextCacheInsert for '%s'", contextP->url));
+      LM_TMP(("CC: Calling orionldContextCacheInsert for '%s'", contextP->url));
       orionldContextCacheInsert(contextP);
     }
 
@@ -151,18 +152,28 @@ OrionldContext* orionldContextFromTree(char* url, bool toBeCloned, KjNode* conte
 
         contextP->context.array.items     = 1;
         contextP->context.array.vector    = (OrionldContext**) kaAlloc(&kalloc, 1 * sizeof(OrionldContext*));
+        LM_TMP(("CC: Calling orionldContextFromUrl for '%s' (url == '%s')", contextTreeP->value.s, url));
         contextP->context.array.vector[0] = orionldContextFromUrl(contextTreeP->value.s, pdP);
 
-        LM_TMP(("CCIN: Calling orionldContextCacheInsert for '%s'", contextP->url));
-        orionldContextCacheInsert(contextP);
+        LM_TMP(("CC: Calling orionldContextCacheInsert for '%s'", contextP->url));
+        // orionldContextCacheInsert(contextP);
       }
       return contextP;
     }
     else
-      return orionldContextFromUrl(contextTreeP->value.s, pdP);
+    {
+      OrionldContext* contextP;
+      LM_TMP(("CC: Calling orionldContextFromUrl for '%s'", contextTreeP->value.s));
+      contextP = orionldContextFromUrl(contextTreeP->value.s, pdP);
+      LM_TMP(("CC: After orionldContextFromUrl for '%s'", contextTreeP->value.s));
+      return contextP;
+    }
   }
   else if (contextTreeP->type == KjObject)
+  {
+    LM_TMP(("CC: The tree is an object, so, we call orionldContextFromObject"));
     return orionldContextFromObject(url, toBeCloned, contextTreeP, pdP);
+  }
 
 
   //

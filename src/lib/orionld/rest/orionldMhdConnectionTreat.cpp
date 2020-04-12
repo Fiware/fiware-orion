@@ -528,7 +528,7 @@ static bool linkHeaderCheck(ConnectionInfo* ciP)
   char*                  url = kaStrdup(&kalloc, orionldState.link);
   OrionldProblemDetails  pd;
 
-  LM_TMP(("CCIN: Calling orionldContextFromUrl (for Link) for '%s'", url));
+  LM_TMP(("CC: Calling orionldContextFromUrl (for Link) for '%s'", url));
   orionldState.contextP = orionldContextFromUrl(url, &pd);
   if (orionldState.contextP == NULL)
   {
@@ -766,7 +766,6 @@ int orionldMhdConnectionTreat(ConnectionInfo* ciP)
   {
     OrionldProblemDetails pd = { OrionldBadRequestData, (char*) "naught", (char*) "naught", 0 };
 
-    LM_TMP(("BUG: Calling orionldContextFromTree for inline context"));
     char* id  = NULL;
     char* url = NULL;
 
@@ -775,6 +774,7 @@ int orionldMhdConnectionTreat(ConnectionInfo* ciP)
     else
       url = orionldContextUrlGenerate(&id);
 
+    LM_TMP(("CC: Calling orionldContextFromTree for inline context"));
     orionldState.contextP = orionldContextFromTree(url, true, orionldState.payloadContextNode, &pd);
     if (orionldState.contextP == NULL)
     {
@@ -787,7 +787,7 @@ int orionldMhdConnectionTreat(ConnectionInfo* ciP)
 
     if (id != NULL)
       orionldState.contextP->id = id;
-    LM_TMP(("BUG: orionldContextFromTree responded with: %p (and pd.status == %d). URL: %s, ID: %s", orionldState.contextP, pd.status, orionldState.contextP->url, id));
+
     if (pd.status == 200)  // got an array with only Core Context
       orionldState.contextP = orionldCoreContextP;
 
