@@ -245,6 +245,6 @@ bool orionldPostBatchUpdate(ConnectionInfo* ciP)
     orionldState.httpStatusCode = SccReceiverInternalError;
     return false;
   }
-  
+
   return true;
 }
