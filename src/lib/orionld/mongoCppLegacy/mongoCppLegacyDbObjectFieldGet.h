@@ -1,5 +1,5 @@
-#ifndef SRC_LIB_ORIONLD_MONGOCPPLEGACY_MONGOCPPLEGACYDBFIELDGET_H_
-#define SRC_LIB_ORIONLD_MONGOCPPLEGACY_MONGOCPPLEGACYDBFIELDGET_H_
+#ifndef SRC_LIB_ORIONLD_MONGOCPPLEGACY_MONGOCPPLEGACYDBOBJECTFIELDGET_H_
+#define SRC_LIB_ORIONLD_MONGOCPPLEGACY_MONGOCPPLEGACYDBOBJECTFIELDGET_H_
 
 /*
 *
@@ -25,16 +25,16 @@
 *
 * Author: Ken Zangelin
 */
-#include "mongo/client/dbclient.h"                             // mongo::BSONElement
+#include "mongo/client/dbclient.h"                             // mongo::BSONObj
 
 
 
 // -----------------------------------------------------------------------------
 //
-// mongoCppLegacyDbFieldGet -
+// mongoCppLegacyDbObjectFieldGet -
 //
 // FIXME: avoid to send object on the stack!!!
 //
-extern mongo::BSONElement mongoCppLegacyDbFieldGet(const mongo::BSONObj* boP, const char* fieldName);
+extern mongo::BSONObj mongoCppLegacyDbObjectFieldGet(const mongo::BSONObj* boP, const char* fieldName);
 
-#endif  // SRC_LIB_ORIONLD_MONGOCPPLEGACY_MONGOCPPLEGACYDBFIELDGET_H_
+#endif  // SRC_LIB_ORIONLD_MONGOCPPLEGACY_MONGOCPPLEGACYDBOBJECTFIELDGET_H_

@@ -1,5 +1,5 @@
-#ifndef SRC_LIB_ORIONLD_MONGOCPPLEGACY_MONGOCPPLEGACYDBFIELDGET_H_
-#define SRC_LIB_ORIONLD_MONGOCPPLEGACY_MONGOCPPLEGACYDBFIELDGET_H_
+#ifndef SRC_LIB_ORIONLD_MONGOCPPLEGACY_MONGOCPPLEGACYENTITYRETRIEVE_H_
+#define SRC_LIB_ORIONLD_MONGOCPPLEGACY_MONGOCPPLEGACYENTITYRETRIEVE_H_
 
 /*
 *
@@ -25,16 +25,23 @@
 *
 * Author: Ken Zangelin
 */
-#include "mongo/client/dbclient.h"                             // mongo::BSONElement
+extern "C"
+{
+#include "kjson/KjNode.h"                                        // KjNode
+}
 
 
 
-// -----------------------------------------------------------------------------
+// ----------------------------------------------------------------------------
 //
-// mongoCppLegacyDbFieldGet -
+// mongoCppLegacyEntityRetrieve -
 //
-// FIXME: avoid to send object on the stack!!!
+// PARAMERTERS
+//   entityId        ID of the entity to be retrieved
+//   attrs           array of attribute names, terminated by a NULL pointer
+//   attrMandatory   If true - the entity is found only if any of the attributes in 'attrs'
+//                   is present in the entity
 //
-extern mongo::BSONElement mongoCppLegacyDbFieldGet(const mongo::BSONObj* boP, const char* fieldName);
+extern KjNode* mongoCppLegacyEntityRetrieve(const char* entityId, char** attrs, bool attrMandatory);
 
-#endif  // SRC_LIB_ORIONLD_MONGOCPPLEGACY_MONGOCPPLEGACYDBFIELDGET_H_
+#endif  // SRC_LIB_ORIONLD_MONGOCPPLEGACY_MONGOCPPLEGACYENTITYRETRIEVE_H_
