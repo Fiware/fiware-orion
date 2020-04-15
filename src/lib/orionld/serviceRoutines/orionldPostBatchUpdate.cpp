@@ -70,6 +70,7 @@ extern "C"
 #include "orionld/serviceRoutines/orionldPostBatchUpdate.h"    // Own Interface
 
 
+
 // ----------------------------------------------------------------------------
 //
 // entityIdPush - add ID to array
@@ -82,19 +83,6 @@ static void entityIdPush(KjNode* entityIdsArrayP, const char* entityId)
 }
 
 
-// -----------------------------------------------------------------------------
-//
-// entityIdGet -
-//
-// static void entityIdGet(KjNode* dbEntityP, char** idP)
-// {
-//   for (KjNode* nodeP = dbEntityP->value.firstChildP; nodeP != NULL; nodeP = nodeP->next)
-//   {
-//     if (SCOMPARE3(nodeP->name, 'i', 'd', 0))
-//       *idP = nodeP->value.s;
-//   }
-// }
-
 
 // ----------------------------------------------------------------------------
 //
@@ -106,6 +94,7 @@ static void entitySuccessPush(KjNode* successArrayP, const char* entityId)
 
   kjChildAdd(successArrayP, eIdP);
 }
+
 
 
 // ----------------------------------------------------------------------------
@@ -146,7 +135,9 @@ bool orionldPostBatchUpdate(ConnectionInfo* ciP)
     char* entityId;
     char* entityType;
 
+    //
     // entityIdAndTypeGet calls entityIdCheck/entityTypeCheck that adds the entity in errorsArrayP if needed
+    //
     if (entityIdAndTypeGet(entityP, &entityId, &entityType, errorsArrayP) == true)
       entityIdPush(idArray, entityId);
     else
@@ -155,13 +146,16 @@ bool orionldPostBatchUpdate(ConnectionInfo* ciP)
     entityP = next;
   }
 
+
   //
-  // 02. Check if some ID from idArray not exists
+  // 02. Check whether some ID from idArray does not exist
   //
   KjNode* idTypeAndCreDateFromDb = dbEntityListLookupWithIdTypeCreDate(idArray);
+
   for (KjNode* idEntity = idArray->value.firstChildP; idEntity != NULL; idEntity = idEntity->next)
   {
     KjNode*  entityP;
+
     if (idTypeAndCreDateFromDb != NULL)
     {
       entityP = entityLookupById(idTypeAndCreDateFromDb, idEntity->value.s);
