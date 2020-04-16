@@ -27,6 +27,7 @@
 extern "C"
 {
 #include "kbase/kMacros.h"                                          // K_FT
+#include "kalloc/kaStrdup.h"                                        // kaStrdup
 #include "kjson/KjNode.h"                                           // KjNode
 #include "kjson/kjLookup.h"                                         // kjLookup
 #include "kjson/kjBuilder.h"                                        // kjObject, ...
@@ -37,12 +38,260 @@ extern "C"
 #include "logMsg/traceLevels.h"                                     // Lmt*
 
 #include "mongoBackend/MongoGlobal.h"                               // getMongoConnection, releaseMongoConnection, ...
+#include "orionld/common/numberToDate.h"                            // numberToDate
 #include "orionld/common/eqForDot.h"                                // eqForDot
 #include "orionld/db/dbCollectionPathGet.h"                         // dbCollectionPathGet
 #include "orionld/db/dbConfiguration.h"                             // dbDataToKjTree
+#include "orionld/context/orionldContextItemAliasLookup.h"          // orionldContextItemAliasLookup
 #include "orionld/mongoCppLegacy/mongoCppLegacyDbStringFieldGet.h"  // mongoCppLegacyDbStringFieldGet
 #include "orionld/mongoCppLegacy/mongoCppLegacyDbObjectFieldGet.h"  // mongoCppLegacyDbObjectFieldGet
 #include "orionld/mongoCppLegacy/mongoCppLegacyEntityRetrieve.h"    // Own interface
+
+
+
+// -----------------------------------------------------------------------------
+//
+// kjChildPrepend - FIXME: move to kjson library
+//
+static void kjChildPrepend(KjNode* container, KjNode* child)
+{
+  child->next = container->value.firstChildP;
+  container->value.firstChildP = child;
+}
+
+
+
+// -----------------------------------------------------------------------------
+//
+// timestampToString -
+//
+static bool timestampToString(KjNode* nodeP)
+{
+  char* dateBuf = kaAlloc(&orionldState.kalloc, 64);
+  char* detail;
+
+  if (numberToDate(nodeP->value.i, dateBuf, 64, &detail) == false)
+  {
+    LM_E(("Database Error (numberToDate: %s)", detail));
+    return false;
+  }
+
+  nodeP->type    = KjString;
+  nodeP->value.s = dateBuf;
+
+  return true;
+}
+
+
+
+// -----------------------------------------------------------------------------
+//
+// presentationAttributeFix -
+//
+// 1. Remove 'createdAt' and 'modifiedAt' is options=sysAttrs is not set
+//
+static void presentationAttributeFix(KjNode* attrP, const char* entityId, bool sysAttrs, bool keyValues)
+{
+  if (keyValues == true)
+  {
+    KjNode*  typeP    = kjLookup(attrP, "type");
+    KjNode*  valueP;
+
+    if (typeP == NULL)
+    {
+      // Error
+    }
+    else if (typeP->type != KjString)
+    {
+      // Error
+    }
+
+    valueP = kjLookup(attrP, "value");
+    if (valueP == NULL)
+    {
+      // Error
+      LM_E(("Database Error (the attribute '%s' has no value)", attrP->name));
+    }
+
+    // Inherit the value field
+    attrP->type      = valueP->type;
+    attrP->value     = valueP->value;
+    attrP->lastChild = valueP->lastChild;
+  }
+  else if (sysAttrs == false)
+  {
+    KjNode* createdAtP  = kjLookup(attrP, "createdAt");
+    KjNode* modifiedAtP = kjLookup(attrP, "modifiedAt");
+
+    if (createdAtP != NULL)
+      kjChildRemove(attrP, createdAtP);
+
+    if (modifiedAtP != NULL)
+      kjChildRemove(attrP, modifiedAtP);
+  }
+  else
+  {
+    KjNode* createdAtP  = kjLookup(attrP, "createdAt");
+    KjNode* modifiedAtP = kjLookup(attrP, "modifiedAt");
+
+    if (createdAtP != NULL)
+      timestampToString(createdAtP);
+
+    if (modifiedAtP != NULL)
+      timestampToString(modifiedAtP);
+  }
+}
+
+
+
+// -----------------------------------------------------------------------------
+//
+// datamodelAttributeFix -
+//
+// Due to the different database model (the database model of NGSIv1 is used for NGSI-LD),
+// a few changes to the original attributes must be done:
+//
+// 1. Change "value" to "object" for all attributes that are "Relationship".
+//    Note that the "object" field of a Relationship is stored in the database under the field "value".
+//    That fact is fixed here, by renaming the "value" to "object" for attr with type == Relationship.
+//    This depends on the database model and thus should be fixed in the database layer.
+//
+// 2. Change 'creDate' to 'createdAt' and 'modDate' to 'modifiedAt', but only of sysAttrs == true
+//    If sysAttrs == false, then 'creDate' and 'modDate' are removed
+//
+// 3. mdNames must go
+//
+// 4. All metadata in 'md' must be placed one level higher
+//
+static bool datamodelAttributeFix(KjNode* attrP, const char* entityId, bool sysAttrs)
+{
+  //
+  // 1. Change "value" to "object" for all attributes that are "Relationship"
+  //
+  KjNode* typeP = kjLookup(attrP, "type");
+
+  if (typeP == NULL)
+  {
+    LM_E(("Database Error (field 'type' not found for attribute '%s' of entity '%s')", attrP->name, entityId));
+    return false;
+  }
+
+  if (strcmp(typeP->value.s, "Relationship") == 0)
+  {
+    KjNode* objectP = kjLookup(attrP, "value");
+
+    if (objectP == NULL)
+    {
+      LM_E(("Database Error (field 'value' not found for attribute '%s' of entity '%s')", attrP->name, entityId));
+      return false;
+    }
+
+    objectP->name = (char*) "object";
+  }
+
+  //
+  // 2. sysAttrs
+  //
+  KjNode* creDateP = kjLookup(attrP, "creDate");
+  KjNode* modDateP = kjLookup(attrP, "modDate");
+
+  if (creDateP != NULL)
+  {
+    if (orionldState.uriParamOptions.sysAttrs == false)
+      kjChildRemove(attrP, creDateP);
+    else
+      creDateP->name = (char*) "createdAt";
+  }
+
+  if (modDateP != NULL)
+  {
+    if (orionldState.uriParamOptions.sysAttrs == false)
+      kjChildRemove(attrP, modDateP);
+    else
+      modDateP->name = (char*) "modifiedAt";
+  }
+
+  //
+  // 3. mdNames must go
+  //
+  KjNode* mdNamesP = kjLookup(attrP, "mdNames");
+
+  if (mdNamesP != NULL)
+    kjChildRemove(attrP, mdNamesP);
+
+  //
+  // 4. All metadata in 'md' must be placed one level higher
+  //
+  KjNode* mdP = kjLookup(attrP, "md");
+
+  if (mdP != NULL)
+  {
+    for (KjNode* metadataP = mdP->value.firstChildP; metadataP != NULL; metadataP = metadataP->next)
+    {
+      //
+      // Special fields:
+      // - observedAt
+      // - unitCode
+      //
+      if (strcmp(metadataP->name, "observedAt") == 0)
+      {
+        LM_TMP(("NQ: observedAt is of type: %s", kjValueType(metadataP->type)));
+        if (metadataP->type == KjObject)
+        {
+          metadataP->type  = metadataP->value.firstChildP->type;
+          metadataP->value = metadataP->value.firstChildP->value;
+        }
+
+        if (metadataP->type == KjInt)
+          timestampToString(metadataP);
+
+        continue;
+      }
+      else if (strcmp(metadataP->name, "unitCode") == 0)
+      {
+        LM_TMP(("NQ: unitCode is of type: %s", kjValueType(metadataP->type)));
+        if (metadataP->type == KjObject)
+        {
+          metadataP->type  = metadataP->value.firstChildP->type;
+          metadataP->value = metadataP->value.firstChildP->value;
+        }
+
+        continue;
+      }
+
+      char* mdName = kaStrdup(&orionldState.kalloc, metadataP->name);
+      eqForDot(mdName);
+      metadataP->name = orionldContextItemAliasLookup(orionldState.contextP, mdName, NULL, NULL);
+
+      // If Relationship - change 'value' for 'object'
+      LM_TMP(("NQ: Getting 'type' of metadata '%s'", metadataP->name));
+      KjNode* typeP = kjLookup(metadataP, "type");
+      if (typeP == NULL)
+      {
+        // Error
+      }
+      else if (typeP->type != KjString)
+      {
+        // Error
+      }
+
+      if (strcmp(typeP->value.s, "Relationship") == 0)
+      {
+        KjNode* objectP = kjLookup(metadataP, "value");
+
+        if (objectP != NULL)
+          objectP->name = (char*) "object";
+      }
+    }
+
+    attrP->lastChild->next = mdP->value.firstChildP;
+    attrP->lastChild       = mdP->lastChild;
+
+    kjChildRemove(attrP, mdP);
+  }
+
+  return true;
+}
 
 
 
@@ -55,8 +304,10 @@ extern "C"
 //   attrs           array of attribute names, terminated by a NULL pointer
 //   attrMandatory   If true - the entity is found only if any of the attributes in 'attrs'
 //                   is present in the entity
+//   sysAttrs        include 'createdAt' and 'modifiedAt'
+//   keyValues       short representation of the attributes
 //
-KjNode* mongoCppLegacyEntityRetrieve(const char* entityId, char** attrs, bool attrMandatory)
+KjNode* mongoCppLegacyEntityRetrieve(const char* entityId, char** attrs, bool attrMandatory, bool sysAttrs, bool keyValues)
 {
   char    collectionPath[256];
   KjNode* attrTree  = NULL;
@@ -88,8 +339,16 @@ KjNode* mongoCppLegacyEntityRetrieve(const char* entityId, char** attrs, bool at
   mongo::BSONObj                        retFieldsObj;
   mongo::BSONObjBuilder                 retFieldsBuilder;
 
+  // _id is there by default
   retFieldsBuilder.append("attrs", 1);
   retFieldsBuilder.append("@datasets", 1);
+
+  if (sysAttrs == true)
+  {
+    retFieldsBuilder.append("creDate", 1);
+    retFieldsBuilder.append("modDate", 1);
+  }
+
   retFieldsObj = retFieldsBuilder.obj();
 
   //
@@ -127,8 +386,7 @@ KjNode* mongoCppLegacyEntityRetrieve(const char* entityId, char** attrs, bool at
   kjRender(orionldState.kjsonP, dbTree, buf, sizeof(buf));
   LM_TMP(("NQ: DB-Tree: %s", buf));
   // </DEBUG>
-  
-  int      includedAttributes = 0;
+
   KjNode*  dbAttrsP           = kjLookup(dbTree, "attrs");      // Must be there
   KjNode*  dbDataSetsP        = kjLookup(dbTree, "@datasets");  // May not be there
 
@@ -139,29 +397,82 @@ KjNode* mongoCppLegacyEntityRetrieve(const char* entityId, char** attrs, bool at
   }
 
   //
-  // Attributes may be found both in dbAttrsP abd in dbDataSetsP
+  // Attributes may be found both in dbAttrsP and in dbDataSetsP
+  //
+  // If 'attrs' given:
+  // - include those attributes that are found in (either 'dbAttrsP' or 'dbDataSetsP')  AND in 'attrs'
+  //
+  // Else (no 'attrs' given):
+  //
   //
   if (attrs == NULL)     // Include all attributes in the response
   {
-    attrTree = dbAttrsP;
+    if (keyValues == false)
+    {
+      for (KjNode* attrP = dbAttrsP->value.firstChildP; attrP != NULL; attrP = attrP->next)
+      {
+        datamodelAttributeFix(attrP, entityId, sysAttrs);
+      }
+    }
 
-    //
-    // Add "@datasets" to the attributes
-    //
-    
+    if ((dbDataSetsP != NULL) && (dbDataSetsP->value.firstChildP != NULL))
+    {
+      //
+      // Go over 'dbAttrsP' and incorporate all attributes from there into 'dbDataSetsP'
+      //
+      // If an attribute from 'dbAttrsP' is found in 'dbDataSetsP', it is inserted as
+      // 'yet another instance' of the attribute array in datasets
+      //
+      // If not found in 'dbDataSetsP', it is inserted as a new attibute in 'dbDataSetsP'
+      // I.e. one level higher, as the first and only instance of the attribute
+      //
+      KjNode* attrP = dbAttrsP->value.firstChildP;
+      KjNode* next;
+
+      while (attrP != NULL)
+      {
+        next = attrP->next;
+
+        kjChildRemove(dbAttrsP, attrP);
+
+        KjNode* didAttrP = kjLookup(dbDataSetsP, attrP->name);
+
+        if (didAttrP)  // Attribute found in 'datasets' - add attribute instance to the datasets array for the attribute
+        {
+          // I want the "non datasetId instance" at the start of the array - can't use kjChildAdd for this
+          kjChildPrepend(didAttrP, attrP);
+        }
+        else
+          kjChildAdd(dbDataSetsP, attrP);
+
+        attrP = next;
+      }
+
+      attrTree = dbDataSetsP;
+    }
+    else  // No datasets - simply use dbAttrsP
+      attrTree = dbAttrsP;
   }
-  else
+  else  // Filter attributes according to the 'attrs' URI param
   {
     attrTree = kjObject(orionldState.kjsonP, NULL);
 
-    int     ix = 0;
     KjNode* attrP;
     KjNode* datasetP;
+    int     includedAttributes = 0;
+    int     ix                 = 0;
 
     while (attrs[ix] != NULL)
     {
       attrP    = kjLookup(dbAttrsP, attrs[ix]);
       datasetP = (dbDataSetsP == NULL)? NULL : kjLookup(dbDataSetsP, attrs[ix]);
+
+      if (attrP != NULL)
+      {
+        if (keyValues == false)
+          datamodelAttributeFix(attrP, entityId, sysAttrs);
+        ++includedAttributes;
+      }
 
       if ((datasetP != NULL) && (attrP != NULL))
       {
@@ -169,14 +480,12 @@ KjNode* mongoCppLegacyEntityRetrieve(const char* entityId, char** attrs, bool at
         kjChildAdd(attrTree, datasetP);
 
         kjChildRemove(dbAttrsP, attrP);
-        kjChildAdd(datasetP, attrP);
-        ++includedAttributes;
+        kjChildPrepend(datasetP, attrP);
       }
       else if (attrP != NULL)
       {
         kjChildRemove(dbAttrsP, attrP);
         kjChildAdd(attrTree, attrP);
-        ++includedAttributes;
       }
       else if (datasetP != NULL)
       {
@@ -186,51 +495,85 @@ KjNode* mongoCppLegacyEntityRetrieve(const char* entityId, char** attrs, bool at
 
       ++ix;
     }
-      
-    //
-    // Change "value" to "object" for all attributes that are "Relationship".
-    // Note that the "object" field of a Relationship is stored in the database under the field "value".
-    // That fact is fixed here, by renaming the "value" to "object" for attr with type == Relationship.
-    // This depends on the database model and thus should be fixed in the database layer.
-    //
-    for (KjNode* attrP = attrTree->value.firstChildP; attrP != NULL; attrP = attrP->next)
+
+    if ((includedAttributes == 0) && (attrMandatory == true))
     {
-      if (attrP->type == KjObject)
+      // 404 not found ...
+      // The Entity exists, but it doesn't have ANY of the attributes in attrsP
+      return NULL;
+    }
+  }
+
+
+  //
+  // The data from the database must be altered to fit the NGSI-LD data model
+  //
+  for (KjNode* attrP = attrTree->value.firstChildP; attrP != NULL; attrP = attrP->next)
+  {
+    bool special = false;
+
+    if (strcmp(attrP->name, "location") == 0)
+      special = true;
+
+    if (special == false)
+    {
+      char* attrName            = kaStrdup(&orionldState.kalloc, attrP->name);
+      bool  valueMayBeCompacted = false;
+      eqForDot(attrName);
+
+      LM_TMP(("NQ: Looking up alias for attribute '%s'", attrName));
+      attrP->name = orionldContextItemAliasLookup(orionldState.contextP, attrName, &valueMayBeCompacted, NULL);
+      LM_TMP(("NQ: Got alias for attribute '%s' (valueMayBeCompacted=%s)", attrP->name, K_FT(valueMayBeCompacted)));
+
+      if (valueMayBeCompacted == true)
       {
-        KjNode* typeP = kjLookup(attrP, "type");
+        LM_TMP(("NQ: valueMayBeCompacted == true for '%s' (type: %s)", attrP->name, kjValueType(attrP->type)));
+        KjNode* valueP = kjLookup(attrP, "value");
 
-        if (typeP == NULL)
+        if (valueP != NULL)
         {
-          LM_E(("Database Error (field 'type' not found for attribute '%s' of entity '%s')", attrP->name, entityId));
-          return NULL;
-        }
-
-        if (strcmp(typeP->value.s, "Relationship") == 0)
-        {
-          KjNode* objectP = kjLookup(attrP, "value");
-
-          if (objectP == NULL)
+          if (valueP->type == KjString)
           {
-            LM_E(("Database Error (field 'value' not found for attribute '%s' of entity '%s')", attrP->name, entityId));
-            return NULL;
+            LM_TMP(("NQ: value '%s' may be compacted for attribute '%s'", valueP->value.s, attrP->name));
+            valueP->value.s = orionldContextItemAliasLookup(orionldState.contextP, valueP->value.s, NULL, NULL);
+            LM_TMP(("NQ: Compacted value: '%s'", valueP->value.s));
           }
-
-          objectP->name = (char*) "object";
+          else if (valueP->type == KjArray)
+          {
+            for (KjNode* arrItemP = valueP->value.firstChildP; arrItemP != NULL; arrItemP = arrItemP->next)
+            {
+              if (arrItemP->type == KjString)
+                arrItemP->value.s = orionldContextItemAliasLookup(orionldState.contextP, arrItemP->value.s, NULL, NULL);
+            }
+          }
         }
       }
-      else  // KjArray
+    }
+
+    if (attrP->type == KjObject)
+      presentationAttributeFix(attrP, entityId, sysAttrs, keyValues);
+    else  // KjArray
+    {
+      LM_TMP(("NQ: It's an Array"));
+      int instances = 0;
+      for (KjNode* aP = attrP->value.firstChildP; aP != NULL; aP = aP->next)
       {
-        LM_TMP(("ToDo: change 'value' for 'object' in all instances of attribute '%s'", attrP->name));
+        LM_TMP(("NQ: fixing instance %d", instances));
+        presentationAttributeFix(aP, entityId, sysAttrs, keyValues);
+        ++instances;
+      }
+      LM_TMP(("NQ: %d instances of the array '%s'", instances, attrP->name));
+
+      if (instances == 1)  // No array needed
+      {
+        LM_TMP(("NQ: Only one instance - simplifying Array to object"));
+        attrP->value.firstChildP = attrP->value.firstChildP->value.firstChildP;
+        attrP->lastChild         = attrP->value.firstChildP->lastChild;
+        attrP->type              = KjObject;
       }
     }
   }
 
-  if ((includedAttributes == 0) && (attrMandatory == true))
-  {
-    // 404 not found ...
-    // The Entity exists, but it doesn't have ANY of the attributes in attrsP
-    return NULL;
-  }
 
   KjNode* idP = kjLookup(dbTree, "_id");
 
@@ -240,12 +583,55 @@ KjNode* mongoCppLegacyEntityRetrieve(const char* entityId, char** attrs, bool at
     return NULL;
   }
 
-  // Merge idP and attrTree
-  if (attrTree != NULL)
+  KjNode* typeP        = kjLookup(idP, "type");
+  KjNode* servicePathP = kjLookup(idP, "servicePath");
+
+  if (typeP == NULL)
   {
+    LM_E(("Internal Error (field '_id.type' not found for entity '%s')", entityId));
+    return NULL;
+  }
+
+  if (servicePathP != NULL)
+    kjChildRemove(idP, servicePathP);
+
+  LM_TMP(("NQ: Looking up alias for entity type '%s'", typeP->value.s));
+  typeP->value.s = orionldContextItemAliasLookup(orionldState.contextP, typeP->value.s, NULL, NULL);
+  LM_TMP(("NQ: Got alias for entity type '%s'", typeP->value.s));
+
+  if (sysAttrs == true)
+  {
+    LM_TMP(("NQ: sysAttrs == true"));
+    KjNode*  creDateP = kjLookup(dbTree, "creDate");
+    KjNode*  modDateP = kjLookup(dbTree, "modDate");
+
+    LM_TMP(("NQ: creDate at %p", creDateP));
+    LM_TMP(("NQ: modDate at %p", modDateP));
+
+    if (creDateP != NULL)
+    {
+      kjChildRemove(dbTree, creDateP);
+      kjChildAdd(idP, creDateP);
+      creDateP->name = (char*) "createdAt";
+      timestampToString(creDateP);
+    }
+
+    if (modDateP != NULL)
+    {
+      kjChildRemove(dbTree, modDateP);
+      kjChildAdd(idP, modDateP);
+      modDateP->name = (char*) "modifiedAt";
+      timestampToString(modDateP);
+    }
+  }
+
+  // Merge idP and attrTree
+  if ((attrTree != NULL) && (attrTree->value.firstChildP != NULL))
+  {
+    LM_TMP(("Merging idP and attrTree (%p and %p)", idP, attrTree));
     idP->lastChild->next = attrTree->value.firstChildP;
     idP->lastChild       = attrTree->lastChild;
   }
-      
+
   return idP;
 }

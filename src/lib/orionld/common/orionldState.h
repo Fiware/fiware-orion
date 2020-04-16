@@ -90,6 +90,7 @@ typedef struct OrionldUriParamOptions
   bool update;
   bool replace;
   bool keyValues;
+  bool sysAttrs;
 } OrionldUriParamOptions;
 
 

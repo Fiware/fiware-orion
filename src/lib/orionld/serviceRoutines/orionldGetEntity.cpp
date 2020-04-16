@@ -287,6 +287,7 @@ static KjNode* orionldForwardGetEntityPart(KjNode* registrationP, char* entityId
 //
 static KjNode* orionldForwardGetEntity(ConnectionInfo* ciP, char* entityId, KjNode* regArrayP, KjNode* responseP, bool needEntityType)
 {
+  LM_TMP(("lastChild at %p", responseP->lastChild));
   //
   // If URI param 'attrs' was used, split the attr-names into an array and expanmd according to @context
   //
@@ -324,23 +325,36 @@ static KjNode* orionldForwardGetEntity(ConnectionInfo* ciP, char* entityId, KjNo
       {
         next = nodeP->next;
 
-        if      (SCOMPARE3(nodeP->name, 'i', 'd', 0))
-        {}
+        char buf[1024];
+        kjRender(orionldState.kjsonP, responseP, buf, sizeof(buf));
+        LM_TMP(("NQ: Response so far: %s", buf));
+
+        if (SCOMPARE3(nodeP->name, 'i', 'd', 0))
+        {
+        }
         else if (SCOMPARE5(nodeP->name, 't', 'y', 'p', 'e', 0))
         {
+          LM_TMP(("NQ: Found a type"));
           if (needEntityType)
           {
+            LM_TMP(("NQ: Need a type"));
+
             //
             // We're taking the entity::type from the Response to the forwarded request
             // because no local entity was found.
-            // It could also betaken from the registration.
+            // It could also be taken from the registration.
             //
             kjChildAdd(responseP, nodeP);
             needEntityType = false;
           }
         }
         else
+        {
+          LM_TMP(("NQ: Adding '%s' to response", nodeP->name));
+          LM_TMP(("NQ: responseP at %p", responseP));
+          LM_TMP(("NQ: nodeP     at %p", nodeP));
           kjChildAdd(responseP, nodeP);
+        }
 
         nodeP = next;
       }
@@ -352,6 +366,25 @@ static KjNode* orionldForwardGetEntity(ConnectionInfo* ciP, char* entityId, KjNo
 
 
 
+static char** attrsListToArray(char* attrList, char* attrV[], int attrVecLen)
+{
+  int items = kStringSplit(attrList, ',', attrV, attrVecLen);
+
+  attrV[items] = NULL;
+
+  for (int ix = 0; ix < items; ix++)
+  {
+    attrV[ix] = orionldContextItemExpand(orionldState.contextP, attrV[ix], NULL, true, NULL);
+    attrV[ix] = kaStrdup(&orionldState.kalloc, attrV[ix]);
+    dotForEq(attrV[ix]);
+  }
+
+  return attrV;
+}
+
+
+
+// #define USE_MONGO_BACKEND 0
 // ----------------------------------------------------------------------------
 //
 // orionldGetEntity -
@@ -391,7 +424,7 @@ bool orionldGetEntity(ConnectionInfo* ciP)
 
   LM_T(LmtServiceRoutine, ("In orionldGetEntity: %s", orionldState.wildcard[0]));
 
-#if 0
+#ifdef USE_MONGO_BACKEND
   bool                  keyValues = orionldState.uriParamOptions.keyValues;
   EntityId              entityId(orionldState.wildcard[0], "", "false", false);
   QueryContextRequest   request;
@@ -428,84 +461,13 @@ bool orionldGetEntity(ConnectionInfo* ciP)
     orionldState.responseTree = kjTreeFromQueryContextResponse(ciP, true, orionldState.uriParams.attrs, keyValues, &response);
   }
 #else
-  //
-  // Use dbEntityLookup() instead of mongoQueryContext()
-  //
-  //
-  // FIXME
-  // dbEntityLookup (mongoCppLegacyEntityLookup) uses dbDataToKjTree, which makes a complete copy of the tree in mongo:
-  // {
-  //   "_id": {
-  //     "id": "urn:ngsi-ld:E09",
-  //     "type": "https://uri.etsi.org/ngsi-ld/default-context/T",
-  //     "servicePath": "/"
-  //   },
-  //   "attrNames": [
-  //     "https://uri.etsi.org/ngsi-ld/default-context/P1"
-  //   ],
-  //   "attrs": {
-  //     "https://uri=etsi=org/ngsi-ld/default-context/P1": {
-  //       "type": "Property",
-  //       "creDate": 1579884546,
-  //       "modDate": 1579884546,
-  //       "value": {
-  //         "@type": "DateTime",
-  //         "@value": "2018-12-04T12:00:00"
-  //       },
-  //       "mdNames": []
-  //     }
-  //   },
-  //   "creDate": 1579884546,
-  //   "modDate": 1579884546,
-  //   "lastCorrelator": ""
-  // }
-  //
-  // Instead of:
-  // {
-  //   "id": "urn:ngsi-ld:E09",
-  //   "type": "T",
-  //   "P1": {
-  //     "type": "Property",
-  //     "value": {
-  //     "@type": "DateTime",
-  //     "@value": "2018-12-04T12:00:00"
-  //   }
-  // }
-  //
-  // To fix this:
-  // - Call a less generic function to create the KjNode tree (dbEntityDataToKjTree) that
-  //   - Removes "_id", "servicePath", "attrNames", "mdNames", "creDate", "modDate", "lastCorrelator"
-  // - Compact the attribute names and the entity id
-  // - keyValues
-  // - sysAttrs
-  //
-  // With all this done, I could stop using mongoBackend for this (and similar with all GET operations)
-  //
   char*  attrs[100];
   char** attrsP = NULL;
 
   if (orionldState.uriParams.attrs != NULL)
-  {
-    int items = kStringSplit(orionldState.uriParams.attrs, ',', attrs, 100);
+    attrsP = (char**) attrsListToArray(orionldState.uriParams.attrs, attrs, 100);
 
-    attrs[items] = NULL;
-    attrsP = attrs;
-
-    for (int ix = 0; ix < items; ix++)
-    {
-      attrs[ix] = orionldContextItemExpand(orionldState.contextP, attrs[ix], NULL, true, NULL);
-      attrs[ix] = kaStrdup(&orionldState.kalloc, attrs[ix]);
-      dotForEq(attrs[ix]);
-    }
-  }
-
-  LM_TMP(("NQ: Calling dbEntityRetrieve"));
-  orionldState.responseTree = dbEntityRetrieve(orionldState.wildcard[0], attrsP, false);
-  LM_TMP(("NQ: Back from dbEntityRetrieve"));
-
-  char buf[1024];
-  kjRender(orionldState.kjsonP, orionldState.responseTree, buf, sizeof(buf));
-  LM_TMP(("NQ: From DB: %s", buf));
+  orionldState.responseTree = dbEntityRetrieve(orionldState.wildcard[0], attrsP, false, orionldState.uriParamOptions.sysAttrs, orionldState.uriParamOptions.keyValues);
 #endif
 
   if ((orionldState.responseTree == NULL) && (regArray == NULL))
@@ -531,6 +493,7 @@ bool orionldGetEntity(ConnectionInfo* ciP)
   if (regArray != NULL)
   {
     bool needEntityType = false;
+    LM_TMP(("NQ: There are matching registrations ..."));
 
     if (orionldState.responseTree == NULL)
     {
@@ -542,6 +505,7 @@ bool orionldGetEntity(ConnectionInfo* ciP)
       needEntityType = true;  // Get it from Forward-response
     }
 
+    LM_TMP(("NQ: Calling orionldForwardGetEntity"));
     orionldForwardGetEntity(ciP, orionldState.wildcard[0], regArray, orionldState.responseTree, needEntityType);
   }
 

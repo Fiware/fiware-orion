@@ -59,7 +59,7 @@ mongo::BSONElement mongoCppLegacyDbFieldGet(const mongo::BSONObj* boP, const cha
 mongo::BSONObj mongoCppLegacyDbObjectFieldGet(const mongo::BSONObj* boP, const char* fieldName)
 {
   bool present = boP->hasField(fieldName);
-  
+
   if (present == false)
   {
     LM_E(("Runtime Error (field '%s' is missing in BSONObj '%s'", fieldName, boP->toString().c_str()));
