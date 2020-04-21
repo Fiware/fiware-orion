@@ -42,6 +42,14 @@ extern "C"
 //   attrMandatory   If true - the entity is found only if any of the attributes in 'attrs'
 //                   is present in the entity
 //
-extern KjNode* mongoCppLegacyEntityRetrieve(const char* entityId, char** attrs, bool attrMandatory, bool sysAttrs, bool keyValues);
+extern KjNode* mongoCppLegacyEntityRetrieve
+(
+  const char*  entityId,
+  char**       attrs,
+  bool         attrMandatory,
+  bool         sysAttrs,
+  bool         keyValues,
+  const char*  datasetId
+);
 
 #endif  // SRC_LIB_ORIONLD_MONGOCPPLEGACY_MONGOCPPLEGACYENTITYRETRIEVE_H_

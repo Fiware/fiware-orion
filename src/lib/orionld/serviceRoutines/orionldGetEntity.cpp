@@ -467,7 +467,7 @@ bool orionldGetEntity(ConnectionInfo* ciP)
   if (orionldState.uriParams.attrs != NULL)
     attrsP = (char**) attrsListToArray(orionldState.uriParams.attrs, attrs, 100);
 
-  orionldState.responseTree = dbEntityRetrieve(orionldState.wildcard[0], attrsP, false, orionldState.uriParamOptions.sysAttrs, orionldState.uriParamOptions.keyValues);
+  orionldState.responseTree = dbEntityRetrieve(orionldState.wildcard[0], attrsP, false, orionldState.uriParamOptions.sysAttrs, orionldState.uriParamOptions.keyValues, orionldState.uriParams.datasetId);
 #endif
 
   if ((orionldState.responseTree == NULL) && (regArray == NULL))

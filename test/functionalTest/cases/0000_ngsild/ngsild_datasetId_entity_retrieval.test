@@ -21,7 +21,7 @@
 # VALGRIND_READY - to mark the test ready for valgrindTestSuite.sh
 
 --NAME--
-Entity Creation
+Attributes with datasetId - entity retrieval without specific datasetId
 
 --SHELL-INIT--
 export BROKER=orionld
@@ -41,9 +41,9 @@ brokerStart CB
 # 07. GET E1 with attr 'rel2' - see 1 instance of 'rel2'
 # 08. GET E1 with attr 'rel3' - see 1 instance of 'rel3'
 #
-# With datasetId URI param
-# 09. GET E1 with attr 'prop' and datasetId 'urn:ngsi-ld/dataset:1' - see just one instance of 'prop'
-# 10. GET E1 with attr 'prop' and datasetId 'urn:ngsi-ld/dataset:3' - see a 404 Not Found ?
+# Key Values
+# 09. GET E1 with attr 'prop' and options=keyValues - see 'prop' as an array with three values
+# 10. GET E2 with attr 'rel' and options=keyValues - see 'rel' as an array with three values
 #
 
 echo "01. Create an entity E1 with 3 properties (prop, prop2, and prop3) with a mix of datasetIds"
@@ -158,6 +158,20 @@ echo
 
 echo "08. GET E2 with attr 'rel3' - see 1 instance of 'rel3'"
 echo "======================================================"
+echo
+echo
+
+
+echo "09. GET E1 with attr 'prop' and options=keyValues - see 'prop' as an array with three values"
+echo "============================================================================================"
+orionCurl --url '/ngsi-ld/v1/entities/urn:ngsi-ld:entities:E1?attrs=prop&prettyPrint=yes&options=keyValues' --noPayloadCheck
+echo
+echo
+
+
+echo "10. GET E2 with attr 'rel' and options=keyValues - see 'rel' as an array with three values"
+echo "=========================================================================================="
+orionCurl --url '/ngsi-ld/v1/entities/urn:ngsi-ld:entities:E2?attrs=rel&prettyPrint=yes&options=keyValues' --noPayloadCheck
 echo
 echo
 
@@ -288,6 +302,46 @@ Date: REGEX(.*)
 
 08. GET E2 with attr 'rel3' - see 1 instance of 'rel3'
 ======================================================
+
+
+09. GET E1 with attr 'prop' and options=keyValues - see 'prop' as an array with three values
+============================================================================================
+HTTP/1.1 200 OK
+Content-Length: 164
+Content-Type: application/json
+Link: <https://uri.etsi.org/ngsi-ld/v1/ngsi-ld-core-context.jsonld>; rel="http://www.w3.org/ns/json-ld#context"; type="application/ld+json"
+Date: REGEX(.*)
+
+{
+  "id": "urn:ngsi-ld:entities:E1",
+  "type": "T",
+  "prop": [
+    "no dataset id",
+    "dataset urn:ngsi-ld/dataset:1",
+    "dataset urn:ngsi-ld/dataset:2"
+  ]
+}
+
+
+
+10. GET E2 with attr 'rel' and options=keyValues - see 'rel' as an array with three values
+==========================================================================================
+HTTP/1.1 200 OK
+Content-Length: 151
+Content-Type: application/json
+Link: <https://uri.etsi.org/ngsi-ld/v1/ngsi-ld-core-context.jsonld>; rel="http://www.w3.org/ns/json-ld#context"; type="application/ld+json"
+Date: REGEX(.*)
+
+{
+  "id": "urn:ngsi-ld:entities:E2",
+  "type": "T",
+  "rel": [
+    "urn:no_dataset_id",
+    "urn:ngsi-ld/dataset:1",
+    "urn:ngsi-ld/dataset:2"
+  ]
+}
+
 
 
 --TEARDOWN--

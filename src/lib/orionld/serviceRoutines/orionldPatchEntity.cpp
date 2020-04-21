@@ -356,14 +356,20 @@ bool orionldPatchEntity(ConnectionInfo* ciP)
                                                    ciP->apiVersion,
                                                    NGSIV2_NO_FLAVOUR);
 
+  ucRequest.release();
+
   // 9. Postprocess output from mongoBackend
   if (orionldState.httpStatusCode == SccOk)
   {
     //
     // 204 or 207?
+    //
+    // 204 if all went ok (== empty list of 'not updated')
+    // 207 if something went wrong (== non-empty list of 'not updated')
+    //
     // If 207 - prepare the response payload data
     //
-    if (notUpdatedP->value.firstChildP != NULL)
+    if (notUpdatedP->value.firstChildP != NULL)  // non-empty list of 'not updated'
     {
       orionldState.responseTree = kjObject(orionldState.kjsonP, NULL);
 

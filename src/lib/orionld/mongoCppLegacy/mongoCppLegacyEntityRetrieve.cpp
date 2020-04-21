@@ -31,7 +31,6 @@ extern "C"
 #include "kjson/KjNode.h"                                           // KjNode
 #include "kjson/kjLookup.h"                                         // kjLookup
 #include "kjson/kjBuilder.h"                                        // kjObject, ...
-#include "kjson/kjRender.h"                                         // kjRender
 }
 
 #include "logMsg/logMsg.h"                                          // LM_*
@@ -90,7 +89,7 @@ static bool timestampToString(KjNode* nodeP)
 //
 // 1. Remove 'createdAt' and 'modifiedAt' is options=sysAttrs is not set
 //
-static void presentationAttributeFix(KjNode* attrP, const char* entityId, bool sysAttrs, bool keyValues)
+static bool presentationAttributeFix(KjNode* attrP, const char* entityId, bool sysAttrs, bool keyValues)
 {
   if (keyValues == true)
   {
@@ -99,18 +98,29 @@ static void presentationAttributeFix(KjNode* attrP, const char* entityId, bool s
 
     if (typeP == NULL)
     {
-      // Error
+      LM_E(("No 'type' field found"));
+      return false;
     }
     else if (typeP->type != KjString)
     {
-      // Error
+      LM_E(("'type' field not a string"));
+      return false;
     }
 
+    //
+    // FIXME: Here I need to know what to look for!!!
+    //        "value" or "object"
+    //
     valueP = kjLookup(attrP, "value");
     if (valueP == NULL)
+      valueP = kjLookup(attrP, "object");
+
+
+    LM_TMP(("kjLookup returned %p", valueP));
+    if (valueP == NULL)
     {
-      // Error
-      LM_E(("Database Error (the attribute '%s' has no value)", attrP->name));
+      LM_E(("Database Error (the %s '%s' has no value)", typeP->value.s, attrP->name));
+      return false;
     }
 
     // Inherit the value field
@@ -140,6 +150,8 @@ static void presentationAttributeFix(KjNode* attrP, const char* entityId, bool s
     if (modifiedAtP != NULL)
       timestampToString(modifiedAtP);
   }
+
+  return true;
 }
 
 
@@ -299,7 +311,9 @@ static bool datamodelAttributeFix(KjNode* attrP, const char* entityId, bool sysA
 //
 // mongoCppLegacyEntityRetrieve -
 //
-// PARAMERTERS
+// FIXME: Move database model relevant code to some other function (for reusal)
+//
+// PARAMETERS
 //   entityId        ID of the entity to be retrieved
 //   attrs           array of attribute names, terminated by a NULL pointer
 //   attrMandatory   If true - the entity is found only if any of the attributes in 'attrs'
@@ -307,7 +321,7 @@ static bool datamodelAttributeFix(KjNode* attrP, const char* entityId, bool sysA
 //   sysAttrs        include 'createdAt' and 'modifiedAt'
 //   keyValues       short representation of the attributes
 //
-KjNode* mongoCppLegacyEntityRetrieve(const char* entityId, char** attrs, bool attrMandatory, bool sysAttrs, bool keyValues)
+KjNode* mongoCppLegacyEntityRetrieve(const char* entityId, char** attrs, bool attrMandatory, bool sysAttrs, bool keyValues, const char* datasetId)
 {
   char    collectionPath[256];
   KjNode* attrTree  = NULL;
@@ -380,12 +394,6 @@ KjNode* mongoCppLegacyEntityRetrieve(const char* entityId, char** attrs, bool at
     // Entity nt found
     return NULL;
   }
-
-  // <DEBUG>
-  char buf[1024];
-  kjRender(orionldState.kjsonP, dbTree, buf, sizeof(buf));
-  LM_TMP(("NQ: DB-Tree: %s", buf));
-  // </DEBUG>
 
   KjNode*  dbAttrsP           = kjLookup(dbTree, "attrs");      // Must be there
   KjNode*  dbDataSetsP        = kjLookup(dbTree, "@datasets");  // May not be there
@@ -551,7 +559,13 @@ KjNode* mongoCppLegacyEntityRetrieve(const char* entityId, char** attrs, bool at
     }
 
     if (attrP->type == KjObject)
-      presentationAttributeFix(attrP, entityId, sysAttrs, keyValues);
+    {
+      if (presentationAttributeFix(attrP, entityId, sysAttrs, keyValues) == false)
+      {
+        LM_E(("presentationAttributeFix failed"));
+        return NULL;
+      }
+    }
     else  // KjArray
     {
       LM_TMP(("NQ: It's an Array"));
@@ -559,7 +573,11 @@ KjNode* mongoCppLegacyEntityRetrieve(const char* entityId, char** attrs, bool at
       for (KjNode* aP = attrP->value.firstChildP; aP != NULL; aP = aP->next)
       {
         LM_TMP(("NQ: fixing instance %d", instances));
-        presentationAttributeFix(aP, entityId, sysAttrs, keyValues);
+        if (presentationAttributeFix(aP, entityId, sysAttrs, keyValues) == false)
+        {
+          LM_E(("presentationAttributeFix failed"));
+          return NULL;
+        }
         ++instances;
       }
       LM_TMP(("NQ: %d instances of the array '%s'", instances, attrP->name));

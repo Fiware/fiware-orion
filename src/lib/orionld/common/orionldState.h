@@ -106,13 +106,13 @@ typedef struct OrionldUriParams
   char* idPattern;
   char* attrs;
   char* options;
-  int   offset;    // Not Implemented - use ciP->uriParams for now
-  int   limit;     // Not Implemented - use ciP->uriParams for now
+  int   offset;
+  int   limit;
   char* geometry;
   char* geoloc;
   char* geoproperty;
   bool  count;
-  // To Be Continued ...
+  char* datasetId;
 } OrionldUriParams;
 
 
