@@ -32,7 +32,6 @@ extern "C"
 #include "kalloc/kaStrdup.h"                                     // kaStrdup
 #include "kjson/KjNode.h"                                        // KjNode
 #include "kjson/kjBuilder.h"                                     // kjString, kjObject, ...
-#include "kjson/kjRender.h"                                      // kjRender
 #include "kjson/kjLookup.h"                                      // kjLookup
 }
 
@@ -89,14 +88,8 @@ KjNode* datasetInstances(KjNode* datasets, KjNode* attrV, char* attributeName, d
   KjNode*          modifiedAt;
   KjNode*          createdAt;
   char*            longName = NULL;
+  bool             valueMayBeExpanded;
 
-  // <DEBUG>
-  char buf[1024];
-  kjRender(orionldState.kjsonP, attrV, buf, sizeof(buf));
-  LM_TMP(("DID: attribute array: %s (at time %f)", buf, timestamp));
-  // </DEBUG>
-
-  bool valueMayBeExpanded;
   longName      = orionldContextItemExpand(orionldState.contextP, attributeName, &valueMayBeExpanded, true, NULL);
   attributeName = kaStrdup(&orionldState.kalloc, longName);
   dotForEq(attributeName);
@@ -128,8 +121,6 @@ KjNode* datasetInstances(KjNode* datasets, KjNode* attrV, char* attributeName, d
         pdP->status = 400;
         return NULL;
       }
-
-      LM_TMP(("DID: found dataset '%s' in instance %d of the array", datasetIdP->value.s, instanceIx));
     }
 
     if ((datasetIdP == NULL) || (strcmp(datasetIdP->value.s, ORIONLD_DEFAULT_DATASET_ID) == 0))  // No datasetId
@@ -173,11 +164,6 @@ KjNode* datasetInstances(KjNode* datasets, KjNode* attrV, char* attributeName, d
 
   // Then, add the array to 'datasets'
   kjChildAdd(datasets, attrArray);
-
-  // <DEBUG>
-  kjRender(orionldState.kjsonP, datasets, buf, sizeof(buf));
-  LM_TMP(("DID: datasets: %s", buf));
-  // </DEBUG>
 
   //
   // The object returned was part of an array and thus has no name.
@@ -223,11 +209,6 @@ bool pcheckAttributeType(KjNode* attrTypeP, const char* attrName)
 //
 bool orionldPostEntities(ConnectionInfo* ciP)
 {
-  // <DEBUG>
-  char debugBuf[1024];
-  // </DEBUG>
-
-  LM_TMP(("In orionldPostEntities. tenant == '%s'", orionldState.tenant));
   OBJECT_CHECK(orionldState.requestTree, "toplevel");
 
   char*    detail;
@@ -308,20 +289,18 @@ bool orionldPostEntities(ConnectionInfo* ciP)
     {
       OrionldProblemDetails pd = { OrionldOk, NULL, NULL, 0 };
 
-      LM_TMP(("DID: the attribute '%s' is an array, not an object - datasetIds ...", kNodeP->name));
       kNodeP = datasetInstances(datasets, kNodeP, kNodeP->name, timestamp, &pd);
 
       if (kNodeP == NULL)
       {
         if (pd.status != 0)  // Error in datasetInstances
         {
-          LM_W(("DID: Bad Input (%s: %s)", pd.title, pd.detail));
+          mongoRequest.release();
           return false;
         }
         else
         {
           kNodeP = next;
-          LM_TMP(("DID: All OK, but no non-datasetId instances in the array - continuing with the next attribute"));
           continue;
         }
       }
@@ -333,13 +312,6 @@ bool orionldPostEntities(ConnectionInfo* ciP)
       //   as RHS for the attribute, just a normal JSON object ...
       //
     }
-    else
-      LM_TMP(("DID: Not an Array"));
-
-    // <DEBUG>
-    kjRender(orionldState.kjsonP, kNodeP, debugBuf, sizeof(debugBuf));
-    LM_TMP(("DID: the attribute is now a JSON object: %s", debugBuf));
-    // </DEBUG>
 
     KjNode* attrType = kjLookup(kNodeP, "type");
 
@@ -352,7 +324,10 @@ bool orionldPostEntities(ConnectionInfo* ciP)
     }
 
     if (pcheckAttributeType(attrType, kNodeP->name) == false)
+    {
+      mongoRequest.release();
       return false;
+    }
 
     //
     // If a datasetId member is present, and it's not the default datasetId, then the
@@ -360,18 +335,15 @@ bool orionldPostEntities(ConnectionInfo* ciP)
     //
     // If the datasetId is the default datasetId, then the field is simply removed
     //
-    LM_TMP(("DID: looking up 'datasetId' in attribute '%s'", kNodeP->name));
     KjNode* datasetIdP = kjLookup(kNodeP, "datasetId");
     if (datasetIdP != NULL)
     {
-      LM_TMP(("DID: found a datasetId!"));
       STRING_CHECK(datasetIdP, "datasetId");
       URI_CHECK(datasetIdP, "datasetId");
 
       if (strcmp(datasetIdP->value.s, ORIONLD_DEFAULT_DATASET_ID) != 0)
       {
-        LM_TMP(("DID: removing attribute from the incoming payload and treating it seperately, as a dataset attribute instance"));
-        kjChildRemove(orionldState.requestTree,	kNodeP);
+        kjChildRemove(orionldState.requestTree, kNodeP);
         kjChildAdd(datasets, kNodeP);
 
         // Add createdAt and modifiedAt to the instance
@@ -393,11 +365,8 @@ bool orionldPostEntities(ConnectionInfo* ciP)
         continue;
       }
 
-      LM_TMP(("DID: removing the default datasetId from the attribute"));
       kjChildRemove(kNodeP, datasetIdP);
     }
-    else
-      LM_TMP(("DID: no datasetId in '%s'", kNodeP->name));
 
     ContextAttribute* caP            = new ContextAttribute();
     KjNode*           attrTypeNodeP  = NULL;
@@ -420,18 +389,6 @@ bool orionldPostEntities(ConnectionInfo* ciP)
 
     kNodeP = next;
   }
-
-  if (datasets->value.firstChildP != NULL)
-  {
-    LM_TMP(("DID: Got one or more attrs with datasetId"));
-    for (KjNode* aP = datasets->value.firstChildP; aP != NULL; aP = aP->next)
-      LM_TMP(("DID:   o %s", aP->name));
-  }
-
-  // <DEBUG>
-  kjRender(orionldState.kjsonP, datasets, debugBuf, sizeof(debugBuf));
-  LM_TMP(("DID: Final datasets: %s", debugBuf));
-  // </DEBUG>
 
   //
   // Mongo

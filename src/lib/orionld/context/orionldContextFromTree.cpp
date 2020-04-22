@@ -27,6 +27,7 @@ extern "C"
 #include "kalloc/kaAlloc.h"                                      // kaAlloc
 #include "kjson/KjNode.h"                                        // KjNode
 #include "kjson/kjRender.h"                                      // kjRender
+#include "kjson/kjFree.h"                                        // kjFree
 }
 
 #include "logMsg/logMsg.h"                                       // LM_*
@@ -98,7 +99,7 @@ OrionldContext* orionldContextFromTree(char* url, bool toBeCloned, KjNode* conte
       insert = false;
     }
 
-    // Need to clone the array and add it to cache before it is destroyed
+    // Need to clone the array and add it to the cache before it is destroyed
     OrionldContext* contextP = orionldContextCreate(url, NULL, contextTreeP, false, insert);
 
     contextP->context.array.items     = itemsInArray;
@@ -110,7 +111,7 @@ OrionldContext* orionldContextFromTree(char* url, bool toBeCloned, KjNode* conte
       OrionldContext* cachedContextP = NULL;
 
       if (ctxItemP->type == KjString)
-        orionldContextCacheLookup(ctxItemP->value.s);
+        cachedContextP = orionldContextCacheLookup(ctxItemP->value.s);
       else if ((ctxItemP->type != KjObject) && (ctxItemP->type != KjArray))
       {
         LM_E(("invalid type of @context array item: %s", kjValueType(ctxItemP->type)));
@@ -119,6 +120,8 @@ OrionldContext* orionldContextFromTree(char* url, bool toBeCloned, KjNode* conte
         pdP->detail = (char*) kjValueType(ctxItemP->type);
         pdP->status = 400;
 
+        if (insert == true)
+          kjFree(contextP->tree);
         return NULL;
       }
 
