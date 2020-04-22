@@ -225,9 +225,7 @@ bool orionldPostBatchUpsert(ConnectionInfo* ciP)
     char*   entityType;
 
     // entityIdAndTypeGet calls entityIdCheck/entityTypeCheck that adds the entity in errorsArrayP if needed
-    if (entityIdAndTypeGet(entityP, &entityId, &entityType, errorsArrayP) == true)
-      entityIdPush(idArray, entityId);
-    else
+    if (entityIdAndTypeGet(entityP, &entityId, &entityType, errorsArrayP) == false)
     {
       kjChildRemove(incomingTree, entityP);
       entityP = next;
@@ -253,10 +251,13 @@ bool orionldPostBatchUpsert(ConnectionInfo* ciP)
     }
     else if ((contextNodeP != NULL) && (orionldState.linkHttpHeaderPresent == true))
     {
-      LM_W(("Bad Input (@context present bot in Link header and in payload data)"));
-      entityErrorPush(errorsArrayP, entityId, OrionldBadRequestData, "Inconsistency between HTTP headers and payload data", "@context present bot in Link header and in payload data", 400);
+      LM_W(("Bad Input (@context present both in Link header and in payload data)"));
+      entityErrorPush(errorsArrayP, entityId, OrionldBadRequestData, "Inconsistency between HTTP headers and payload data", "@context present both in Link header and in payload data", 400);
       kjChildRemove(incomingTree, entityP);
+      LM_TMP(("BU: Removed entity '%s' as it has context both in Link header and in payload data", entityId));
     }
+    else
+      entityIdPush(idArray, entityId);
 
     entityP = next;
   }
@@ -298,7 +299,11 @@ bool orionldPostBatchUpsert(ConnectionInfo* ciP)
       // For the entity in question - get id and type from the incoming payload
       // First look up the entity with ID 'idInDb' in the incoming payload
       //
-      entityP       = entityLookupById(incomingTree, idInDb);
+      LM_TMP(("BU: Looking up entity '%s'", idInDb));
+      entityP = entityLookupById(incomingTree, idInDb);
+      if (entityP == NULL)
+        continue;
+
       typeInPayload = entityTypeGet(entityP, &contextNodeP);
 
       if (contextNodeP != NULL)
