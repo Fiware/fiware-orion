@@ -32,7 +32,6 @@ extern "C"
 #include "kjson/KjNode.h"                                        // KjNode
 #include "kjson/kjBuilder.h"                                     // kjObject, ...
 #include "kjson/kjParse.h"                                       // kjParse
-#include "kjson/kjRender.h"                                      // kjRender
 }
 
 #include "logMsg/logMsg.h"                                       // LM_*
@@ -287,7 +286,6 @@ static KjNode* orionldForwardGetEntityPart(KjNode* registrationP, char* entityId
 //
 static KjNode* orionldForwardGetEntity(ConnectionInfo* ciP, char* entityId, KjNode* regArrayP, KjNode* responseP, bool needEntityType)
 {
-  LM_TMP(("lastChild at %p", responseP->lastChild));
   //
   // If URI param 'attrs' was used, split the attr-names into an array and expanmd according to @context
   //
@@ -325,20 +323,13 @@ static KjNode* orionldForwardGetEntity(ConnectionInfo* ciP, char* entityId, KjNo
       {
         next = nodeP->next;
 
-        char buf[1024];
-        kjRender(orionldState.kjsonP, responseP, buf, sizeof(buf));
-        LM_TMP(("NQ: Response so far: %s", buf));
-
         if (SCOMPARE3(nodeP->name, 'i', 'd', 0))
         {
         }
         else if (SCOMPARE5(nodeP->name, 't', 'y', 'p', 'e', 0))
         {
-          LM_TMP(("NQ: Found a type"));
           if (needEntityType)
           {
-            LM_TMP(("NQ: Need a type"));
-
             //
             // We're taking the entity::type from the Response to the forwarded request
             // because no local entity was found.
@@ -349,12 +340,7 @@ static KjNode* orionldForwardGetEntity(ConnectionInfo* ciP, char* entityId, KjNo
           }
         }
         else
-        {
-          LM_TMP(("NQ: Adding '%s' to response", nodeP->name));
-          LM_TMP(("NQ: responseP at %p", responseP));
-          LM_TMP(("NQ: nodeP     at %p", nodeP));
           kjChildAdd(responseP, nodeP);
-        }
 
         nodeP = next;
       }
@@ -409,7 +395,6 @@ bool orionldGetEntity(ConnectionInfo* ciP)
   KjNode*  regArray;
   // bool     keyValues = orionldState.uriParamOptions.keyValues;
 
-  LM_TMP(("NQ: In"));
   //
   // Make sure the ID (orionldState.wildcard[0]) is a valid URI
   //
@@ -493,7 +478,6 @@ bool orionldGetEntity(ConnectionInfo* ciP)
   if (regArray != NULL)
   {
     bool needEntityType = false;
-    LM_TMP(("NQ: There are matching registrations ..."));
 
     if (orionldState.responseTree == NULL)
     {
@@ -505,7 +489,6 @@ bool orionldGetEntity(ConnectionInfo* ciP)
       needEntityType = true;  // Get it from Forward-response
     }
 
-    LM_TMP(("NQ: Calling orionldForwardGetEntity"));
     orionldForwardGetEntity(ciP, orionldState.wildcard[0], regArray, orionldState.responseTree, needEntityType);
   }
 

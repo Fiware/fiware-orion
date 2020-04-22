@@ -123,7 +123,7 @@ KjNode* datasetInstances(KjNode* datasets, KjNode* attrV, char* attributeName, d
       }
     }
 
-    if ((datasetIdP == NULL) || (strcmp(datasetIdP->value.s, ORIONLD_DEFAULT_DATASET_ID) == 0))  // No datasetId
+    if (datasetIdP == NULL)  // No datasetId
     {
       if (defaultInstanceP != NULL)  // Already found an instance without datasetId ?
       {
@@ -298,11 +298,9 @@ bool orionldPostEntities(ConnectionInfo* ciP)
           mongoRequest.release();
           return false;
         }
-        else
-        {
-          kNodeP = next;
-          continue;
-        }
+
+        kNodeP = next;
+        continue;
       }
 
       //
@@ -341,31 +339,26 @@ bool orionldPostEntities(ConnectionInfo* ciP)
       STRING_CHECK(datasetIdP, "datasetId");
       URI_CHECK(datasetIdP, "datasetId");
 
-      if (strcmp(datasetIdP->value.s, ORIONLD_DEFAULT_DATASET_ID) != 0)
-      {
-        kjChildRemove(orionldState.requestTree, kNodeP);
-        kjChildAdd(datasets, kNodeP);
+      kjChildRemove(orionldState.requestTree, kNodeP);
+      kjChildAdd(datasets, kNodeP);
 
-        // Add createdAt and modifiedAt to the instance
-        KjNode* createdAt  = kjFloat(orionldState.kjsonP, "createdAt",  timestamp);
-        KjNode* modifiedAt = kjFloat(orionldState.kjsonP, "modifiedAt", timestamp);
-        kjChildAdd(kNodeP, createdAt);
-        kjChildAdd(kNodeP, modifiedAt);
+      // Add createdAt and modifiedAt to the instance
+      KjNode* createdAt  = kjFloat(orionldState.kjsonP, "createdAt",  timestamp);
+      KjNode* modifiedAt = kjFloat(orionldState.kjsonP, "modifiedAt", timestamp);
+      kjChildAdd(kNodeP, createdAt);
+      kjChildAdd(kNodeP, modifiedAt);
 
-        // Change to longName
-        bool   valueMayBeExpanded;
-        char*  longName = orionldContextItemExpand(orionldState.contextP, kNodeP->name, &valueMayBeExpanded, true, NULL);
+      // Change to longName
+      bool   valueMayBeExpanded;
+      char*  longName = orionldContextItemExpand(orionldState.contextP, kNodeP->name, &valueMayBeExpanded, true, NULL);
 
-        longName = kaStrdup(&orionldState.kalloc, longName);
-        dotForEq(longName);
-        kNodeP->name = longName;
+      longName = kaStrdup(&orionldState.kalloc, longName);
+      dotForEq(longName);
+      kNodeP->name = longName;
 
-        kNodeP = next;
+      kNodeP = next;
 
-        continue;
-      }
-
-      kjChildRemove(kNodeP, datasetIdP);
+      continue;
     }
 
     ContextAttribute* caP            = new ContextAttribute();
