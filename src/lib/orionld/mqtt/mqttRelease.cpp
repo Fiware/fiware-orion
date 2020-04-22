@@ -42,7 +42,7 @@ void mqttRelease(void)
   for (int ix = 0; ix < mqttConnectionListIx; ix++)
   {
     MqttConnection* mcP = &mqttConnectionList[ix];
-    
+
     MQTTClient_disconnect(&mcP->client, 10000);
     MQTTClient_destroy(&mcP->client);
   }
