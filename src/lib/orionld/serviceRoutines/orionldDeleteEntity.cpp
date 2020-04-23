@@ -45,40 +45,32 @@
 //
 bool orionldDeleteEntity(ConnectionInfo* ciP)
 {
-  LM_T(LmtServiceRoutine, ("In orionldDeleteEntity"));
-
-  // Check that the Entity ID is a valid URI
+  char* entityId = orionldState.wildcard[0];
   char* details;
 
-  if ((urlCheck(orionldState.wildcard[0], &details) == false) && (urnCheck(orionldState.wildcard[0], &details) == false))
+  // Make sure the Entity ID is a valid URI
+  if ((urlCheck(entityId, &details) == false) && (urnCheck(entityId, &details) == false))
   {
     orionldErrorResponseCreate(OrionldBadRequestData, "Invalid Entity ID", details);
     orionldState.httpStatusCode = SccBadRequest;
     return false;
   }
 
-  char* entityId = orionldState.wildcard[0];
-
-  LM_W(("orionldDeleteEntity: Entity ID -> %s", entityId));
-
   if (dbEntityLookup(entityId) == NULL)
   {
-    orionldErrorResponseCreate(OrionldResourceNotFound, "The requested entity has not been found. Check type and id", entityId);
-    // HTTP Response Code is 404 - Resource not found
-    orionldState.httpStatusCode = SccNotFound;
+    orionldErrorResponseCreate(OrionldResourceNotFound, "The requested entity has not been found. Check its id", entityId);
+    orionldState.httpStatusCode = SccNotFound;  // 404
     return false;
   }
 
   if (dbEntityDelete(entityId) == false)
   {
-    LM_E(("dbEntityDelete returned false"));
-    // HTTP Response Code is 400 - Bad request
-    orionldState.httpStatusCode = SccBadRequest;
+    LM_E(("dbEntityDelete failed"));
+    orionldState.httpStatusCode = SccBadRequest;  // 400
     return false;
   }
 
-  // HTTP Response Code is 204 - No Content
-  orionldState.httpStatusCode = SccNoContent;
+  orionldState.httpStatusCode = SccNoContent;  // 204
 
   return true;
 }

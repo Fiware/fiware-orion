@@ -31,6 +31,7 @@
 #include "orionld/mongoCppLegacy/mongoCppLegacyEntityDelete.h"        // Own interface
 
 
+
 // -----------------------------------------------------------------------------
 //
 // mongoCppLegacyEntityDelete -
@@ -40,14 +41,11 @@ bool mongoCppLegacyEntityDelete(const char* entityId)
   char collectionPath[256];
   bool operationStatus;
 
-
   if (dbCollectionPathGet(collectionPath, sizeof(collectionPath), "entities") == -1)
   {
     LM_E(("Internal Error (dbCollectionPathGet returned -1)"));
     return false;
   }
-
-  LM_W(("mongoCppLegacyEntityDelete: Entity ID -> %s", entityId));
 
   //
   // Populate filter
