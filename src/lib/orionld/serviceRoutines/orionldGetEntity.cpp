@@ -449,7 +449,7 @@ bool orionldGetEntity(ConnectionInfo* ciP)
   char*  attrs[100];
   char** attrsP         = NULL;
   bool   attrsMandatory = false;
-  
+
   if (orionldState.uriParams.attrs != NULL)
   {
     attrsP = (char**) attrsListToArray(orionldState.uriParams.attrs, attrs, 100);
