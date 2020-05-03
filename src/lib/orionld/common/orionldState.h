@@ -151,7 +151,7 @@ typedef struct OrionldConnectionState
 {
   ConnectionInfo*         ciP;
   struct timespec         timestamp;  // the time when the request entered
-  HttpStatusCode          httpStatusCode;
+  int                     httpStatusCode;
   Kjson                   kjson;
   Kjson*                  kjsonP;
   KAlloc                  kalloc;
