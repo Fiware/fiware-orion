@@ -35,6 +35,8 @@ extern "C"
 #include "orionld/common/CHECK.h"                               // STRING_CHECK, ...
 #include "orionld/common/orionldState.h"                        // orionldState
 #include "orionld/common/orionldErrorResponse.h"                // orionldErrorResponseCreate
+#include "orionld/common/dotForEq.h"                            // dotForEq
+#include "orionld/context/orionldContextItemExpand.h"           // orionldContextItemExpand
 #include "orionld/payloadCheck/pcheckGeoType.h"                 // pcheckGeoType
 #include "orionld/payloadCheck/pcheckGeoqCoordinates.h"         // pcheckGeoqCoordinates
 #include "orionld/payloadCheck/pcheckGeoqGeorel.h"              // pcheckGeoqGeorel
@@ -188,6 +190,20 @@ bool pcheckGeoQ(KjNode* geoqNodeP, bool coordsToString)
     orionldErrorResponseCreate(OrionldBadRequestData, "Invalid Payload Data", detail);
     orionldState.httpStatusCode = SccBadRequest;
     return false;
+  }
+
+  //
+  // If geoproperty has been given, the name must be expanded, and any dots replaced by '='
+  //
+  if (geopropertyP != NULL)
+  {
+    char* pName = geopropertyP->value.s;
+
+    if (strcmp(pName, "location") != 0)
+    {
+      geopropertyP->value.s = orionldContextItemExpand(orionldState.contextP, pName, NULL, true, NULL);
+      dotForEq(geopropertyP->value.s);
+    }
   }
 
   //

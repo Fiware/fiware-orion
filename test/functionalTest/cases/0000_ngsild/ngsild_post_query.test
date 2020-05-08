@@ -31,10 +31,10 @@ brokerStart CB 0-255
 --SHELL--
 
 #
-# 01. Create entity E1, type T, with attrs A1, A2, and location
-# 02. Create entity E2, type T2, with attrs A1, A3, and location
-# 03. Create entity E3, type T, with attrs A1, A2, and A3, and location
-# 04. Create entity E4, type T2, with attrs A3, A4, and location
+# 01. Create entity E1, type T, with attrs A1, A2, location, and geoPoint2
+# 02. Create entity E2, type T2, with attrs A1, A3, location, and geoPoint2
+# 03. Create entity E3, type T, with attrs A1, A2, and A3, location, and geoPoint2
+# 04. Create entity E4, type T2, with attrs A3, A4, location, and geoPoint2
 # 05. GET all entities of type T, see E1 and E3
 # 06. GET all entities of type T2, see E2 and E4
 # 07. GET all entities with entity id E3 or E4, see E3 and E4
@@ -43,11 +43,14 @@ brokerStart CB 0-255
 # 10. GET all entities with attrs A7 or A8 - see no entities
 # 12. GET all entities with an attribute A3: q: 'A3', see E2, E3, and E4
 # 13. GET all entities with an attribute A1=='E1:A1': q: 'A1==E1:A1', see E1
-# 20. GET all entities with a location near a Point, using GET
-# 21. GET all entities with a location near a Point, using POST
+# 20. GET all entities with a 'location' GeoProperty near a Point, using GET
+# 21. GET all entities with a 'location' GeoProperty near a Point, using POST
+# 22. GET all entities with a 'geoPoint2' GeoProperty near a Point, using GET
+# 23. GET all entities with a 'geoPoint2' GeoProperty near a Point, using POST
+#
 
-echo "01. Create entity E1, type T, with attrs A1, A2"
-echo "==============================================="
+echo "01. Create entity E1, type T, with attrs A1, A2, location, and geoPoint2"
+echo "========================================================================"
 payload='{
   "id": "http://a.b.c/entity/E1",
   "type": "T",
@@ -65,6 +68,13 @@ payload='{
       "type": "Point",
       "coordinates": [ 11, 10]
     }
+  },
+  "geoPoint2": {
+    "type": "GeoProperty",
+    "value": {
+      "type": "Point",
+      "coordinates": [ 11, 10]
+    }
   }
 }'
 orionCurl --url /ngsi-ld/v1/entities --payload "$payload"
@@ -72,8 +82,8 @@ echo
 echo
 
 
-echo "02. Create entity E2, type T2, with attrs A1, A3"
-echo "================================================"
+echo "02. Create entity E2, type T2, with attrs A1, A3, location, and geoPoint2"
+echo "========================================================================="
 payload='{
   "id": "http://a.b.c/entity/E2",
   "type": "T2",
@@ -91,16 +101,22 @@ payload='{
       "type": "Point",
       "coordinates": [ 12, 10]
     }
+  },
+  "geoPoint2": {
+    "type": "GeoProperty",
+    "value": {
+      "type": "Point",
+      "coordinates": [ 12, 10]
+    }
   }
-
 }'
 orionCurl --url /ngsi-ld/v1/entities --payload "$payload"
 echo
 echo
 
 
-echo "03. Create entity E3, type T, with attrs A1, A2, and A3"
-echo "======================================================="
+echo "03. Create entity E3, type T, with attrs A1, A2, and A3, location, and geoPoint2"
+echo "================================================================================"
 payload='{
   "id": "http://a.b.c/entity/E3",
   "type": "T",
@@ -122,16 +138,22 @@ payload='{
       "type": "Point",
       "coordinates": [ 13, 10]
     }
+  },
+  "geoPoint2": {
+    "type": "GeoProperty",
+    "value": {
+      "type": "Point",
+      "coordinates": [ 13, 10]
+    }
   }
-
 }'
 orionCurl --url /ngsi-ld/v1/entities --payload "$payload"
 echo
 echo
 
 
-echo "04. Create entity E4, type T2, with attrs A3, A4"
-echo "================================================"
+echo "04. Create entity E4, type T2, with attrs A3, A4, location, and geoPoint2"
+echo "========================================================================="
 payload='{
   "id": "http://a.b.c/entity/E4",
   "type": "T2",
@@ -149,8 +171,14 @@ payload='{
       "type": "Point",
       "coordinates": [ 14, 10]
     }
+  },
+  "geoPoint2": {
+    "type": "GeoProperty",
+    "value": {
+      "type": "Point",
+      "coordinates": [ 14, 10]
+    }
   }
-
 }'
 orionCurl --url /ngsi-ld/v1/entities --payload "$payload"
 echo
@@ -257,15 +285,15 @@ echo
 echo
 
 
-echo "20. GET all entities with a location near a Point, using GET"
-echo "============================================================"
+echo "20. GET all entities with a 'location' GeoProperty near a Point, using GET"
+echo "=========================================================================="
 orionCurl --url '/ngsi-ld/v1/entities?geometry=point&coordinates=\[12,10\]&georel=near;maxDistance==100000'
 echo
 echo
 
 
-echo "21. GET all entities with a location near a Point"
-echo "================================================="
+echo "21. GET all entities with a 'location' GeoProperty near a Point"
+echo "==============================================================="
 payload='{
   "geoQ": {
     "geometry": "Point",
@@ -279,9 +307,31 @@ echo
 echo
 
 
+echo "22. GET all entities with a 'geoPoint2' GeoProperty near a Point, using GET"
+echo "==========================================================================="
+orionCurl --url '/ngsi-ld/v1/entities?geometry=point&coordinates=\[12,10\]&georel=near;maxDistance==100000&geoproperty=geoPoint2'
+echo
+echo
+
+
+echo "23. GET all entities with a 'geoPoint2' GeoProperty near a Point, using POST"
+echo "============================================================================"
+payload='{
+  "geoQ": {
+    "geometry": "Point",
+    "georel": "near;maxDistance==100000",
+    "coordinates": [ 12, 10 ],
+    "geoproperty": "geoPoint2"
+  }
+}'
+orionCurl --url /ngsi-ld/v1/entityOperations/query --payload "$payload"
+echo
+echo
+
+
 --REGEXPECT--
-01. Create entity E1, type T, with attrs A1, A2
-===============================================
+01. Create entity E1, type T, with attrs A1, A2, location, and geoPoint2
+========================================================================
 HTTP/1.1 201 Created
 Content-Length: 0
 Location: /ngsi-ld/v1/entities/http://a.b.c/entity/E1
@@ -289,8 +339,8 @@ Date: REGEX(.*)
 
 
 
-02. Create entity E2, type T2, with attrs A1, A3
-================================================
+02. Create entity E2, type T2, with attrs A1, A3, location, and geoPoint2
+=========================================================================
 HTTP/1.1 201 Created
 Content-Length: 0
 Location: /ngsi-ld/v1/entities/http://a.b.c/entity/E2
@@ -298,8 +348,8 @@ Date: REGEX(.*)
 
 
 
-03. Create entity E3, type T, with attrs A1, A2, and A3
-=======================================================
+03. Create entity E3, type T, with attrs A1, A2, and A3, location, and geoPoint2
+================================================================================
 HTTP/1.1 201 Created
 Content-Length: 0
 Location: /ngsi-ld/v1/entities/http://a.b.c/entity/E3
@@ -307,8 +357,8 @@ Date: REGEX(.*)
 
 
 
-04. Create entity E4, type T2, with attrs A3, A4
-================================================
+04. Create entity E4, type T2, with attrs A3, A4, location, and geoPoint2
+=========================================================================
 HTTP/1.1 201 Created
 Content-Length: 0
 Location: /ngsi-ld/v1/entities/http://a.b.c/entity/E4
@@ -319,7 +369,7 @@ Date: REGEX(.*)
 05. GET all entities of type T, see E1 and E3
 =============================================
 HTTP/1.1 200 OK
-Content-Length: 797
+Content-Length: 1131
 Content-Type: application/json
 Link: <https://uri.etsi.org/ngsi-ld/v1/ngsi-ld-core-context.jsonld>; rel="http://www.w3.org/ns/json-ld#context"; type="application/ld+json"
 Date: REGEX(.*)
@@ -337,6 +387,16 @@ Date: REGEX(.*)
       "value": "E1/A2"
     },
     "location": {
+      "type": "GeoProperty",
+      "value": {
+        "type": "Point",
+        "coordinates": [
+          11,
+          10
+        ]
+      }
+    },
+    "geoPoint2": {
       "type": "GeoProperty",
       "value": {
         "type": "Point",
@@ -363,6 +423,16 @@ Date: REGEX(.*)
       "value": "E3/A3"
     },
     "location": {
+      "type": "GeoProperty",
+      "value": {
+        "type": "Point",
+        "coordinates": [
+          13,
+          10
+        ]
+      }
+    },
+    "geoPoint2": {
       "type": "GeoProperty",
       "value": {
         "type": "Point",
@@ -380,7 +450,7 @@ Date: REGEX(.*)
 06. GET all entities of type T2, see E2 and E4
 ==============================================
 HTTP/1.1 200 OK
-Content-Length: 731
+Content-Length: 1065
 Content-Type: application/json
 Link: <https://uri.etsi.org/ngsi-ld/v1/ngsi-ld-core-context.jsonld>; rel="http://www.w3.org/ns/json-ld#context"; type="application/ld+json"
 Date: REGEX(.*)
@@ -406,6 +476,16 @@ Date: REGEX(.*)
           10
         ]
       }
+    },
+    "geoPoint2": {
+      "type": "GeoProperty",
+      "value": {
+        "type": "Point",
+        "coordinates": [
+          12,
+          10
+        ]
+      }
     }
   },
   {
@@ -420,6 +500,16 @@ Date: REGEX(.*)
       "value": "E4/A4"
     },
     "location": {
+      "type": "GeoProperty",
+      "value": {
+        "type": "Point",
+        "coordinates": [
+          14,
+          10
+        ]
+      }
+    },
+    "geoPoint2": {
       "type": "GeoProperty",
       "value": {
         "type": "Point",
@@ -437,7 +527,7 @@ Date: REGEX(.*)
 07. GET all entities with entity id E3 or E4, see E3 and E4
 ===========================================================
 HTTP/1.1 200 OK
-Content-Length: 798
+Content-Length: 1132
 Content-Type: application/json
 Link: <https://uri.etsi.org/ngsi-ld/v1/ngsi-ld-core-context.jsonld>; rel="http://www.w3.org/ns/json-ld#context"; type="application/ld+json"
 Date: REGEX(.*)
@@ -459,6 +549,16 @@ Date: REGEX(.*)
       "value": "E3/A3"
     },
     "location": {
+      "type": "GeoProperty",
+      "value": {
+        "type": "Point",
+        "coordinates": [
+          13,
+          10
+        ]
+      }
+    },
+    "geoPoint2": {
       "type": "GeoProperty",
       "value": {
         "type": "Point",
@@ -489,6 +589,16 @@ Date: REGEX(.*)
           10
         ]
       }
+    },
+    "geoPoint2": {
+      "type": "GeoProperty",
+      "value": {
+        "type": "Point",
+        "coordinates": [
+          14,
+          10
+        ]
+      }
     }
   }
 ]
@@ -498,7 +608,7 @@ Date: REGEX(.*)
 08. GET all entities with attrs A3 - see E2, E3, E4
 ===================================================
 HTTP/1.1 200 OK
-Content-Length: 1162
+Content-Length: 1663
 Content-Type: application/json
 Link: <https://uri.etsi.org/ngsi-ld/v1/ngsi-ld-core-context.jsonld>; rel="http://www.w3.org/ns/json-ld#context"; type="application/ld+json"
 Date: REGEX(.*)
@@ -516,6 +626,16 @@ Date: REGEX(.*)
       "value": "E2/A3"
     },
     "location": {
+      "type": "GeoProperty",
+      "value": {
+        "type": "Point",
+        "coordinates": [
+          12,
+          10
+        ]
+      }
+    },
+    "geoPoint2": {
       "type": "GeoProperty",
       "value": {
         "type": "Point",
@@ -550,6 +670,16 @@ Date: REGEX(.*)
           10
         ]
       }
+    },
+    "geoPoint2": {
+      "type": "GeoProperty",
+      "value": {
+        "type": "Point",
+        "coordinates": [
+          13,
+          10
+        ]
+      }
     }
   },
   {
@@ -572,6 +702,16 @@ Date: REGEX(.*)
           10
         ]
       }
+    },
+    "geoPoint2": {
+      "type": "GeoProperty",
+      "value": {
+        "type": "Point",
+        "coordinates": [
+          14,
+          10
+        ]
+      }
     }
   }
 ]
@@ -581,7 +721,7 @@ Date: REGEX(.*)
 09. GET all entities with attrs A2 or A4 - see E1, E3 and E4
 ============================================================
 HTTP/1.1 200 OK
-Content-Length: 1161
+Content-Length: 1662
 Content-Type: application/json
 Link: <https://uri.etsi.org/ngsi-ld/v1/ngsi-ld-core-context.jsonld>; rel="http://www.w3.org/ns/json-ld#context"; type="application/ld+json"
 Date: REGEX(.*)
@@ -599,6 +739,16 @@ Date: REGEX(.*)
       "value": "E1/A2"
     },
     "location": {
+      "type": "GeoProperty",
+      "value": {
+        "type": "Point",
+        "coordinates": [
+          11,
+          10
+        ]
+      }
+    },
+    "geoPoint2": {
       "type": "GeoProperty",
       "value": {
         "type": "Point",
@@ -633,6 +783,16 @@ Date: REGEX(.*)
           10
         ]
       }
+    },
+    "geoPoint2": {
+      "type": "GeoProperty",
+      "value": {
+        "type": "Point",
+        "coordinates": [
+          13,
+          10
+        ]
+      }
     }
   },
   {
@@ -647,6 +807,16 @@ Date: REGEX(.*)
       "value": "E4/A4"
     },
     "location": {
+      "type": "GeoProperty",
+      "value": {
+        "type": "Point",
+        "coordinates": [
+          14,
+          10
+        ]
+      }
+    },
+    "geoPoint2": {
       "type": "GeoProperty",
       "value": {
         "type": "Point",
@@ -675,7 +845,7 @@ Date: REGEX(.*)
 12. GET all entities with an attribute A3: q: 'A3', see E2, E3, and E4
 ======================================================================
 HTTP/1.1 200 OK
-Content-Length: 1162
+Content-Length: 1663
 Content-Type: application/json
 Link: <https://uri.etsi.org/ngsi-ld/v1/ngsi-ld-core-context.jsonld>; rel="http://www.w3.org/ns/json-ld#context"; type="application/ld+json"
 Date: REGEX(.*)
@@ -693,6 +863,16 @@ Date: REGEX(.*)
       "value": "E2/A3"
     },
     "location": {
+      "type": "GeoProperty",
+      "value": {
+        "type": "Point",
+        "coordinates": [
+          12,
+          10
+        ]
+      }
+    },
+    "geoPoint2": {
       "type": "GeoProperty",
       "value": {
         "type": "Point",
@@ -727,6 +907,16 @@ Date: REGEX(.*)
           10
         ]
       }
+    },
+    "geoPoint2": {
+      "type": "GeoProperty",
+      "value": {
+        "type": "Point",
+        "coordinates": [
+          13,
+          10
+        ]
+      }
     }
   },
   {
@@ -749,6 +939,16 @@ Date: REGEX(.*)
           10
         ]
       }
+    },
+    "geoPoint2": {
+      "type": "GeoProperty",
+      "value": {
+        "type": "Point",
+        "coordinates": [
+          14,
+          10
+        ]
+      }
     }
   }
 ]
@@ -758,7 +958,7 @@ Date: REGEX(.*)
 13. GET all entities with an attribute A1=='E1:A1': q: 'A1==E1:A1', see E1
 ==========================================================================
 HTTP/1.1 200 OK
-Content-Length: 366
+Content-Length: 533
 Content-Type: application/json
 Link: <https://uri.etsi.org/ngsi-ld/v1/ngsi-ld-core-context.jsonld>; rel="http://www.w3.org/ns/json-ld#context"; type="application/ld+json"
 Date: REGEX(.*)
@@ -784,16 +984,26 @@ Date: REGEX(.*)
           10
         ]
       }
+    },
+    "geoPoint2": {
+      "type": "GeoProperty",
+      "value": {
+        "type": "Point",
+        "coordinates": [
+          11,
+          10
+        ]
+      }
     }
   }
 ]
 
 
 
-20. GET all entities with a location near a Point, using GET
-============================================================
+20. GET all entities with a 'location' GeoProperty near a Point, using GET
+==========================================================================
 HTTP/1.1 200 OK
-Content-Length: 208
+Content-Length: 290
 Content-Type: application/json
 Link: <https://uri.etsi.org/ngsi-ld/v1/ngsi-ld-core-context.jsonld>; rel="http://www.w3.org/ns/json-ld#context"; type="application/ld+json"
 Date: REGEX(.*)
@@ -807,6 +1017,16 @@ Date: REGEX(.*)
         "A3": {
             "type": "Property",
             "value": "E2/A3"
+        },
+        "geoPoint2": {
+            "type": "GeoProperty",
+            "value": {
+                "coordinates": [
+                    12,
+                    10
+                ],
+                "type": "Point"
+            }
         },
         "id": "http://a.b.c/entity/E2",
         "location": {
@@ -824,10 +1044,10 @@ Date: REGEX(.*)
 ]
 
 
-21. GET all entities with a location near a Point
-=================================================
+21. GET all entities with a 'location' GeoProperty near a Point
+===============================================================
 HTTP/1.1 200 OK
-Content-Length: 208
+Content-Length: 290
 Content-Type: application/json
 Link: <https://uri.etsi.org/ngsi-ld/v1/ngsi-ld-core-context.jsonld>; rel="http://www.w3.org/ns/json-ld#context"; type="application/ld+json"
 Date: REGEX(.*)
@@ -841,6 +1061,104 @@ Date: REGEX(.*)
         "A3": {
             "type": "Property",
             "value": "E2/A3"
+        },
+        "geoPoint2": {
+            "type": "GeoProperty",
+            "value": {
+                "coordinates": [
+                    12,
+                    10
+                ],
+                "type": "Point"
+            }
+        },
+        "id": "http://a.b.c/entity/E2",
+        "location": {
+            "type": "GeoProperty",
+            "value": {
+                "coordinates": [
+                    12,
+                    10
+                ],
+                "type": "Point"
+            }
+        },
+        "type": "T2"
+    }
+]
+
+
+22. GET all entities with a 'geoPoint2' GeoProperty near a Point, using GET
+===========================================================================
+HTTP/1.1 200 OK
+Content-Length: 290
+Content-Type: application/json
+Link: <https://uri.etsi.org/ngsi-ld/v1/ngsi-ld-core-context.jsonld>; rel="http://www.w3.org/ns/json-ld#context"; type="application/ld+json"
+Date: REGEX(.*)
+
+[
+    {
+        "A1": {
+            "type": "Property",
+            "value": "E2/A1"
+        },
+        "A3": {
+            "type": "Property",
+            "value": "E2/A3"
+        },
+        "geoPoint2": {
+            "type": "GeoProperty",
+            "value": {
+                "coordinates": [
+                    12,
+                    10
+                ],
+                "type": "Point"
+            }
+        },
+        "id": "http://a.b.c/entity/E2",
+        "location": {
+            "type": "GeoProperty",
+            "value": {
+                "coordinates": [
+                    12,
+                    10
+                ],
+                "type": "Point"
+            }
+        },
+        "type": "T2"
+    }
+]
+
+
+23. GET all entities with a 'geoPoint2' GeoProperty near a Point, using POST
+============================================================================
+HTTP/1.1 200 OK
+Content-Length: 290
+Content-Type: application/json
+Link: <https://uri.etsi.org/ngsi-ld/v1/ngsi-ld-core-context.jsonld>; rel="http://www.w3.org/ns/json-ld#context"; type="application/ld+json"
+Date: REGEX(.*)
+
+[
+    {
+        "A1": {
+            "type": "Property",
+            "value": "E2/A1"
+        },
+        "A3": {
+            "type": "Property",
+            "value": "E2/A3"
+        },
+        "geoPoint2": {
+            "type": "GeoProperty",
+            "value": {
+                "coordinates": [
+                    12,
+                    10
+                ],
+                "type": "Point"
+            }
         },
         "id": "http://a.b.c/entity/E2",
         "location": {
