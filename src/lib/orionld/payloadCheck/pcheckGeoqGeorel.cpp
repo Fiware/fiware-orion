@@ -57,10 +57,31 @@ bool pcheckGeoqGeorel(KjNode* georelP, OrionldGeoJsonType geoType, char** detail
     return false;
   }
 
+  LM_TMP(("GEO: georel: %s", georelP->value.s));
+
+  //
+  // Valid value for georel:
+  // * near        - Point only
+  // * within      - Polygon Only
+  // * contains    -
+  // * overlaps
+  // * intersects
+  // * equals
+  // * disjoint
+  //
+  // Any other value and it's an error
+  //
+  //
+  if ((strcmp(georelP->value.s, "near") == 0) && (geoType != GeoJsonPoint))
+  {
+    *detailP = (char*) "The georel value 'near' can only be used with GeoJSON Point";
+    return false;
+  }
+
   if (geoType == GeoJsonPoint)
   {
     //
-    // For a Point, reorel can have the following values:
+    // For a Point, georel can have the following values:
     // - near
     // -
     char* extra      = NULL;

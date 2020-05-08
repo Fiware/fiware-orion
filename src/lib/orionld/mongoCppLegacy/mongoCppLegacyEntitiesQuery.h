@@ -1,5 +1,5 @@
-#ifndef SRC_LIB_ORIONLD_PAYLOADCHECK_PCHECKENTITYINFO_H_
-#define SRC_LIB_ORIONLD_PAYLOADCHECK_PCHECKENTITYINFO_H_
+#ifndef SRC_LIB_ORIONLD_MONGOCPPLEGACY_MONGOCPPLEGACYENTITIESQUERY_H_
+#define SRC_LIB_ORIONLD_MONGOCPPLEGACY_MONGOCPPLEGACYENTITIESQUERY_H_
 
 /*
 *
@@ -25,17 +25,20 @@
 *
 * Author: Ken Zangelin
 */
+
 extern "C"
 {
-#include "kjson/KjNode.h"                                      // KjNode
+#include "kjson/KjNode.h"                                        // KjNode
 }
 
+#include "orionld/common/QNode.h"                                // QNode
 
 
-// ----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
 //
-// pcheckEntityInfo -
+// mongoCppLegacyEntitiesQuery -
 //
-extern bool pcheckEntityInfo(KjNode* entityInfoP, bool typeMandatory);
+extern KjNode* mongoCppLegacyEntitiesQuery(KjNode* entityInfoArrayP, KjNode* attrsP, QNode* qP, KjNode* geoqP);
 
-#endif  // SRC_LIB_ORIONLD_PAYLOADCHECK_PCHECKENTITYINFO_H_
+#endif  // SRC_LIB_ORIONLD_MONGOCPPLEGACY_MONGOCPPLEGACYENTITIESQUERY_H_

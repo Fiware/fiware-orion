@@ -1,5 +1,5 @@
-#ifndef SRC_LIB_ORIONLD_PAYLOADCHECK_PCHECKENTITYINFO_H_
-#define SRC_LIB_ORIONLD_PAYLOADCHECK_PCHECKENTITYINFO_H_
+#ifndef SRC_LIB_ORIONLD_PAYLOADCHECK_PCHECKENTITYINFOARRAY_H_
+#define SRC_LIB_ORIONLD_PAYLOADCHECK_PCHECKENTITYINFOARRAY_H_
 
 /*
 *
@@ -34,8 +34,8 @@ extern "C"
 
 // ----------------------------------------------------------------------------
 //
-// pcheckEntityInfo -
+// pcheckEntityInfoArray -
 //
-extern bool pcheckEntityInfo(KjNode* entityInfoP, bool typeMandatory);
+extern bool pcheckEntityInfoArray(KjNode* entityInfoArrayP, bool typeMandatory);
 
-#endif  // SRC_LIB_ORIONLD_PAYLOADCHECK_PCHECKENTITYINFO_H_
+#endif  // SRC_LIB_ORIONLD_PAYLOADCHECK_PCHECKENTITYINFOARRAY_H_

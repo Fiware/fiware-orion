@@ -46,7 +46,7 @@ extern "C"
 //
 // ngsildCoordinatesToAPIv1Datamodel -
 //
-static bool ngsildCoordinatesToAPIv1Datamodel(KjNode* coordinatesP, const char* fieldName, KjNode* geometryP)
+bool ngsildCoordinatesToAPIv1Datamodel(KjNode* coordinatesP, const char* fieldName, KjNode* geometryP)
 {
   bool   isPoint = false;
   char*  buf;
@@ -102,7 +102,7 @@ static bool ngsildCoordinatesToAPIv1Datamodel(KjNode* coordinatesP, const char* 
 //
 // pcheckGeoQ -
 //
-bool pcheckGeoQ(KjNode* geoqNodeP)
+bool pcheckGeoQ(KjNode* geoqNodeP, bool coordsToString)
 {
   KjNode*             geometryP    = NULL;
   KjNode*             coordinatesP = NULL;
@@ -136,7 +136,7 @@ bool pcheckGeoQ(KjNode* geoqNodeP)
     else
     {
       LM_W(("Bad Input (invalid field in geoQ: '%s')", itemP->name));
-      orionldErrorResponseCreate(OrionldBadRequestData, "Invalid Payload Data", "invalid field in geoQ");
+      orionldErrorResponseCreate(OrionldBadRequestData, "Invalid Payload Data - invalid field in geoQ", itemP->name);
       orionldState.httpStatusCode = SccBadRequest;
       return false;
     }
@@ -193,8 +193,11 @@ bool pcheckGeoQ(KjNode* geoqNodeP)
   //
   // Render the coordinates and convert to a string - for the NGSIv1 database model ... ?
   //
-  if (ngsildCoordinatesToAPIv1Datamodel(coordinatesP, "geoQ::coordinates", geometryP) == false)
-    return false;
+  if (coordsToString == true)
+  {
+    if (ngsildCoordinatesToAPIv1Datamodel(coordinatesP, "geoQ::coordinates", geometryP) == false)
+      return false;
+  }
 
   return true;
 }

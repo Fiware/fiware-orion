@@ -1,5 +1,5 @@
-#ifndef SRC_LIB_ORIONLD_PAYLOADCHECK_PCHECKENTITYINFO_H_
-#define SRC_LIB_ORIONLD_PAYLOADCHECK_PCHECKENTITYINFO_H_
+#ifndef SRC_LIB_ORIONLD_PAYLOADCHECK_PCHECKQ_H_
+#define SRC_LIB_ORIONLD_PAYLOADCHECK_PCHECKQ_H_
 
 /*
 *
@@ -27,15 +27,17 @@
 */
 extern "C"
 {
-#include "kjson/KjNode.h"                                      // KjNode
+#include "kjson/KjNode.h"                                        // KjNode
 }
 
+#include "orionld/common/QNode.h"                                // QNode
 
 
-// ----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
 //
-// pcheckEntityInfo -
+// pcheckQ -
 //
-extern bool pcheckEntityInfo(KjNode* entityInfoP, bool typeMandatory);
+extern QNode* pcheckQ(char* qString);
 
-#endif  // SRC_LIB_ORIONLD_PAYLOADCHECK_PCHECKENTITYINFO_H_
+#endif  // SRC_LIB_ORIONLD_PAYLOADCHECK_PCHECKQ_H_

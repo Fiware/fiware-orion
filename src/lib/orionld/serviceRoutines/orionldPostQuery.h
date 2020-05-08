@@ -1,9 +1,9 @@
-#ifndef SRC_LIB_ORIONLD_PAYLOADCHECK_PCHECKENTITYINFO_H_
-#define SRC_LIB_ORIONLD_PAYLOADCHECK_PCHECKENTITYINFO_H_
+#ifndef SRC_LIB_ORIONLD_SERVICEROUTINES_ORIONLDPOSTQUERY_H_
+#define SRC_LIB_ORIONLD_SERVICEROUTINES_ORIONLDPOSTQUERY_H_
 
 /*
 *
-* Copyright 2019 FIWARE Foundation e.V.
+* Copyright 2018 FIWARE Foundation e.V.
 *
 * This file is part of Orion-LD Context Broker.
 *
@@ -25,17 +25,14 @@
 *
 * Author: Ken Zangelin
 */
-extern "C"
-{
-#include "kjson/KjNode.h"                                      // KjNode
-}
+#include "rest/ConnectionInfo.h"
 
 
 
 // ----------------------------------------------------------------------------
 //
-// pcheckEntityInfo -
+// orionldPostQuery -
 //
-extern bool pcheckEntityInfo(KjNode* entityInfoP, bool typeMandatory);
+extern bool orionldPostQuery(ConnectionInfo* ciP);
 
-#endif  // SRC_LIB_ORIONLD_PAYLOADCHECK_PCHECKENTITYINFO_H_
+#endif  // SRC_LIB_ORIONLD_SERVICEROUTINES_ORIONLDPOSTQUERY_H_
