@@ -66,13 +66,13 @@ bool pcheckGeoqGeorel(KjNode* georelP, OrionldGeoJsonType geoType, char** detail
 
   //
   // Valid values for georel:
-  // * near        - Point only
-  // * within      - Polygon Only
+  // * near        - Point only             OK   Point queried to match Points in DB that are close enough
+  // * within      - Polygon|MultiPolygon   OK   Polygon used to find DB geometries inside it
   // * contains    - Point only
   // * overlaps    - Polygon Only
-  // * intersects  - Polygon Only
-  // * equals      - Whatever
-  // * disjoint    - Polygon Only
+  // * intersects  - Polygon Only           OK 
+  // * equals      - Whatever               OK, I guess
+  // * disjoint    - Polygon Only           NOT intersects ?
   //
   // Any other value and it's an error
   //

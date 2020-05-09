@@ -222,7 +222,7 @@ static bool geoqNearFilter(mongo::BSONObjBuilder* queryBuilderP, char* geometry,
   if (maxDistance != NULL)
     nearBuilder.append("$maxDistance", atoi(maxDistance));
 
-  geoBuilder.append("$near", nearBuilder.obj());
+  geoBuilder.append("$nearSphere", nearBuilder.obj());
 
   char geoPropertyPath[256] = { 'a', 't', 't', 'r', 's', '.', 0 };
 
