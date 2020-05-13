@@ -36,6 +36,7 @@ extern "C"
 #include "orionld/common/orionldState.h"                        // orionldState
 #include "orionld/common/orionldErrorResponse.h"                // orionldErrorResponseCreate
 #include "orionld/common/dotForEq.h"                            // dotForEq
+#include "orionld/types/OrionldProblemDetails.h"                // OrionldProblemDetails
 #include "orionld/context/orionldContextItemExpand.h"           // orionldContextItemExpand
 #include "orionld/payloadCheck/pcheckGeoType.h"                 // pcheckGeoType
 #include "orionld/payloadCheck/pcheckGeoqCoordinates.h"         // pcheckGeoqCoordinates
@@ -106,12 +107,12 @@ bool ngsildCoordinatesToAPIv1Datamodel(KjNode* coordinatesP, const char* fieldNa
 //
 bool pcheckGeoQ(KjNode* geoqNodeP, bool coordsToString)
 {
-  KjNode*             geometryP    = NULL;
-  KjNode*             coordinatesP = NULL;
-  KjNode*             georelP      = NULL;
-  KjNode*             geopropertyP = NULL;
-  OrionldGeoJsonType  geoJsonType;
-  char*               detail;
+  KjNode*                geometryP    = NULL;
+  KjNode*                coordinatesP = NULL;
+  KjNode*                georelP      = NULL;
+  KjNode*                geopropertyP = NULL;
+  OrionldGeoJsonType     geoJsonType;
+  OrionldProblemDetails  pd;
 
   for (KjNode* itemP = geoqNodeP->value.firstChildP; itemP != NULL; itemP = itemP->next)
   {
@@ -168,6 +169,7 @@ bool pcheckGeoQ(KjNode* geoqNodeP, bool coordsToString)
     return false;
   }
 
+  char* detail;
   if (pcheckGeoType(geometryP->value.s, &geoJsonType, &detail) == false)  // Rename to pcheckGeoqGeometry
   {
     LM_W(("Bad Input (invalid geometry: '%s')", geometryP->value.s));
@@ -184,10 +186,10 @@ bool pcheckGeoQ(KjNode* geoqNodeP, bool coordsToString)
     return false;
   }
 
-  if (pcheckGeoqGeorel(georelP, geoJsonType, &detail) == false)
+  if (pcheckGeoqGeorel(georelP, geoJsonType, &pd) == false)
   {
     LM_W(("Bad Input (invalid georel (%s): for geo '%s')", georelP->value.s, geometryP->value.s));
-    orionldErrorResponseCreate(OrionldBadRequestData, "Invalid Payload Data", detail);
+    orionldErrorResponseCreate(OrionldBadRequestData, pd.title, pd.detail);
     orionldState.httpStatusCode = SccBadRequest;
     return false;
   }

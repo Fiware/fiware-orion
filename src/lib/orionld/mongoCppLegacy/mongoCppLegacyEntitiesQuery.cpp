@@ -27,7 +27,6 @@ extern "C"
 {
 #include "kjson/KjNode.h"                                        // KjNode
 #include "kjson/kjBuilder.h"                                     // kjArray, kjChildAdd
-#include "kjson/kjRender.h"                                      // kjRender
 }
 
 #include "logMsg/logMsg.h"                                       // LM_*
@@ -42,6 +41,7 @@ extern "C"
 #include "orionld/common/SCOMPARE.h"                             // SCOMPARE
 #include "orionld/db/dbCollectionPathGet.h"                      // dbCollectionPathGet
 #include "orionld/db/dbConfiguration.h"                          // dbDataToKjTree
+#include "orionld/mongoCppLegacy/mongoCppLegacyKjTreeToBsonObj.h"  // mongoCppLegacyKjTreeToBsonObj
 #include "orionld/mongoCppLegacy/mongoCppLegacyEntitiesQuery.h"  // Own interface
 
 
@@ -172,7 +172,7 @@ static bool qFilter(mongo::BSONObjBuilder* queryBuilderP, QNode* qP, char** titl
 //     $near: { type: "Point", coordinates: [ 102.0, 100.0 ], $maxDistance: 3000000 } } }
 //
 //
-static bool geoqNearFilter(mongo::BSONObjBuilder* queryBuilderP, char* geometry, char* georel, KjNode* coordsP, char* geopropName)
+static bool geoqNearFilter(mongo::BSONObjBuilder* queryBuilderP, char* geometry, char* georel, KjNode* coordinatesP, char* geopropName)
 {
   char* maxDistance = NULL;
   char* minDistance = NULL;
@@ -191,10 +191,9 @@ static bool geoqNearFilter(mongo::BSONObjBuilder* queryBuilderP, char* geometry,
   //
   // Getting the coordinates
   //
-  // coords in this case is a string with 2 (or 3) comma-separated Numbers (if 3, the third is ignored)
-  //
-  double coords[3];
-  int    coordIx = 0;
+  double  coords[3];
+  int     coordIx = 0;
+  KjNode* coordsP = coordinatesP->value.firstChildP;
 
   for (KjNode* coordP = coordsP->value.firstChildP; coordP != NULL; coordP = coordP->next)
   {
@@ -237,14 +236,92 @@ static bool geoqNearFilter(mongo::BSONObjBuilder* queryBuilderP, char* geometry,
 
 // -----------------------------------------------------------------------------
 //
+// geoqWithinFilter -
+//
+// {
+//    <location field>: {
+//       $geoWithin: {
+//          $geometry: {
+//             type: <"Polygon" or "MultiPolygon"> ,
+//             coordinates: [ <coordinates> ]
+//          }
+//       }
+//    }
+// }
+//
+static bool geoqWithinFilter(mongo::BSONObjBuilder* queryBuilderP, char* geometry, KjNode* coordsP, char* geopropName)
+{
+  mongo::BSONObj           coordsObj;            // coordinates: [ [], [] ]
+  mongo::BSONObjBuilder    geometryFields;       // { type: "XXX", coordinates: [] }
+  mongo::BSONObjBuilder    geometryBuilder;      // { $geometry: { type+coordinates } }
+  mongo::BSONObjBuilder    withinBuilder;        // { $geoWithin: { geometryBuilder } }
+
+  mongoCppLegacyKjTreeToBsonObj(coordsP, &coordsObj);
+  geometryFields.append("type", geometry);
+  geometryFields.appendElements(coordsObj);
+  geometryBuilder.append("$geometry", geometryFields.obj());
+  withinBuilder.append("$geoWithin", geometryBuilder.obj());
+
+  char geoPropertyPath[256] = { 'a', 't', 't', 'r', 's', '.', 0 };
+  snprintf(geoPropertyPath, sizeof(geoPropertyPath), "attrs.%s.value", geopropName);
+
+  // LM_TMP(("GEO: Query: { %s: %s }", geoPropertyPath, withinBuilder.obj().toString().c_str()));  // DESTRUCTIVE !!!
+  queryBuilderP->append(geoPropertyPath, withinBuilder.obj());
+
+  return true;
+}
+
+
+
+// -----------------------------------------------------------------------------
+//
+// geoqIntersectsFilter -
+//
+// {
+//   <location field>: {
+//      $geoIntersects: {
+//         $geometry: {
+//            type: "<GeoJSON object type>" ,
+//            coordinates: [ <coordinates> ]
+//         }
+//      }
+//   }
+// }
+//
+static bool geoqIntersectsFilter(mongo::BSONObjBuilder* queryBuilderP, char* geometry, KjNode* coordsP, char* geopropName)
+{
+  mongo::BSONObj         coordsObj;          // coordinates: [ [], [] ]
+  mongo::BSONObjBuilder  geometryFields;     // { type: "XXX", coordinates: [] }
+  mongo::BSONObjBuilder  geometryBuilder;    // { $geometry: { type+coordinates } }
+  mongo::BSONObjBuilder  intersectsBuilder;  // { $geoIntersects: { geometryBuilder } }
+
+  mongoCppLegacyKjTreeToBsonObj(coordsP, &coordsObj);
+  geometryFields.append("type", geometry);
+  geometryFields.appendElements(coordsObj);
+  geometryBuilder.append("$geometry", geometryFields.obj());
+  intersectsBuilder.append("$geoIntersects", geometryBuilder.obj());
+
+  char geoPropertyPath[256] = { 'a', 't', 't', 'r', 's', '.', 0 };
+  snprintf(geoPropertyPath, sizeof(geoPropertyPath), "attrs.%s.value", geopropName);
+
+  // LM_TMP(("GEO: Query: { %s: %s }", geoPropertyPath, intersectsBuilder.obj().toString().c_str()));  // DESTRUCTIVE !!!
+  queryBuilderP->append(geoPropertyPath, intersectsBuilder.obj());
+
+  return true;
+}
+
+
+
+// -----------------------------------------------------------------------------
+//
 // geoqFilter -
 //
 static void geoqFilter(mongo::BSONObjBuilder* queryBuilderP, KjNode* geoqP)
 {
-  KjNode* geometryP  = NULL;
-  KjNode* georelP    = NULL;
-  KjNode* coordsP    = NULL;
-  KjNode* geopropP   = NULL;
+  KjNode* geometryP      = NULL;
+  KjNode* georelP        = NULL;
+  KjNode* coordsP        = NULL;
+  KjNode* geopropertyP   = NULL;
 
   for (KjNode* nodeP = geoqP->value.firstChildP; nodeP != NULL; nodeP = nodeP->next)
   {
@@ -255,15 +332,26 @@ static void geoqFilter(mongo::BSONObjBuilder* queryBuilderP, KjNode* geoqP)
     else if (strcmp(nodeP->name, "coordinates") == 0)
       coordsP = nodeP;
     else if (strcmp(nodeP->name, "geoproperty") == 0)
-      geopropP = nodeP;
+      geopropertyP = nodeP;
   }
 
-  char* georel = georelP->value.s;
+  //
+  // Creating an object for "coordinates": []
+  // I could also remove geometryP, georel and geopropertyP from geoqP ...
+  //
+  KjNode* coordinatesP = kjObject(orionldState.kjsonP, NULL);
+  kjChildAdd(coordinatesP, coordsP);
+
+  char* georel      = georelP->value.s;
+  char* geometry    = geometryP->value.s;
+  char* geoproperty = geopropertyP->value.s;
 
   if (SCOMPARE5(georel, 'n', 'e', 'a', 'r', ';'))
-  {
-    geoqNearFilter(queryBuilderP, geometryP->value.s, &georel[5], coordsP, geopropP->value.s);
-  }
+    geoqNearFilter(queryBuilderP, geometry, &georel[5], coordinatesP, geoproperty);
+  else if (SCOMPARE7(georel, 'w', 'i', 't', 'h', 'i', 'n', 0))
+    geoqWithinFilter(queryBuilderP, geometry, coordinatesP, geoproperty);
+  else if (SCOMPARE11(georel, 'i', 'n', 't', 'e', 'r', 's', 'e', 'c', 't', 's', 0))
+    geoqIntersectsFilter(queryBuilderP, geometry, coordinatesP, geoproperty);
 }
 
 
@@ -293,7 +381,6 @@ KjNode* mongoCppLegacyEntitiesQuery(KjNode* entityInfoArrayP, KjNode* attrsP, QN
 
   if (geoqP != NULL)
     geoqFilter(&queryBuilder, geoqP);
-
 
   KjNode* kjTree = kjArray(orionldState.kjsonP, NULL);
 
