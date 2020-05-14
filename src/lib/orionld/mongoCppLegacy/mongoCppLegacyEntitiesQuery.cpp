@@ -314,6 +314,34 @@ static bool geoqIntersectsFilter(mongo::BSONObjBuilder* queryBuilderP, char* geo
 
 // -----------------------------------------------------------------------------
 //
+// geoqEqualsFilter -
+//
+// This is not really a GEo-Query - just an EQ comparison over objects
+//
+static bool geoqEqualsFilter(mongo::BSONObjBuilder* queryBuilderP, KjNode* geometryP, KjNode* coordsP, char* geopropName)
+{
+  mongo::BSONObj  valueObj;
+  KjNode*         nodeP = kjObject(orionldState.kjsonP, NULL);
+
+  geometryP->name = (char*) "type";
+  kjChildAdd(nodeP, geometryP);
+  kjChildAdd(nodeP, coordsP);
+
+  mongoCppLegacyKjTreeToBsonObj(nodeP, &valueObj);
+
+  char geoPropertyPath[256] = { 'a', 't', 't', 'r', 's', '.', 0 };
+  snprintf(geoPropertyPath, sizeof(geoPropertyPath), "attrs.%s.value", geopropName);
+
+  // LM_TMP(("GEO: Query: { %s: %s }", geoPropertyPath, valueObj.toString().c_str()));  // DESTRUCTIVE !!!
+  queryBuilderP->append(geoPropertyPath, valueObj);
+
+  return true;
+}
+
+
+
+// -----------------------------------------------------------------------------
+//
 // geoqFilter -
 //
 static void geoqFilter(mongo::BSONObjBuilder* queryBuilderP, KjNode* geoqP)
@@ -352,6 +380,8 @@ static void geoqFilter(mongo::BSONObjBuilder* queryBuilderP, KjNode* geoqP)
     geoqWithinFilter(queryBuilderP, geometry, coordinatesP, geoproperty);
   else if (SCOMPARE11(georel, 'i', 'n', 't', 'e', 'r', 's', 'e', 'c', 't', 's', 0))
     geoqIntersectsFilter(queryBuilderP, geometry, coordinatesP, geoproperty);
+  if (SCOMPARE7(georel, 'e', 'q', 'u', 'a', 'l', 's', 0))
+    geoqEqualsFilter(queryBuilderP, geometryP, coordsP, geoproperty);
 }
 
 
@@ -388,6 +418,9 @@ KjNode* mongoCppLegacyEntitiesQuery(KjNode* entityInfoArrayP, KjNode* attrsP, QN
   mongo::DBClientBase*                  connectionP = getMongoConnection();
   std::auto_ptr<mongo::DBClientCursor>  cursorP;
   mongo::Query                          query(queryBuilder.obj());
+
+  // Sort according to creDate
+  query.sort("creDate", 1);
 
   dbCollectionPathGet(collectionPath, sizeof(collectionPath), "entities");
 
