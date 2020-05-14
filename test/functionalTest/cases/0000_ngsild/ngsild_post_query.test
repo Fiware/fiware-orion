@@ -47,7 +47,7 @@ brokerStart CB 0-255
 # 21. GET all entities with a 'location' GeoProperty near a Point, using POST
 # 22. GET all entities with a 'geoPoint2' GeoProperty near a Point, using GET
 # 23. GET all entities with a 'geoPoint2' GeoProperty near a Point, using POST
-#
+# 24. GET all entities of type 'T', with a 'geoPoint2' that is near the Point [ 11, 10], has an attr called A1, has an attr A2==E1/A2 
 
 echo "01. Create entity E1, type T, with attrs A1, A2, location, and geoPoint2"
 echo "========================================================================"
@@ -321,6 +321,28 @@ payload='{
     "geometry": "Point",
     "georel": "near;maxDistance==100000",
     "coordinates": [ 12, 10 ],
+    "geoproperty": "geoPoint2"
+  }
+}'
+orionCurl --url /ngsi-ld/v1/entityOperations/query --payload "$payload"
+echo
+echo
+
+
+echo "24. GET all entities of type 'T', with a 'geoPoint2' that is near the Point [ 11, 10], has an attr called A1, has an attr A2==E1/A2"
+echo "==================================================================================================================================="
+payload='{
+  "entities": [
+    {
+      "type": "T"
+    }
+  ],
+  "attrs": [ "A1" ],
+  "q": "A2==%22E1/A2%22",
+  "geoQ": {
+    "geometry": "Point",
+    "georel": "near;maxDistance==1",
+    "coordinates": [ 11, 10 ],
     "geoproperty": "geoPoint2"
   }
 }'
@@ -1172,6 +1194,50 @@ Date: REGEX(.*)
             }
         },
         "type": "T2"
+    }
+]
+
+
+24. GET all entities of type 'T', with a 'geoPoint2' that is near the Point [ 11, 10], has an attr called A1, has an attr A2==E1/A2
+===================================================================================================================================
+HTTP/1.1 200 OK
+Content-Length: 289
+Content-Type: application/json
+Link: <https://uri.etsi.org/ngsi-ld/v1/ngsi-ld-core-context.jsonld>; rel="http://www.w3.org/ns/json-ld#context"; type="application/ld+json"
+Date: REGEX(.*)
+
+[
+    {
+        "A1": {
+            "type": "Property",
+            "value": "E1:A1"
+        },
+        "A2": {
+            "type": "Property",
+            "value": "E1/A2"
+        },
+        "geoPoint2": {
+            "type": "GeoProperty",
+            "value": {
+                "coordinates": [
+                    11,
+                    10
+                ],
+                "type": "Point"
+            }
+        },
+        "id": "http://a.b.c/entity/E1",
+        "location": {
+            "type": "GeoProperty",
+            "value": {
+                "coordinates": [
+                    11,
+                    10
+                ],
+                "type": "Point"
+            }
+        },
+        "type": "T"
     }
 ]
 
