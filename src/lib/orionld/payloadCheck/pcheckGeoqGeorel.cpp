@@ -94,20 +94,29 @@ bool pcheckGeoqGeorel(KjNode* georelP, OrionldGeoJsonType geoType, OrionldProble
       return false;
     }
   }
-  else if (strcmp(georel, "contains") == 0)
-  {
-  }
   else if (strcmp(georel, "overlaps") == 0)
   {
+    // FIXME: Can be any Geometry ... Right?
   }
   else if (strcmp(georel, "intersects") == 0)
   {
-  }
-  else if (strcmp(georel, "equals") == 0)
-  {
+    // FIXME: Should be possible to use any Geomtry ...
+    //        But, the mngodb docs talk about Polygon or MultiPolygon:
+    //          https://docs.mongodb.com/manual/reference/operator/query/geoIntersects/
+    //        For now, I'll allow any Geometry
   }
   else if (strcmp(georel, "disjoint") == 0)
   {
+    // Uses $not { 'intersects-expression' }, so, if 'intersects' is only Polygons, then 'disjoint' also
+  }
+  else if (strcmp(georel, "contains") == 0)
+  {
+    orionldProblemDetailsFill(pdP, OrionldInvalidRequest,  "Not Inplemented", "georel 'contains' is not supported by mongodb and thus also not by Orion-LD", 501);
+    return false;
+  }
+  else if (strcmp(georel, "equals") == 0)
+  {
+    // Valid for all geometry types
   }
   else
   {

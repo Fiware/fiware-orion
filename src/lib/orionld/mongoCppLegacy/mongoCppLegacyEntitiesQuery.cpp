@@ -385,6 +385,63 @@ static bool geoqDisjointFilter(mongo::BSONObjBuilder* queryBuilderP, char* geome
 
 // -----------------------------------------------------------------------------
 //
+// geoqOverlapsFilter - intersects AND is of the same GEO-Type
+//
+// {
+//   <location field>: {
+//      $geoIntersects: {
+//         $geometry: {
+//            type: "<GeoJSON object type>" ,
+//            coordinates: [ <coordinates> ]
+//         }
+//      }
+//   }
+// },
+// {
+//   <location field>.type: <geoType>
+// }
+//
+static bool geoqOverlapsFilter(mongo::BSONObjBuilder* queryBuilderP, char* geometry, KjNode* coordsP, char* geopropName)
+{
+  mongo::BSONObj         coordsObj;          // coordinates: [ [], [] ]
+  mongo::BSONObjBuilder  geometryFields;     // { type: "XXX", coordinates: [] }
+  mongo::BSONObjBuilder  geometryBuilder;    // { $geometry: { type+coordinates } }
+  mongo::BSONObjBuilder  intersectsBuilder;  // { $geoIntersects: { geometryBuilder } }
+  mongo::BSONObjBuilder  geoTypeBuilder;     // { attrs.geoProp.value.type: geometry }
+
+  mongoCppLegacyKjTreeToBsonObj(coordsP, &coordsObj);
+  geometryFields.append("type", geometry);
+  geometryFields.appendElements(coordsObj);
+  geometryBuilder.append("$geometry", geometryFields.obj());
+  intersectsBuilder.append("$geoIntersects", geometryBuilder.obj());
+
+  char  geoPropertyPath[256] = { 'a', 't', 't', 'r', 's', '.', 0 };
+  char* geoPropertyPathP     = geoPropertyPath;
+  int   size;
+
+  size = snprintf(geoPropertyPath, sizeof(geoPropertyPath), "attrs.%s.value", geopropName);
+
+  // LM_TMP(("GEO: Query: { %s: %s }", geoPropertyPath, intersectsBuilder.obj().toString().c_str()));  // DESTRUCTIVE !!!
+
+  queryBuilderP->append(geoPropertyPath, intersectsBuilder.obj());
+
+  if (size + 5 >= (int) sizeof(geoPropertyPath))
+  {
+    geoPropertyPathP = kaAlloc(&orionldState.kalloc, 512);
+    snprintf(geoPropertyPathP, 512, "attrs.%s.value.type", geopropName);
+  }
+  else
+    strcat(geoPropertyPath, ".type");
+
+  queryBuilderP->append(geoPropertyPathP, geometry);
+
+  return true;
+}
+
+
+
+// -----------------------------------------------------------------------------
+//
 // geoqFilter -
 //
 static void geoqFilter(mongo::BSONObjBuilder* queryBuilderP, KjNode* geoqP)
@@ -427,6 +484,8 @@ static void geoqFilter(mongo::BSONObjBuilder* queryBuilderP, KjNode* geoqP)
     geoqEqualsFilter(queryBuilderP, geometryP, coordsP, geoproperty);
   else if (SCOMPARE9(georel, 'd', 'i', 's', 'j', 'o', 'i', 'n', 't', 0))
     geoqDisjointFilter(queryBuilderP, geometry, coordinatesP, geoproperty);
+  else if (SCOMPARE9(georel, 'o', 'v', 'e', 'r', 'l', 'a', 'p', 's', 0))
+    geoqOverlapsFilter(queryBuilderP, geometry, coordinatesP, geoproperty);
 }
 
 
