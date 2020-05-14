@@ -342,6 +342,49 @@ static bool geoqEqualsFilter(mongo::BSONObjBuilder* queryBuilderP, KjNode* geome
 
 // -----------------------------------------------------------------------------
 //
+// geoqDisjointFilter -
+//
+// {
+//   <location field>: {
+//     $not: {
+//        $geoIntersects: {
+//           $geometry: {
+//              type: "<GeoJSON object type>" ,
+//              coordinates: [ <coordinates> ]
+//           }
+//         }
+//      }
+//   }
+// }
+//
+static bool geoqDisjointFilter(mongo::BSONObjBuilder* queryBuilderP, char* geometry, KjNode* coordsP, char* geopropName)
+{
+  mongo::BSONObj         coordsObj;          // coordinates: [ [], [] ]
+  mongo::BSONObjBuilder  geometryFields;     // { type: "XXX", coordinates: [] }
+  mongo::BSONObjBuilder  geometryBuilder;    // { $geometry: { type+coordinates } }
+  mongo::BSONObjBuilder  intersectsBuilder;  // { $geoIntersects: { geometryBuilder } }
+  mongo::BSONObjBuilder  notBuilder;         // { $not: { intersectsBuilder }
+
+  mongoCppLegacyKjTreeToBsonObj(coordsP, &coordsObj);
+  geometryFields.append("type", geometry);
+  geometryFields.appendElements(coordsObj);
+  geometryBuilder.append("$geometry", geometryFields.obj());
+  intersectsBuilder.append("$geoIntersects", geometryBuilder.obj());
+  notBuilder.append("$not", intersectsBuilder.obj());
+
+  char geoPropertyPath[256] = { 'a', 't', 't', 'r', 's', '.', 0 };
+  snprintf(geoPropertyPath, sizeof(geoPropertyPath), "attrs.%s.value", geopropName);
+
+  // LM_TMP(("GEO: Query: { %s: %s }", geoPropertyPath, intersectsBuilder.obj().toString().c_str()));  // DESTRUCTIVE !!!
+  queryBuilderP->append(geoPropertyPath, notBuilder.obj());
+
+  return true;
+}
+
+
+
+// -----------------------------------------------------------------------------
+//
 // geoqFilter -
 //
 static void geoqFilter(mongo::BSONObjBuilder* queryBuilderP, KjNode* geoqP)
@@ -380,8 +423,10 @@ static void geoqFilter(mongo::BSONObjBuilder* queryBuilderP, KjNode* geoqP)
     geoqWithinFilter(queryBuilderP, geometry, coordinatesP, geoproperty);
   else if (SCOMPARE11(georel, 'i', 'n', 't', 'e', 'r', 's', 'e', 'c', 't', 's', 0))
     geoqIntersectsFilter(queryBuilderP, geometry, coordinatesP, geoproperty);
-  if (SCOMPARE7(georel, 'e', 'q', 'u', 'a', 'l', 's', 0))
+  else if (SCOMPARE7(georel, 'e', 'q', 'u', 'a', 'l', 's', 0))
     geoqEqualsFilter(queryBuilderP, geometryP, coordsP, geoproperty);
+  else if (SCOMPARE9(georel, 'd', 'i', 's', 'j', 'o', 'i', 'n', 't', 0))
+    geoqDisjointFilter(queryBuilderP, geometry, coordinatesP, geoproperty);
 }
 
 
