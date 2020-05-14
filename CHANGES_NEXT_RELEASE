@@ -1,4 +1,4 @@
-# Issue #280  MQTT Notifications
+# Issue #280  MQTT Notifications - not 100% - ETSI NGSI-LD spec is still neing updated on MQTT notifications
 # Issue #409  Removed an incorrect warning about options=keyValues not supported
 # Issue #XXX  'location' not to be expanded - fixed for PATCH ops
 # Issue #280  Implemented POST /ngsi-ld/v1/entityOperations/create
