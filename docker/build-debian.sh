@@ -119,6 +119,13 @@ make
 make install
 cd ${ROOT} && rm -Rf libmicrohttpd-0.9.48
 
+echo "Builder: installing mongo"
+apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv 9DA31620334BD75D9DCB49F368818C72E52529D4
+
+echo 'deb [ arch=amd64 ] https://repo.mongodb.org/apt/debian stretch/mongodb-org/4.0 main' > /etc/apt/sources.list.d/mongodb.list
+apt-get -y update
+apt-get -y install mongodb-org mongodb-org-shell
+
 ldconfig
 
 if [[ ${STAGE} == 'release' ]]
@@ -162,15 +169,7 @@ done
     cat /tmp/paho-install
     echo "============== PAHO INSTALLATION TRACES END ==============================="
 
-    echo "Builder: installing mongo and MQTT"
-    apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv 9DA31620334BD75D9DCB49F368818C72E52529D4
-
-    echo 'deb [ arch=amd64 ] https://repo.mongodb.org/apt/debian stretch/mongodb-org/4.0 main' > /etc/apt/sources.list.d/mongodb.list
-    apt-get -y update
-    apt-get -y install \
-        mongodb-org \
-        mongodb-org-shell
-
+    echo "Builder: installing MQTT - not!"
     #
     # FIXME
     #   For unknown reasons, 'mosquitto' can't be installed in this repo
