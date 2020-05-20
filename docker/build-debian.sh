@@ -121,6 +121,9 @@ cd ${ROOT} && rm -Rf libmicrohttpd-0.9.48
 
 ldconfig
 
+if [[ ${STAGE} == 'release' ]]
+then
+
 echo "Debian Builder: installing k libs"
 for kproj in kbase klog kalloc kjson khash
 do
@@ -177,6 +180,7 @@ done
     # apt-get -y install mosquitto
     # sudo service mosquitto start
     #
+fi
 
 
 if [[ "${STAGE}" == 'deps' ]]; then
