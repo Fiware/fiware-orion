@@ -26,11 +26,11 @@
 #include "logMsg/traceLevels.h"                                  // Lmt*
 
 #include "rest/ConnectionInfo.h"                                 // ConnectionInfo
-#include "ngsi10/UnsubscribeContextRequest.h"                    // UnsubscribeContextRequest
-#include "ngsi10/UnsubscribeContextResponse.h"                   // UnsubscribeContextResponse
-#include "mongoBackend/mongoUnsubscribeContext.h"                // mongoUnsubscribeContext
 #include "orionld/common/orionldState.h"                         // orionldState
+#include "orionld/common/urlCheck.h"                             // urlCheck
+#include "orionld/common/urnCheck.h"                             // urnCheck
 #include "orionld/common/orionldErrorResponse.h"                 // orionldErrorResponseCreate
+#include "orionld/db/dbConfiguration.h"                          // dbRegistrationDelete
 #include "orionld/serviceRoutines/orionldDeleteSubscription.h"   // Own Interface
 
 
@@ -43,9 +43,19 @@ bool orionldDeleteSubscription(ConnectionInfo* ciP)
 {
   char* details;
 
-  if (mongoDeleteLdSubscription(orionldState.wildcard[0], orionldState.tenant, &orionldState.httpStatusCode, &details) == false)
+  if ((urlCheck(orionldState.wildcard[0], &details) == false) && (urnCheck(orionldState.wildcard[0], &details) == false))
   {
-    orionldErrorResponseCreate(OrionldBadRequestData, details, orionldState.wildcard[0]);
+    LM_E(("uriCheck: %s", details));
+    orionldState.httpStatusCode = SccBadRequest;
+    orionldErrorResponseCreate(OrionldBadRequestData, "Invalid Subscription Identifier", orionldState.wildcard[0]);
+    return false;
+  }
+
+  if (dbSubscriptionDelete(orionldState.wildcard[0]) == false)
+  {
+    LM_E(("dbSubscriptionDelete failed - not found?"));
+    orionldState.httpStatusCode = SccNotFound;
+    orionldErrorResponseCreate(OrionldBadRequestData, "Context Subscription not found", orionldState.wildcard[0]);
     return false;
   }
 
