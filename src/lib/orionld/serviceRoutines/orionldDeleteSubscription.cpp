@@ -51,11 +51,19 @@ bool orionldDeleteSubscription(ConnectionInfo* ciP)
     return false;
   }
 
+  if(dbSubscriptionGet(orionldState.wildcard[0]) == NULL)
+  {
+    LM_E(("dbSubscriptionGet says that the subscription '%s' doesn't exist", orionldState.wildcard[0]));
+    orionldState.httpStatusCode = SccNotFound;
+    orionldErrorResponseCreate(OrionldBadRequestData, "The requested subscription has not been found. Check id", orionldState.wildcard[0]);
+    return false;
+  }
+
   if (dbSubscriptionDelete(orionldState.wildcard[0]) == false)
   {
     LM_E(("dbSubscriptionDelete failed - not found?"));
     orionldState.httpStatusCode = SccNotFound;
-    orionldErrorResponseCreate(OrionldBadRequestData, "Context Subscription not found", orionldState.wildcard[0]);
+    orionldErrorResponseCreate(OrionldBadRequestData, "The requested subscription has not been found. Check id", orionldState.wildcard[0]);
     return false;
   }
 
