@@ -51,7 +51,7 @@ bool orionldDeleteSubscription(ConnectionInfo* ciP)
     return false;
   }
 
-  if(dbSubscriptionGet(orionldState.wildcard[0]) == NULL)
+  if (dbSubscriptionGet(orionldState.wildcard[0]) == NULL)
   {
     LM_E(("dbSubscriptionGet says that the subscription '%s' doesn't exist", orionldState.wildcard[0]));
     orionldState.httpStatusCode = SccNotFound;
