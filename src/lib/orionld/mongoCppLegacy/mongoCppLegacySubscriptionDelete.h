@@ -26,11 +26,6 @@
 * Author: Gabriel Quaresma
 */
 
-extern "C"
-{
-#include "kjson/KjNode.h"                                        // KjNode
-}
-
 
 
 // -----------------------------------------------------------------------------

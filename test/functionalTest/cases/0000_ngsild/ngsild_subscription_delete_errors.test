@@ -35,7 +35,7 @@ brokerStart CB 0-255
 # 02. GET subscription 'http://a.b.c/subs/sub01' and see it
 # 03. See the subscription in mongo
 # 04. Delete subscription with incorrect uri format
-# 05. Delete subscription that not exists
+# 05. Delete subscription that does not exist
 #
 
 
@@ -116,8 +116,8 @@ echo
 echo
 
 
-echo "05. Delete subscription that not exists"
-echo "======================================="
+echo "05. Delete subscription that does not exist"
+echo "==========================================="
 orionCurl --url '/ngsi-ld/v1/subscriptions/http://a.b.c/subs/sub04' -X DELETE
 echo
 echo
@@ -267,16 +267,16 @@ Date: REGEX(.*)
 }
 
 
-05. Delete subscription that not exists
-=======================================
+05. Delete subscription that does not exist
+===========================================
 HTTP/1.1 404 Not Found
-Content-Length: 162
+Content-Length: 167
 Content-Type: application/json
 Date: REGEX(.*)
 
 {
     "detail": "http://a.b.c/subs/sub04",
-    "title": "The requested subscription has not been found. Check id",
+    "title": "The requested subscription has not been found - check its id",
     "type": "https://uri.etsi.org/ngsi-ld/errors/BadRequestData"
 }
 
