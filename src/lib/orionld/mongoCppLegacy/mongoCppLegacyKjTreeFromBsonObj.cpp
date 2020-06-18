@@ -59,6 +59,7 @@ KjNode* mongoCppLegacyKjTreeFromBsonObj(const void* dataP, char** titleP, char**
   }
   else
   {
+    // FIXME: Use kjStrdup, and only if it fals, use strdup and orionldStateDelayedFreeEnqueue
     orionldState.jsonBuf = strdup(jsonString.c_str());
     orionldStateDelayedFreeEnqueue(orionldState.jsonBuf);
     treeP = kjParse(orionldState.kjsonP, orionldState.jsonBuf);
