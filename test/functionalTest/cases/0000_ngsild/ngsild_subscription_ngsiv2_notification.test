@@ -396,7 +396,7 @@ Date: REGEX(.*)
 ============================================
 POST http://REGEX(.*)/notify
 Fiware-Servicepath: /
-Content-Length: 236
+Content-Length: 355
 User-Agent: orion/REGEX(.*)
 Ngsiv2-Attrsformat: x-ngsiv2-normalized
 Host: REGEX(.*)
@@ -415,7 +415,10 @@ Content-Type: application/json; charset=utf-8
             "type": "https://uri.etsi.org/ngsi-ld/default-context/T1"
         }
     ], 
-    "subscriptionId": "REGEX(.*)"
+    "id": "urn:ngsi-ld:Notification:REGEX(.*)", 
+    "notifiedAt": "REGEX(.*)", 
+    "subscriptionId": "http://a.b.c/subs/sub01", 
+    "type": "Notification"
 }
 =======================================
 
@@ -449,7 +452,7 @@ Date: REGEX(.*)
 ===================================================================================
 POST http://REGEX(.*)/notify
 Fiware-Servicepath: /
-Content-Length: 237
+Content-Length: 356
 User-Agent: orion/REGEX(.*)
 Ngsiv2-Attrsformat: x-ngsiv2-normalized
 Host: REGEX(.*)
@@ -468,7 +471,10 @@ Content-Type: application/json; charset=utf-8
             "type": "https://uri.etsi.org/ngsi-ld/default-context/T2"
         }
     ], 
-    "subscriptionId": "REGEX(.*)"
+    "id": "urn:ngsi-ld:Notification:REGEX(.*)", 
+    "notifiedAt": "REGEX(.*)", 
+    "subscriptionId": "http://a.b.c/subs/sub02", 
+    "type": "Notification"
 }
 =======================================
 
@@ -502,7 +508,7 @@ Date: REGEX(.*)
 ================================================================================================
 POST http://REGEX(.*)/notify
 Fiware-Servicepath: /
-Content-Length: 238
+Content-Length: 357
 User-Agent: orion/REGEX(.*)
 Ngsiv2-Attrsformat: x-ngsiv2-normalized
 Host: REGEX(.*)
@@ -521,7 +527,10 @@ Content-Type: application/json; charset=utf-8
             "type": "https://uri.etsi.org/ngsi-ld/default-context/T3"
         }
     ], 
-    "subscriptionId": "REGEX(.*)"
+    "id": "urn:ngsi-ld:Notification:REGEX(.*)", 
+    "notifiedAt": "REGEX(.*)", 
+    "subscriptionId": "http://a.b.c/subs/sub03", 
+    "type": "Notification"
 }
 =======================================
 
@@ -555,7 +564,7 @@ Date: REGEX(.*)
 ===============================================================================================
 POST http://localhost:9997/notify
 Fiware-Servicepath: /
-Content-Length: 238
+Content-Length: 357
 User-Agent: REGEX(.*)
 Ngsiv2-Attrsformat: x-ngsiv2-normalized
 Host: localhost:9997
@@ -581,7 +590,10 @@ Content-Type: application/json; charset=utf-8
             "type": "https://uri.etsi.org/ngsi-ld/default-context/T4"
         }
     ], 
-    "subscriptionId": "REGEX(.*)"
+    "id": "urn:ngsi-ld:Notification:REGEX(.*)", 
+    "notifiedAt": "REGEX(.*)", 
+    "subscriptionId": "http://a.b.c/subs/sub04", 
+    "type": "Notification"
 }
 =======================================
 
@@ -634,7 +646,7 @@ Date: REGEX(.*)
 =======================================================================================================
 POST http://REGEX(.*)/notify
 Fiware-Servicepath: /
-Content-Length: 388
+Content-Length: 507
 User-Agent: orion/REGEX(.*)
 Ngsiv2-Attrsformat: x-ngsiv2-normalized
 Host: REGEX(.*)
@@ -677,7 +689,10 @@ Content-Type: application/json; charset=utf-8
             "type": "https://uri.etsi.org/ngsi-ld/default-context/T4"
         }
     ], 
-    "subscriptionId": "http://a.b.c/subs/sub04"
+    "id": "urn:ngsi-ld:Notification:REGEX(.*)", 
+    "notifiedAt": "REGEX(.*)", 
+    "subscriptionId": "http://a.b.c/subs/sub04", 
+    "type": "Notification"
 }
 =======================================
 
@@ -693,7 +708,7 @@ Date: REGEX(.*)
 =====================================================================================================
 POST http://REGEX(.*)/notify
 Fiware-Servicepath: /
-Content-Length: 536
+Content-Length: 655
 User-Agent: orion/REGEX(.*)
 Ngsiv2-Attrsformat: x-ngsiv2-normalized
 Host: REGEX(.*)
@@ -753,7 +768,10 @@ Content-Type: application/json; charset=utf-8
             "type": "https://uri.etsi.org/ngsi-ld/default-context/T4"
         }
     ], 
-    "subscriptionId": "http://a.b.c/subs/sub04"
+    "id": "urn:ngsi-ld:Notification:REGEX(.*)", 
+    "notifiedAt": "REGEX(.*)", 
+    "subscriptionId": "http://a.b.c/subs/sub04", 
+    "type": "Notification"
 }
 =======================================
 

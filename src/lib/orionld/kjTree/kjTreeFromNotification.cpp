@@ -60,17 +60,14 @@ KjNode* kjTreeFromNotification(NotifyContextRequest* ncrP, const char* context, 
   char             idBuffer[] = "urn:ngsi-ld:Notification:012345678901234567890123";  // The 012345678901234567890123 will be overwritten
   OrionldContext*  contextP   = orionldContextCacheLookup(context);
 
-  if (renderFormat != NGSI_LD_V1_V2_NORMALIZED)
-  {
-    // id
-    strcpy(&idBuffer[25], id);
-    nodeP = kjString(orionldState.kjsonP, "id", idBuffer);
-    kjChildAdd(rootP, nodeP);
+  // id
+  strcpy(&idBuffer[25], id);
+  nodeP = kjString(orionldState.kjsonP, "id", idBuffer);
+  kjChildAdd(rootP, nodeP);
 
-    // type
-    nodeP = kjString(orionldState.kjsonP, "type", "Notification");
-    kjChildAdd(rootP, nodeP);
-  }
+  // type
+  nodeP = kjString(orionldState.kjsonP, "type", "Notification");
+  kjChildAdd(rootP, nodeP);
 
   // subscriptionId
   nodeP = kjString(orionldState.kjsonP, "subscriptionId", (char*) ncrP->subscriptionId.get().c_str());
@@ -92,18 +89,15 @@ KjNode* kjTreeFromNotification(NotifyContextRequest* ncrP, const char* context, 
   }
 
   // notifiedAt
-  if (renderFormat != NGSI_LD_V1_V2_NORMALIZED)
-  {
-    char date[128];
+  char date[128];
 
-    if (numberToDate(orionldState.requestTime, date, sizeof(date)) == false)
-    {
-      LM_E(("Runtime Error (numberToDate failed)"));
-      return NULL;
-    }
-    nodeP = kjString(orionldState.kjsonP, "notifiedAt", date);
-    kjChildAdd(rootP, nodeP);
+  if (numberToDate(orionldState.requestTime, date, sizeof(date)) == false)
+  {
+    LM_E(("Runtime Error (numberToDate failed)"));
+    return NULL;
   }
+  nodeP = kjString(orionldState.kjsonP, "notifiedAt", date);
+  kjChildAdd(rootP, nodeP);
 
   //
   // data
