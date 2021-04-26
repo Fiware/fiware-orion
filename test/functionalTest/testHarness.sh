@@ -387,7 +387,7 @@ logMsg "$ME, in directory $SCRIPT_HOME"
 #
 typeset -i fromIx
 typeset -i toIx
-verbose=on
+verbose=off
 loud=off
 dryrun=off
 keep=off
