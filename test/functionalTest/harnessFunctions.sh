@@ -271,8 +271,10 @@ function brokerStartAwait
 
   while [ $loopNo -lt $loops ]
   do
-    nc -zv localhost $port
+    nc -zv localhost $port 2> /dev/null
+    echo
     echo "nc returned $?"
+    echo
     if [ "$?" == "0" ]
     then
       logMsg The orion context broker has started, listening on port $port
