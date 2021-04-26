@@ -303,12 +303,12 @@ function exitFunction()
           echo
           echo
 
-          # cat /tmp/orionld.log | egrep 'lvl=ERR|lvl=WARN' > /tmp/orionld.err-warn.log
-          if [ -s /tmp/orionld.log ]
+          cat /tmp/orionld.log | egrep 'lvl=ERR|lvl=WARN' > /tmp/orionld.err-warn.log
+          if [ -s /tmp/orionld.err-warn.log ]
           then
-              echo "orionld log file"
+              echo "Errors and warnings from the orionld log file"
               echo "-------------------------------------------------"
-              cat /tmp/orionld.log
+              cat /tmp/orionld.err-warn.log
               echo "-------------------------------------------------"
               echo
               echo
