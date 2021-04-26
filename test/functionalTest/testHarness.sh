@@ -303,12 +303,12 @@ function exitFunction()
           echo
           echo
 
-          cat /tmp/orionld.log | egrep 'lvl=ERR|lvl=WARN' > /tmp/orionld.err-warn.log
-          if [ -s /tmp/orionld.err-warn.log ]
+          # cat /tmp/orionld.log | egrep 'lvl=ERR|lvl=WARN' > /tmp/orionld.err-warn.log
+          if [ -s /tmp/orionld.log ]
           then
-              echo "Errors and warnings from the orionld log file"
+              echo "orionld log file"
               echo "-------------------------------------------------"
-              cat /tmp/orionld.err-warn.log
+              cat /tmp/orionld.log
               echo "-------------------------------------------------"
               echo
               echo
@@ -387,7 +387,7 @@ logMsg "$ME, in directory $SCRIPT_HOME"
 #
 typeset -i fromIx
 typeset -i toIx
-verbose=off
+verbose=on
 loud=off
 dryrun=off
 keep=off
