@@ -33,10 +33,11 @@
 #include "logMsg/logMsg.h"                                       // LM_*
 #include "logMsg/traceLevels.h"                                  // Lmt*
 
+#include "orionld/common/orionldState.h"                         // coreContextUrl
 #include "orionld/types/OrionldProblemDetails.h"                 // OrionldProblemDetails, orionldProblemDetailsFill
 #include "orionld/common/orionldState.h"                         // coreContextUrl
 #include "orionld/context/OrionldContext.h"                      // OrionldContext
-#include "orionld/context/orionldCoreContext.h"                  // orionldCoreContextP
+#include "orionld/context/orionldCoreContext.h"                  // orionldCoreContextP, orionldDefaultUrl
 #include "orionld/context/OrionldContextItem.h"                  // OrionldContextItem
 #include "orionld/context/orionldContextCacheInit.h"             // orionldContextCacheInit
 #include "orionld/context/orionldContextCacheInsert.h"           // orionldContextCacheInsert

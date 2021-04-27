@@ -33,6 +33,7 @@ extern "C"
 
 #include "orionld/common/orionldState.h"                         // coreContextUrl
 #include "orionld/context/OrionldContext.h"                      // OrionldContext
+#include "orionld/common/orionldState.h"                         // coreContextUrl
 #include "orionld/context/orionldContextSimplify.h"              // Own interface
 
 

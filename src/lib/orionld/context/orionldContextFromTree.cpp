@@ -34,6 +34,7 @@ extern "C"
 
 #include "orionld/common/orionldState.h"                         // orionldState, kalloc, coreContextUrl
 #include "orionld/types/OrionldProblemDetails.h"                 // OrionldProblemDetails, orionldProblemDetailsFill
+#include "orionld/context/orionldCoreContext.h"                  // orionldCoreContextP
 #include "orionld/context/OrionldContext.h"                      // OrionldContext
 #include "orionld/context/orionldCoreContext.h"                  // orionldCoreContextP
 #include "orionld/context/orionldContextSimplify.h"              // orionldContextSimplify

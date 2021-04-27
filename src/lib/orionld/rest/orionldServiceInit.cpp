@@ -47,6 +47,8 @@ extern "C"
 #include "orionld/common/orionldState.h"                             // orionldState
 #include "orionld/common/urlCheck.h"                                 // urlCheck
 #include "orionld/common/orionldTenantInit.h"                        // orionldTenantInit
+
+#include "orionld/context/orionldCoreContext.h"                      // orionldCoreContext, coreContextUrl
 #include "orionld/context/orionldContextInit.h"                      // orionldContextInit
 #include "orionld/rest/OrionLdRestService.h"                         // OrionLdRestService, ORION_LD_SERVICE_PREFIX_LEN
 #include "orionld/rest/temporaryErrorPayloads.h"                     // Temporary Error Payloads
